@@ -12,7 +12,7 @@ Feature: Create Value Stream Map
 
   Scenario: Auto-save map name
     Given I have created a map named "Feature Delivery"
-    When I change the name to "Bug Fix Process"
+    When I change the map name to "Bug Fix Process"
     Then the map name should update to "Bug Fix Process"
 
   Scenario: Create map with default name

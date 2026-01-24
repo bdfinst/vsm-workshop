@@ -1,45 +1,35 @@
 import { useCallback } from 'react'
 import PropTypes from 'prop-types'
 import { useVsmStore } from '../../stores/vsmStore'
-import { STEP_TYPES, STEP_TYPE_CONFIG } from '../../data/stepTypes'
 
 function Sidebar() {
-  const { addStep } = useVsmStore()
+  const { addStep, selectStep, setEditing } = useVsmStore()
 
-  const handleAddStep = useCallback(
-    (type) => {
-      const config = STEP_TYPE_CONFIG[type]
-      addStep(config.label, type)
-    },
-    [addStep]
-  )
+  const handleAddStep = useCallback(() => {
+    const step = addStep('New Step')
+    selectStep(step.id)
+    setEditing(true)
+  }, [addStep, selectStep, setEditing])
 
   return (
     <aside className="w-64 bg-white border-r border-gray-200 p-4 overflow-y-auto">
-      <h2 className="text-sm font-semibold text-gray-500 uppercase tracking-wider mb-4">
-        Add Step
-      </h2>
-      <div className="space-y-2" data-testid="step-type-list">
-        {Object.entries(STEP_TYPE_CONFIG).map(([type, config]) => (
-          <button
-            key={type}
-            onClick={() => handleAddStep(type)}
-            className="w-full flex items-center gap-3 px-3 py-2 text-left rounded-lg hover:bg-gray-100 transition-colors border border-transparent hover:border-gray-200"
-            data-testid={`add-step-${type}`}
-          >
-            <span className="text-xl">{config.icon}</span>
-            <span className="text-sm font-medium text-gray-700">
-              {config.label}
-            </span>
-          </button>
-        ))}
-      </div>
+      <button
+        onClick={handleAddStep}
+        className="w-full flex items-center justify-center gap-2 px-4 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium"
+        data-testid="add-step-button"
+      >
+        <span className="text-xl">+</span>
+        <span>Add Step</span>
+      </button>
 
       <div className="mt-8">
         <h2 className="text-sm font-semibold text-gray-500 uppercase tracking-wider mb-4">
-          Tips
+          How to Use
         </h2>
         <div className="text-xs text-gray-600 space-y-3">
+          <p>
+            <strong>Add Step</strong> to create a new process step
+          </p>
           <p>
             <strong>Click</strong> a step to select it
           </p>

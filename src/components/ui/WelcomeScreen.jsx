@@ -3,7 +3,7 @@ import PropTypes from 'prop-types'
 import { useVsmStore } from '../../stores/vsmStore'
 
 function WelcomeScreen() {
-  const { createNewMap, importFromJson } = useVsmStore()
+  const { createNewMap, loadExample, importFromJson } = useVsmStore()
   const [mapName, setMapName] = useState('')
   const fileInputRef = useRef(null)
 
@@ -15,6 +15,10 @@ function WelcomeScreen() {
     },
     [mapName, createNewMap]
   )
+
+  const handleStartWithExample = useCallback(() => {
+    loadExample()
+  }, [loadExample])
 
   const handleImport = useCallback(() => {
     fileInputRef.current?.click()
@@ -68,9 +72,30 @@ function WelcomeScreen() {
               className="w-full py-3 px-4 bg-blue-600 text-white font-medium rounded-lg hover:bg-blue-700 transition-colors"
               data-testid="create-map-button"
             >
-              Create New Map
+              Create Blank Map
             </button>
           </form>
+
+          <div className="relative my-6">
+            <div className="absolute inset-0 flex items-center">
+              <div className="w-full border-t border-gray-300" />
+            </div>
+            <div className="relative flex justify-center text-sm">
+              <span className="px-2 bg-white text-gray-500">or</span>
+            </div>
+          </div>
+
+          <button
+            onClick={handleStartWithExample}
+            className="w-full py-3 px-4 bg-green-600 text-white font-medium rounded-lg hover:bg-green-700 transition-colors mb-3"
+            data-testid="start-with-example-button"
+          >
+            Start with Example Map
+          </button>
+
+          <p className="text-xs text-gray-500 text-center mb-4">
+            A pre-built software delivery value stream with sample data
+          </p>
 
           <div className="relative my-6">
             <div className="absolute inset-0 flex items-center">

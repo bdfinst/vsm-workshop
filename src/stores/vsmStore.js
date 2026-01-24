@@ -1,16 +1,15 @@
 import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
-import { STEP_TYPES, STEP_TYPE_CONFIG } from '../data/stepTypes'
+import { EXAMPLE_MAP } from '../data/exampleMaps'
 
-const createStep = (name, type = STEP_TYPES.CUSTOM, overrides = {}) => {
-  const config = STEP_TYPE_CONFIG[type]
+const createStep = (name, overrides = {}) => {
   return {
     id: crypto.randomUUID(),
     name,
-    type,
+    type: 'custom',
     description: '',
-    processTime: config.defaultProcessTime,
-    leadTime: config.defaultLeadTime,
+    processTime: 60,
+    leadTime: 240,
     percentCompleteAccurate: 100,
     queueSize: 0,
     batchSize: 1,
@@ -61,6 +60,34 @@ export const useVsmStore = create(
         })
       },
 
+      loadExample: () => {
+        const now = new Date().toISOString()
+        set({
+          id: crypto.randomUUID(),
+          name: EXAMPLE_MAP.name,
+          description: EXAMPLE_MAP.description,
+          steps: EXAMPLE_MAP.steps.map((step) => ({ ...step, id: crypto.randomUUID() })),
+          connections: [],
+          createdAt: now,
+          updatedAt: now,
+          selectedStepId: null,
+          isEditing: false,
+        })
+        // Recreate connections with new IDs
+        const { steps } = get()
+        const stepIdMap = {}
+        EXAMPLE_MAP.steps.forEach((oldStep, index) => {
+          stepIdMap[oldStep.id] = steps[index].id
+        })
+        const newConnections = EXAMPLE_MAP.connections.map((conn) => ({
+          ...conn,
+          id: `${stepIdMap[conn.source]}-${stepIdMap[conn.target]}`,
+          source: stepIdMap[conn.source],
+          target: stepIdMap[conn.target],
+        }))
+        set({ connections: newConnections })
+      },
+
       updateMapName: (name) => {
         set({
           name,
@@ -75,13 +102,13 @@ export const useVsmStore = create(
         })
       },
 
-      addStep: (name, type = STEP_TYPES.CUSTOM, overrides = {}) => {
+      addStep: (name = 'New Step', overrides = {}) => {
         const { steps } = get()
         const position = {
           x: steps.length * 250 + 50,
           y: 150,
         }
-        const newStep = createStep(name, type, { ...overrides, position })
+        const newStep = createStep(name, { ...overrides, position })
         set({
           steps: [...steps, newStep],
           updatedAt: new Date().toISOString(),

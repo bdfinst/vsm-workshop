@@ -10,7 +10,7 @@ Feature: Edit Process Step
 
   Scenario: Edit step name
     Given I have the step editor open for "Development"
-    When I change the name to "Backend Development"
+    When I change the step name to "Backend Development"
     And I save the changes
     Then the step should display "Backend Development"
 
