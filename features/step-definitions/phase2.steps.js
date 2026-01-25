@@ -36,6 +36,8 @@ When('I set rework rate to {int}%', function (rate) {
     this.pendingConnection = null
   } else if (this.selectedConnection) {
     this.updateConnection(this.selectedConnection.id, { reworkRate: rate })
+    // Refresh selectedConnection reference after update
+    this.selectedConnection = this.connections.find((c) => c.id === this.selectedConnection.id)
   }
 })
 

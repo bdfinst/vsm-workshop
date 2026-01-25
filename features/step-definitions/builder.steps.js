@@ -279,9 +279,15 @@ When('I press the Delete key', function () {
 
 When('I confirm the deletion', function () {
   if (this.pendingDelete) {
-    this.deleteStep(this.pendingDelete)
+    // Check if it's a connection ID
+    const isConnection = this.connections.some((c) => c.id === this.pendingDelete)
+    if (isConnection) {
+      this.deleteConnection(this.pendingDelete)
+    } else {
+      this.deleteStep(this.pendingDelete)
+      this.selectedStep = null
+    }
     this.pendingDelete = null
-    this.selectedStep = null
   }
 })
 
