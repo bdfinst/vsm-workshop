@@ -1,6 +1,6 @@
 import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
-import { EXAMPLE_MAP } from '../data/exampleMaps'
+import { EXAMPLE_MAP } from '../data/exampleMaps.js'
 
 const createStep = (name, overrides = {}) => {
   return {

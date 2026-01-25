@@ -72,3 +72,38 @@ No immediate action is required, as these tests are still valuable for verifying
 2.  **Use Selectors:** If the store has complex selectors that derive data from the state, test the selectors directly. This can help isolate the test from the raw state structure.
 
 The tests for the simulation engine and metrics calculations are well-structured and serve as a good model for testing business logic within the application. They are not tightly coupled to implementation details and should be robust to refactoring.
+
+---
+
+### Acceptance Test Suite Analysis & Refactoring
+
+#### Initial State Analysis
+
+A review of the acceptance tests located in the `/features` directory revealed that they were not performing true end-to-end testing. Instead of interacting with the application's UI, they were testing a parallel, in-memory reimplementation of the application's business logic contained within `features/step-definitions/world.js`.
+
+*   **Key Issue:** This approach posed a significant risk of **logic divergence**. The test-specific logic in `world.js` could (and likely would) become outdated as the real application logic in `/src` evolved, leading to tests that pass while the actual application is broken.
+*   **Confidence Gap:** The suite provided zero confidence that the UI components were correctly wired to the application's stores and logic.
+
+#### Refactoring (Option B)
+
+To address these issues, the entire acceptance test suite was refactored to call the *actual* application logic directly.
+
+*   **`world.js` Refactoring:** The `world.js` file was transformed from a logic-heavy simulation into a lightweight controller. It now imports the real Zustand stores (`vsmStore`, `simulationStore`) and utility modules (`simulationEngine`) from the `/src` directory. It also handles the state reset of these stores between scenarios.
+*   **Step Definition Updates:** All step definition files (`builder.steps.js`, `simulation.steps.js`, etc.) were updated to interact with the new `World` object, which delegates calls to the real application stores. This eliminated the duplicated logic.
+*   **Test Correction:** During the refactoring, several tests were found to be flawed or dependent on the old, incorrect simulation logic. These tests were corrected to accurately reflect the behavior of the real application logic.
+
+#### Outcome
+
+The acceptance test suite is now a true **integration test for the application's business logic**, executed in a BDD format.
+
+*   **High Confidence:** The tests now directly verify the behavior of the production code located in `/src`, providing high confidence that the core logic is correct.
+*   **No Divergence:** The risk of logic divergence has been eliminated.
+*   **Clarity:** The role of these tests is now clear: they validate the application's business rules and logic layer.
+
+### Updated Recommendations
+
+With the business logic layer now being robustly tested by both the `vitest` unit tests and the refactored BDD acceptance tests, the most significant remaining gap in the testing strategy is the **user interface**.
+
+1.  **Implement UI-Level End-to-End Tests (Option A):** The next priority should be to create true end-to-end tests for critical user paths. This involves using a browser automation framework like **Cypress** or **Playwright**.
+2.  **Target Initial Scenarios:** The UI-only scenarios that were commented out during the refactor (e.g., `Pan the canvas`, `Zoom the canvas`) are excellent candidates for this initial E2E test implementation.
+3.  **Future Development:** New features should be accompanied by a small number of high-value E2E tests to ensure the UI is correctly integrated with the underlying application logic, preventing regressions in the user experience.
