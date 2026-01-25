@@ -8,6 +8,10 @@ import MetricsDashboard from './components/metrics/MetricsDashboard'
 import WelcomeScreen from './components/ui/WelcomeScreen'
 import StepEditor from './components/builder/StepEditor'
 import ConnectionEditor from './components/builder/ConnectionEditor'
+import { SimulationControls } from './components/simulation/SimulationControls'
+import { SimulationResults } from './components/simulation/SimulationResults'
+import { ScenarioComparison } from './components/simulation/ScenarioComparison'
+import { useSimulation } from './hooks/useSimulation'
 
 function App() {
   const {
@@ -20,6 +24,8 @@ function App() {
     isEditingConnection,
     clearConnectionSelection,
   } = useVsmStore()
+
+  const { results, scenarios, comparisonResults } = useSimulation()
 
   const handleCanvasClick = useCallback(() => {
     if (isEditing || isEditingConnection) return
@@ -47,9 +53,12 @@ function App() {
         <div className="flex-1 flex overflow-hidden">
           <Sidebar />
           <main className="flex-1 flex flex-col" onClick={handleCanvasClick}>
+            <SimulationControls />
             <div className="flex-1 relative">
               <Canvas />
             </div>
+            {results && <SimulationResults />}
+            {(scenarios.length > 0 || comparisonResults) && <ScenarioComparison />}
             <MetricsDashboard />
           </main>
           {selectedStepId && isEditing && (

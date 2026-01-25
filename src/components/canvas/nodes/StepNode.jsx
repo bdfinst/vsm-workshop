@@ -11,10 +11,11 @@ function StepNode({ data, selected }) {
   const hasQueue = data.queueSize > 0
   const isHighQueue = data.queueSize >= QUEUE_HIGH_THRESHOLD
   const hasBatch = data.batchSize > 1
+  const isBottleneck = isHighQueue || data.isSimulationBottleneck
 
   return (
     <div
-      className={`vsm-node vsm-node--${data.type} ${selected ? 'ring-2 ring-blue-500' : ''} ${isHighQueue ? 'vsm-node--bottleneck' : ''}`}
+      className={`vsm-node vsm-node--${data.type} ${selected ? 'ring-2 ring-blue-500' : ''} ${isBottleneck ? 'vsm-node--bottleneck' : ''}`}
       data-testid={`step-node-${data.id}`}
     >
       <Handle
@@ -77,6 +78,7 @@ StepNode.propTypes = {
     percentCompleteAccurate: PropTypes.number.isRequired,
     queueSize: PropTypes.number,
     batchSize: PropTypes.number,
+    isSimulationBottleneck: PropTypes.bool,
   }).isRequired,
   selected: PropTypes.bool,
 }

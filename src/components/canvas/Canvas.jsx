@@ -10,6 +10,7 @@ import ReactFlow, {
 } from 'reactflow'
 import 'reactflow/dist/style.css'
 import { useVsmStore } from '../../stores/vsmStore'
+import { useSimulationStore } from '../../stores/simulationStore'
 import StepNode from './nodes/StepNode'
 
 const nodeTypes = {
@@ -44,16 +45,23 @@ function Canvas() {
     clearConnectionSelection,
   } = useVsmStore()
 
+  const { detectedBottlenecks, queueSizes, isRunning } = useSimulationStore()
+
   const nodes = useMemo(
     () =>
       steps.map((step) => ({
         id: step.id,
         type: 'stepNode',
         position: step.position,
-        data: step,
+        data: {
+          ...step,
+          // Override queue size with simulation queue if running
+          queueSize: isRunning ? (queueSizes[step.id] || 0) : step.queueSize,
+          isSimulationBottleneck: detectedBottlenecks.includes(step.id),
+        },
         selected: step.id === selectedStepId,
       })),
-    [steps, selectedStepId]
+    [steps, selectedStepId, isRunning, queueSizes, detectedBottlenecks]
   )
 
   const edges = useMemo(

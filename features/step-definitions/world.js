@@ -11,6 +11,11 @@ class VSMWorld extends World {
     this.selectedStep = null
     this.selectedConnection = null
     this.pendingConnection = null
+    // Simulation state
+    this.simulation = null
+    this.scenarios = []
+    this.baselineResults = null
+    this.scenarioResults = null
   }
 
   createVSM(name) {
@@ -169,6 +174,195 @@ class VSMWorld extends World {
       errors.push('%C&A must be between 0 and 100')
     }
     return errors
+  }
+
+  // ==========================================
+  // Simulation Methods
+  // ==========================================
+
+  initSimulation() {
+    this.simulation = {
+      isRunning: false,
+      isPaused: false,
+      speed: 1.0,
+      workItemCount: 0,
+      workItems: [],
+      completedCount: 0,
+      elapsedTime: 0,
+      queueSizes: {},
+      queueHistory: [],
+      detectedBottlenecks: [],
+      results: null,
+    }
+    // Initialize queue sizes for each step
+    this.steps.forEach((step) => {
+      this.simulation.queueSizes[step.id] = 0
+    })
+  }
+
+  generateWorkItems(count) {
+    const items = []
+    const firstStep = this.steps[0]
+    for (let i = 0; i < count; i++) {
+      items.push({
+        id: crypto.randomUUID(),
+        currentStepId: firstStep?.id || null,
+        progress: 0,
+        enteredAt: 0,
+        history: [],
+        isRework: false,
+      })
+    }
+    return items
+  }
+
+  processTick() {
+    if (!this.simulation || this.simulation.isPaused) return
+
+    const tickDuration = 1 / this.simulation.speed
+    this.simulation.elapsedTime += tickDuration
+
+    // Process each work item
+    this.simulation.workItems.forEach((item) => {
+      if (item.currentStepId === null) return // Completed
+
+      const step = this.steps.find((s) => s.id === item.currentStepId)
+      if (!step) return
+
+      // Increase progress
+      item.progress += tickDuration * 10
+
+      // Check if step is complete
+      if (item.progress >= step.processTime) {
+        // Record history
+        item.history.push({
+          stepId: step.id,
+          enteredAt: item.enteredAt,
+          exitedAt: this.simulation.elapsedTime,
+        })
+
+        // Find next step
+        const nextConnection = this.connections.find(
+          (c) => c.source === step.id && c.type === 'forward'
+        )
+
+        if (nextConnection) {
+          const nextStep = this.steps.find((s) => s.id === nextConnection.target)
+          if (nextStep) {
+            item.currentStepId = nextStep.id
+            item.progress = 0
+            item.enteredAt = this.simulation.elapsedTime
+            this.simulation.queueSizes[nextStep.id] =
+              (this.simulation.queueSizes[nextStep.id] || 0) + 1
+          }
+        } else {
+          // No next step - completed
+          item.currentStepId = null
+          this.simulation.completedCount++
+        }
+      }
+    })
+
+    // Record queue history
+    this.steps.forEach((step) => {
+      this.simulation.queueHistory.push({
+        tick: this.simulation.elapsedTime,
+        stepId: step.id,
+        queueSize: this.simulation.queueSizes[step.id] || 0,
+      })
+    })
+
+    // Detect bottlenecks
+    this.detectBottlenecks()
+  }
+
+  detectBottlenecks() {
+    const threshold = 3
+    this.simulation.detectedBottlenecks = this.steps
+      .filter((step) => (this.simulation.queueSizes[step.id] || 0) > threshold)
+      .map((step) => step.id)
+  }
+
+  runSimulationToCompletion() {
+    this.simulation.isRunning = true
+    const maxTicks = 10000
+    let ticks = 0
+
+    while (
+      this.simulation.completedCount < this.simulation.workItemCount &&
+      ticks < maxTicks
+    ) {
+      this.processTick()
+      ticks++
+    }
+
+    this.simulation.isRunning = false
+
+    // Calculate results
+    const avgLeadTime =
+      this.simulation.workItems.reduce((sum, item) => {
+        const totalTime = item.history.reduce(
+          (t, h) => t + (h.exitedAt - h.enteredAt),
+          0
+        )
+        return sum + totalTime
+      }, 0) / this.simulation.workItemCount
+
+    // Calculate peak queues for bottleneck reporting
+    const peakQueues = {}
+    this.simulation.queueHistory.forEach((record) => {
+      if (
+        !peakQueues[record.stepId] ||
+        record.queueSize > peakQueues[record.stepId]
+      ) {
+        peakQueues[record.stepId] = record.queueSize
+      }
+    })
+
+    const bottlenecks = Object.entries(peakQueues)
+      .filter(([, peak]) => peak > 3)
+      .map(([stepId, peakQueueSize]) => ({
+        stepId,
+        peakQueueSize,
+        stepName: this.steps.find((s) => s.id === stepId)?.name,
+      }))
+
+    this.simulation.results = {
+      completedCount: this.simulation.completedCount,
+      avgLeadTime,
+      throughput:
+        this.simulation.completedCount / (this.simulation.elapsedTime || 1),
+      bottlenecks,
+      totalTime: this.simulation.elapsedTime,
+    }
+  }
+
+  resetSimulation() {
+    this.simulation = {
+      isRunning: false,
+      isPaused: false,
+      speed: 1.0,
+      workItemCount: 0,
+      workItems: [],
+      completedCount: 0,
+      elapsedTime: 0,
+      queueSizes: {},
+      queueHistory: [],
+      detectedBottlenecks: [],
+      results: null,
+    }
+  }
+
+  createScenario() {
+    const scenario = {
+      id: crypto.randomUUID(),
+      name: `Scenario ${this.scenarios.length + 1}`,
+      steps: this.steps.map((s) => ({ ...s })),
+      connections: this.connections.map((c) => ({ ...c })),
+      saved: false,
+    }
+    this.scenarios.push(scenario)
+    return scenario
   }
 }
 
