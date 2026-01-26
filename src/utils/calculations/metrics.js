@@ -101,7 +101,7 @@ export function formatDuration(minutes) {
 }
 
 // ==============================================================================
-// INTERNAL CALCULATION UTILITIES - Used by calculateMetrics
+// CALCULATION UTILITIES - Exported for testing and direct use
 // ==============================================================================
 
 // Cap to avoid infinity in rework calculations
@@ -112,7 +112,7 @@ const MAX_REWORK_RATE = 0.95
  * @param {Array} steps - Array of process steps
  * @returns {number} Total lead time in minutes
  */
-function calculateTotalLeadTime(steps) {
+export function calculateTotalLeadTime(steps) {
   if (!steps || steps.length === 0) return 0
   return steps.reduce((sum, step) => sum + (step.leadTime || 0), 0)
 }
@@ -122,7 +122,7 @@ function calculateTotalLeadTime(steps) {
  * @param {Array} steps - Array of process steps
  * @returns {number} Total process time in minutes
  */
-function calculateTotalProcessTime(steps) {
+export function calculateTotalProcessTime(steps) {
   if (!steps || steps.length === 0) return 0
   return steps.reduce((sum, step) => sum + (step.processTime || 0), 0)
 }
@@ -132,7 +132,7 @@ function calculateTotalProcessTime(steps) {
  * @param {Array} steps - Array of process steps
  * @returns {Object} Flow efficiency result
  */
-function calculateFlowEfficiency(steps) {
+export function calculateFlowEfficiency(steps) {
   const processTime = calculateTotalProcessTime(steps)
   const leadTime = calculateTotalLeadTime(steps)
 
@@ -170,7 +170,7 @@ function calculateFlowEfficiency(steps) {
  * @param {Array} steps - Array of process steps
  * @returns {Object} First pass yield result
  */
-function calculateFirstPassYield(steps) {
+export function calculateFirstPassYield(steps) {
   if (!steps || steps.length === 0) {
     return {
       value: 0,
@@ -208,7 +208,7 @@ function calculateFirstPassYield(steps) {
  * @param {Array} steps - Array of process steps
  * @returns {number} Total queue size
  */
-function calculateTotalQueueSize(steps) {
+export function calculateTotalQueueSize(steps) {
   if (!steps || steps.length === 0) return 0
   return steps.reduce((sum, step) => sum + (step.queueSize || 0), 0)
 }
@@ -219,7 +219,7 @@ function calculateTotalQueueSize(steps) {
  * @param {Array} steps - Array of process steps
  * @returns {Object} Activity ratio result
  */
-function calculateActivityRatio(steps) {
+export function calculateActivityRatio(steps) {
   if (!steps || steps.length === 0) {
     return {
       value: 0,
@@ -240,7 +240,7 @@ function calculateActivityRatio(steps) {
  * @param {Array} connections - Array of connections between steps
  * @returns {Object} Rework impact metrics
  */
-function calculateReworkImpact(steps, connections) {
+export function calculateReworkImpact(steps, connections) {
   const baseLeadTime = calculateTotalLeadTime(steps)
 
   if (!connections || connections.length === 0) {
@@ -297,7 +297,7 @@ function calculateReworkImpact(steps, connections) {
  * @param {Array} steps - Array of process steps
  * @returns {Array} Array of step IDs identified as bottlenecks
  */
-function identifyBottlenecks(steps) {
+export function identifyBottlenecks(steps) {
   if (!steps || steps.length === 0) return []
 
   const stepsWithQueue = steps.filter((s) => (s.queueSize || 0) > 0)
@@ -308,3 +308,6 @@ function identifyBottlenecks(steps) {
 
   return steps.filter((s) => (s.queueSize || 0) > threshold).map((s) => s.id)
 }
+
+// Alias for backward compatibility
+export const calculateAllMetrics = calculateMetrics

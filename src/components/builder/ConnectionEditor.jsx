@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useCallback } from 'react'
 import PropTypes from 'prop-types'
 import { useVsmStore } from '../../stores/vsmStore'
 import { useConnectionValidation } from '../../hooks/useConnectionValidation'
@@ -12,16 +12,29 @@ function ConnectionEditor({ connectionId, onClose }) {
     reworkRate: 0,
   })
 
-  const { errors, validate, clearError } = useConnectionValidation(formData)
-
-  useEffect(() => {
+  // Track previous connection to sync form data when connection changes
+  const [prevConnectionId, setPrevConnectionId] = useState(connectionId)
+  if (connectionId !== prevConnectionId) {
+    setPrevConnectionId(connectionId)
     if (connection) {
       setFormData({
         type: connection.type || 'forward',
         reworkRate: connection.reworkRate || 0,
       })
     }
-  }, [connection])
+  }
+
+  // Initialize form data on first render if connection exists
+  const [initialized, setInitialized] = useState(false)
+  if (!initialized && connection) {
+    setInitialized(true)
+    setFormData({
+      type: connection.type || 'forward',
+      reworkRate: connection.reworkRate || 0,
+    })
+  }
+
+  const { errors, validate, clearError } = useConnectionValidation(formData)
 
   const handleChange = useCallback(
     (field, value) => {

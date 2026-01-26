@@ -19,6 +19,7 @@ export const createStep = (name, overrides = {}) => {
     batchSize: 1,
     peopleCount: 1,
     tools: [],
+    position: { x: 0, y: 0 },
     ...overrides,
   }
 }

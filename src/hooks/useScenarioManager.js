@@ -14,7 +14,7 @@ export function useScenarioManager() {
   } = useSimulationStore()
 
   // Initialize service once
-  if (!serviceRef.current) {
+  if (serviceRef.current == null) {
     serviceRef.current = new SimulationService()
   }
 

@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useCallback } from 'react'
 import PropTypes from 'prop-types'
 import { useVsmStore } from '../../stores/vsmStore'
 import { STEP_TYPES, STEP_TYPE_CONFIG } from '../../data/stepTypes'
@@ -20,9 +20,10 @@ function StepEditor({ stepId, onClose }) {
     peopleCount: 1,
   })
 
-  const { errors, validate, clearError } = useStepValidation(formData)
-
-  useEffect(() => {
+  // Track previous step to sync form data when step changes
+  const [prevStepId, setPrevStepId] = useState(stepId)
+  if (stepId !== prevStepId) {
+    setPrevStepId(stepId)
     if (step) {
       setFormData({
         name: step.name,
@@ -36,7 +37,26 @@ function StepEditor({ stepId, onClose }) {
         peopleCount: step.peopleCount || 1,
       })
     }
-  }, [step])
+  }
+
+  // Initialize form data on first render if step exists
+  const [initialized, setInitialized] = useState(false)
+  if (!initialized && step) {
+    setInitialized(true)
+    setFormData({
+      name: step.name,
+      type: step.type,
+      description: step.description || '',
+      processTime: step.processTime,
+      leadTime: step.leadTime,
+      percentCompleteAccurate: step.percentCompleteAccurate,
+      queueSize: step.queueSize,
+      batchSize: step.batchSize,
+      peopleCount: step.peopleCount || 1,
+    })
+  }
+
+  const { errors, validate, clearError } = useStepValidation(formData)
 
   const handleChange = useCallback(
     (field, value) => {

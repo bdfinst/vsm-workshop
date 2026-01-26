@@ -54,7 +54,10 @@ export const useVsmStore = create((set, get) => ({
   },
 
   // Data store actions
-  createNewMap: (...args) => useVsmDataStore.getState().createNewMap(...args),
+  createNewMap: (...args) => {
+    useVsmDataStore.getState().createNewMap(...args)
+    useVsmUIStore.getState().clearUIState()
+  },
   updateMapName: (...args) => useVsmDataStore.getState().updateMapName(...args),
   updateMapDescription: (...args) =>
     useVsmDataStore.getState().updateMapDescription(...args),

@@ -2,7 +2,7 @@ import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
 import { createStep } from '../models/StepFactory.js'
 import { createConnection } from '../models/ConnectionFactory.js'
-import { calculateAllMetrics } from '../utils/calculations/metrics.js'
+import { calculateMetrics } from '../utils/calculations/metrics.js'
 
 export const useVsmDataStore = create(
   persist(
@@ -65,7 +65,13 @@ export const useVsmDataStore = create(
       // Step CRUD
       addStep: (name = 'New Step', overrides = {}) => {
         const { steps } = get()
-        const newStep = createStep(name, overrides)
+        // Auto-position steps horizontally if position not provided
+        const position =
+          overrides.position || {
+            x: 50 + steps.length * 250,
+            y: 150,
+          }
+        const newStep = createStep(name, { ...overrides, position })
         set({
           steps: [...steps, newStep],
           updatedAt: new Date().toISOString(),
@@ -150,4 +156,4 @@ export const useVsmDataStore = create(
  * @returns {Object} Calculated metrics
  */
 export const selectMetrics = (state) =>
-  calculateAllMetrics(state.steps, state.connections)
+  calculateMetrics(state.steps, state.connections)

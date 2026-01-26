@@ -1,5 +1,13 @@
 import { describe, it, expect, beforeEach } from 'vitest'
 import { useVsmStore } from '../../../src/stores/vsmStore'
+import { useVsmDataStore } from '../../../src/stores/vsmDataStore'
+import { useVsmUIStore } from '../../../src/stores/vsmUIStore'
+
+// Helper to get current state from underlying stores
+const getState = () => ({
+  ...useVsmDataStore.getState(),
+  ...useVsmUIStore.getState(),
+})
 
 describe('vsmStore', () => {
   beforeEach(() => {
@@ -11,7 +19,7 @@ describe('vsmStore', () => {
     it('creates a new empty map with metadata', () => {
       useVsmStore.getState().createNewMap('My New Map')
 
-      const state = useVsmStore.getState()
+      const state = getState()
       expect(state.name).toBe('My New Map')
       expect(state.id).not.toBeNull()
       expect(state.steps).toHaveLength(0)
@@ -24,12 +32,12 @@ describe('vsmStore', () => {
       // Create map with data
       useVsmStore.getState().createNewMap('First Map')
       useVsmStore.getState().addStep('Step 1')
-      expect(useVsmStore.getState().steps).toHaveLength(1)
+      expect(getState().steps).toHaveLength(1)
 
       // Create new map
       useVsmStore.getState().createNewMap('Second Map')
 
-      const state = useVsmStore.getState()
+      const state = getState()
       expect(state.name).toBe('Second Map')
       expect(state.steps).toHaveLength(0)
       expect(state.connections).toHaveLength(0)
@@ -38,23 +46,25 @@ describe('vsmStore', () => {
     it('clears selection when creating new map', () => {
       useVsmStore.getState().createNewMap('Test Map')
       useVsmStore.getState().addStep('Step 1')
-      const stepId = useVsmStore.getState().steps[0].id
+      const stepId = getState().steps[0].id
       useVsmStore.getState().selectStep(stepId)
 
       useVsmStore.getState().createNewMap('New Map')
 
-      const state = useVsmStore.getState()
+      const state = getState()
       expect(state.selectedStepId).toBeNull()
       expect(state.isEditing).toBe(false)
     })
 
-    it('tracks timestamp updates when map changes', () => {
+    it('tracks timestamp updates when map changes', async () => {
       useVsmStore.getState().createNewMap('Test Map')
-      const initialTimestamp = useVsmStore.getState().updatedAt
+      const initialTimestamp = getState().updatedAt
 
+      // Wait 1ms to ensure timestamp changes
+      await new Promise((resolve) => setTimeout(resolve, 1))
       useVsmStore.getState().addStep('Step 1')
 
-      expect(useVsmStore.getState().updatedAt).not.toBe(initialTimestamp)
+      expect(getState().updatedAt).not.toBe(initialTimestamp)
     })
   })
 
@@ -72,14 +82,14 @@ describe('vsmStore', () => {
         expect(step.processTime).toBe(60)
         expect(step.leadTime).toBe(240)
         expect(step.percentCompleteAccurate).toBe(100)
-        expect(useVsmStore.getState().steps).toHaveLength(1)
+        expect(getState().steps).toHaveLength(1)
       })
 
       it('positions steps horizontally in sequence', () => {
         useVsmStore.getState().addStep('Step 1')
         useVsmStore.getState().addStep('Step 2')
 
-        const steps = useVsmStore.getState().steps
+        const steps = getState().steps
         expect(steps[0].position.x).toBe(50)
         expect(steps[1].position.x).toBe(300)
         expect(steps[0].position.y).toBe(150)
@@ -105,24 +115,24 @@ describe('vsmStore', () => {
       })
 
       it('updates multiple step properties', () => {
-        const stepId = useVsmStore.getState().steps[0].id
+        const stepId = getState().steps[0].id
         useVsmStore.getState().updateStep(stepId, {
           name: 'Code Review',
           processTime: 30,
           leadTime: 120,
         })
 
-        const step = useVsmStore.getState().steps[0]
+        const step = getState().steps[0]
         expect(step.name).toBe('Code Review')
         expect(step.processTime).toBe(30)
         expect(step.leadTime).toBe(120)
       })
 
       it('performs partial updates without changing other fields', () => {
-        const stepId = useVsmStore.getState().steps[0].id
+        const stepId = getState().steps[0].id
         useVsmStore.getState().updateStep(stepId, { name: 'Updated Name' })
 
-        const step = useVsmStore.getState().steps[0]
+        const step = getState().steps[0]
         expect(step.name).toBe('Updated Name')
         expect(step.processTime).toBe(60) // unchanged
         expect(step.leadTime).toBe(240) // unchanged
@@ -130,20 +140,22 @@ describe('vsmStore', () => {
 
       it('isolates updates to specific step', () => {
         useVsmStore.getState().addStep('Testing')
-        const firstStepId = useVsmStore.getState().steps[0].id
+        const firstStepId = getState().steps[0].id
 
         useVsmStore.getState().updateStep(firstStepId, { name: 'Modified' })
 
-        expect(useVsmStore.getState().steps[1].name).toBe('Testing')
+        expect(getState().steps[1].name).toBe('Testing')
       })
 
-      it('updates timestamp when step changes', () => {
-        const stepId = useVsmStore.getState().steps[0].id
-        const initialTimestamp = useVsmStore.getState().updatedAt
+      it('updates timestamp when step changes', async () => {
+        const stepId = getState().steps[0].id
+        const initialTimestamp = getState().updatedAt
 
+        // Wait 1ms to ensure timestamp changes
+        await new Promise((resolve) => setTimeout(resolve, 1))
         useVsmStore.getState().updateStep(stepId, { name: 'Updated' })
 
-        expect(useVsmStore.getState().updatedAt).not.toBe(initialTimestamp)
+        expect(getState().updatedAt).not.toBe(initialTimestamp)
       })
     })
 
@@ -155,41 +167,41 @@ describe('vsmStore', () => {
       })
 
       it('removes specified step', () => {
-        const stepId = useVsmStore.getState().steps[1].id
+        const stepId = getState().steps[1].id
         useVsmStore.getState().deleteStep(stepId)
 
-        const steps = useVsmStore.getState().steps
+        const steps = getState().steps
         expect(steps).toHaveLength(2)
         expect(steps.find((s) => s.id === stepId)).toBeUndefined()
       })
 
       it('cascades deletion to connected connections', () => {
-        const steps = useVsmStore.getState().steps
+        const steps = getState().steps
         useVsmStore.getState().addConnection(steps[0].id, steps[1].id)
         useVsmStore.getState().addConnection(steps[1].id, steps[2].id)
-        expect(useVsmStore.getState().connections).toHaveLength(2)
+        expect(getState().connections).toHaveLength(2)
 
         useVsmStore.getState().deleteStep(steps[1].id)
 
-        expect(useVsmStore.getState().connections).toHaveLength(0)
+        expect(getState().connections).toHaveLength(0)
       })
 
       it('clears selection when deleting selected step', () => {
-        const stepId = useVsmStore.getState().steps[0].id
+        const stepId = getState().steps[0].id
         useVsmStore.getState().selectStep(stepId)
 
         useVsmStore.getState().deleteStep(stepId)
 
-        expect(useVsmStore.getState().selectedStepId).toBeNull()
+        expect(getState().selectedStepId).toBeNull()
       })
 
       it('preserves selection when deleting different step', () => {
-        const steps = useVsmStore.getState().steps
+        const steps = getState().steps
         useVsmStore.getState().selectStep(steps[0].id)
 
         useVsmStore.getState().deleteStep(steps[1].id)
 
-        expect(useVsmStore.getState().selectedStepId).toBe(steps[0].id)
+        expect(getState().selectedStepId).toBe(steps[0].id)
       })
     })
   })
@@ -203,121 +215,118 @@ describe('vsmStore', () => {
 
     describe('Creating connections', () => {
       it('creates forward connection between steps', () => {
-        const { steps, addConnection } = useVsmStore.getState()
-        const result = addConnection(steps[0].id, steps[1].id)
+        const steps = getState().steps
+        const result = useVsmStore.getState().addConnection(steps[0].id, steps[1].id)
 
         expect(result).not.toBeNull()
-        expect(useVsmStore.getState().connections).toHaveLength(1)
-        expect(useVsmStore.getState().connections[0].type).toBe('forward')
+        expect(getState().connections).toHaveLength(1)
+        expect(getState().connections[0].type).toBe('forward')
       })
 
       it('creates rework connection with rate', () => {
-        const { steps, addConnection } = useVsmStore.getState()
-        addConnection(steps[1].id, steps[0].id, 'rework', 20)
+        const steps = getState().steps
+        useVsmStore.getState().addConnection(steps[1].id, steps[0].id, 'rework', 20)
 
-        const connections = useVsmStore.getState().connections
+        const connections = getState().connections
         expect(connections).toHaveLength(1)
         expect(connections[0].type).toBe('rework')
         expect(connections[0].reworkRate).toBe(20)
       })
 
       it('prevents duplicate connections', () => {
-        const { steps, addConnection } = useVsmStore.getState()
-        addConnection(steps[0].id, steps[1].id)
-        const duplicate = addConnection(steps[0].id, steps[1].id)
+        const steps = getState().steps
+        useVsmStore.getState().addConnection(steps[0].id, steps[1].id)
+        const duplicate = useVsmStore.getState().addConnection(steps[0].id, steps[1].id)
 
         expect(duplicate).toBeNull()
-        expect(useVsmStore.getState().connections).toHaveLength(1)
+        expect(getState().connections).toHaveLength(1)
       })
     })
 
     describe('Editing connections', () => {
       it('changes connection type and properties', () => {
-        const { steps, addConnection, updateConnection } = useVsmStore.getState()
-        addConnection(steps[0].id, steps[1].id)
+        const steps = getState().steps
+        useVsmStore.getState().addConnection(steps[0].id, steps[1].id)
 
-        const connId = useVsmStore.getState().connections[0].id
-        updateConnection(connId, { type: 'rework', reworkRate: 15 })
+        const connId = getState().connections[0].id
+        useVsmStore.getState().updateConnection(connId, { type: 'rework', reworkRate: 15 })
 
-        const updated = useVsmStore.getState().connections[0]
+        const updated = getState().connections[0]
         expect(updated.type).toBe('rework')
         expect(updated.reworkRate).toBe(15)
       })
 
       it('updates rework rate independently', () => {
-        const { steps, addConnection, updateConnection } = useVsmStore.getState()
-        addConnection(steps[0].id, steps[1].id, 'rework', 10)
+        const steps = getState().steps
+        useVsmStore.getState().addConnection(steps[0].id, steps[1].id, 'rework', 10)
 
-        const connId = useVsmStore.getState().connections[0].id
-        updateConnection(connId, { reworkRate: 25 })
+        const connId = getState().connections[0].id
+        useVsmStore.getState().updateConnection(connId, { reworkRate: 25 })
 
-        expect(useVsmStore.getState().connections[0].reworkRate).toBe(25)
+        expect(getState().connections[0].reworkRate).toBe(25)
       })
     })
 
     describe('Deleting connections', () => {
       it('removes connection from map', () => {
-        const { steps, addConnection, deleteConnection } = useVsmStore.getState()
-        addConnection(steps[0].id, steps[1].id)
+        const steps = getState().steps
+        useVsmStore.getState().addConnection(steps[0].id, steps[1].id)
 
-        const connId = useVsmStore.getState().connections[0].id
-        deleteConnection(connId)
+        const connId = getState().connections[0].id
+        useVsmStore.getState().deleteConnection(connId)
 
-        expect(useVsmStore.getState().connections).toHaveLength(0)
+        expect(getState().connections).toHaveLength(0)
       })
 
       it('clears selection when deleting selected connection', () => {
-        const { steps, addConnection, selectConnection, deleteConnection } =
-          useVsmStore.getState()
-        addConnection(steps[0].id, steps[1].id)
+        const steps = getState().steps
+        useVsmStore.getState().addConnection(steps[0].id, steps[1].id)
 
-        const connId = useVsmStore.getState().connections[0].id
-        selectConnection(connId)
-        expect(useVsmStore.getState().selectedConnectionId).toBe(connId)
+        const connId = getState().connections[0].id
+        useVsmStore.getState().selectConnection(connId)
+        expect(getState().selectedConnectionId).toBe(connId)
 
-        deleteConnection(connId)
-        expect(useVsmStore.getState().selectedConnectionId).toBeNull()
-        expect(useVsmStore.getState().isEditingConnection).toBe(false)
+        useVsmStore.getState().deleteConnection(connId)
+        expect(getState().selectedConnectionId).toBeNull()
+        expect(getState().isEditingConnection).toBe(false)
       })
     })
 
     describe('Connection selection', () => {
       it('selects connection and opens editor', () => {
-        const { steps, addConnection, selectConnection } = useVsmStore.getState()
-        addConnection(steps[0].id, steps[1].id)
+        const steps = getState().steps
+        useVsmStore.getState().addConnection(steps[0].id, steps[1].id)
 
-        const connId = useVsmStore.getState().connections[0].id
-        selectConnection(connId)
+        const connId = getState().connections[0].id
+        useVsmStore.getState().selectConnection(connId)
 
-        const state = useVsmStore.getState()
+        const state = getState()
         expect(state.selectedConnectionId).toBe(connId)
         expect(state.isEditingConnection).toBe(true)
       })
 
       it('clears step selection when selecting connection', () => {
-        const { steps, addConnection, selectStep, selectConnection } =
-          useVsmStore.getState()
-        selectStep(steps[0].id)
-        expect(useVsmStore.getState().selectedStepId).toBe(steps[0].id)
+        const steps = getState().steps
+        useVsmStore.getState().selectStep(steps[0].id)
+        expect(getState().selectedStepId).toBe(steps[0].id)
 
-        addConnection(steps[0].id, steps[1].id)
-        const connId = useVsmStore.getState().connections[0].id
-        selectConnection(connId)
+        useVsmStore.getState().addConnection(steps[0].id, steps[1].id)
+        const connId = getState().connections[0].id
+        useVsmStore.getState().selectConnection(connId)
 
-        expect(useVsmStore.getState().selectedStepId).toBeNull()
-        expect(useVsmStore.getState().isEditing).toBe(false)
+        expect(getState().selectedStepId).toBeNull()
+        expect(getState().isEditing).toBe(false)
       })
 
       it('clears connection selection', () => {
-        const { steps, addConnection, selectConnection, clearConnectionSelection } =
-          useVsmStore.getState()
-        addConnection(steps[0].id, steps[1].id)
+        const steps = getState().steps
+        useVsmStore.getState().addConnection(steps[0].id, steps[1].id)
 
-        const connId = useVsmStore.getState().connections[0].id
-        selectConnection(connId)
-        clearConnectionSelection()
+        const connId = getState().connections[0].id
+        useVsmStore.getState().selectConnection(connId)
+        useVsmStore.getState().clearConnectionSelection()
 
-        const state = useVsmStore.getState()
+        const state = getState()
         expect(state.selectedConnectionId).toBeNull()
         expect(state.isEditingConnection).toBe(false)
       })
@@ -338,7 +347,7 @@ describe('vsmStore', () => {
 
       useVsmStore.getState().loadTemplate(template)
 
-      const state = useVsmStore.getState()
+      const state = getState()
       expect(state.name).toBe('Test Template')
       expect(state.steps).toHaveLength(2)
       expect(state.steps[0].name).toBe('Step A')
@@ -358,7 +367,7 @@ describe('vsmStore', () => {
 
       useVsmStore.getState().loadTemplate(template)
 
-      const state = useVsmStore.getState()
+      const state = getState()
       expect(state.connections).toHaveLength(1)
       expect(state.connections[0].source).toBe(state.steps[0].id)
       expect(state.connections[0].target).toBe(state.steps[1].id)
@@ -380,7 +389,7 @@ describe('vsmStore', () => {
 
       useVsmStore.getState().loadTemplate(template)
 
-      const state = useVsmStore.getState()
+      const state = getState()
       expect(state.connections).toHaveLength(2)
       const reworkConn = state.connections.find((c) => c.type === 'rework')
       expect(reworkConn).toBeDefined()
@@ -400,7 +409,7 @@ describe('vsmStore', () => {
 
       useVsmStore.getState().loadTemplate(template)
 
-      const state = useVsmStore.getState()
+      const state = getState()
       expect(state.steps[0].id).not.toBe('old-id-1')
       expect(state.steps[1].id).not.toBe('old-id-2')
       expect(state.connections[0].id).not.toBe('old-conn-1')
@@ -409,7 +418,7 @@ describe('vsmStore', () => {
     it('loads example map with valid structure', () => {
       useVsmStore.getState().loadExample()
 
-      const state = useVsmStore.getState()
+      const state = getState()
       expect(state.steps.length).toBeGreaterThan(0)
       expect(state.name).toBeDefined()
       expect(state.description).toBeDefined()
@@ -418,7 +427,7 @@ describe('vsmStore', () => {
     it('generates unique IDs for example steps', () => {
       useVsmStore.getState().loadExample()
 
-      const steps = useVsmStore.getState().steps
+      const steps = getState().steps
       const uniqueIds = new Set(steps.map((s) => s.id))
       expect(uniqueIds.size).toBe(steps.length)
     })
@@ -426,7 +435,7 @@ describe('vsmStore', () => {
     it('maintains connection integrity in example', () => {
       useVsmStore.getState().loadExample()
 
-      const state = useVsmStore.getState()
+      const state = getState()
       if (state.connections.length > 0) {
         const stepIds = new Set(state.steps.map((s) => s.id))
         state.connections.forEach((conn) => {
@@ -439,7 +448,7 @@ describe('vsmStore', () => {
     it('initializes metadata for loaded template', () => {
       useVsmStore.getState().loadExample()
 
-      const state = useVsmStore.getState()
+      const state = getState()
       expect(state.id).not.toBeNull()
       expect(state.createdAt).not.toBeNull()
       expect(state.updatedAt).not.toBeNull()
@@ -469,7 +478,7 @@ describe('vsmStore', () => {
         const result = useVsmStore.getState().importFromJson(validJson)
 
         expect(result).toBe(true)
-        const state = useVsmStore.getState()
+        const state = getState()
         expect(state.name).toBe('Imported Map')
         expect(state.description).toBe('Test description')
         expect(state.steps).toHaveLength(1)
@@ -491,7 +500,7 @@ describe('vsmStore', () => {
 
         useVsmStore.getState().importFromJson(jsonWithoutId)
 
-        expect(useVsmStore.getState().id).not.toBeNull()
+        expect(getState().id).not.toBeNull()
       })
 
       it('applies defaults for missing fields', () => {
@@ -499,7 +508,7 @@ describe('vsmStore', () => {
 
         useVsmStore.getState().importFromJson(minimalJson)
 
-        const state = useVsmStore.getState()
+        const state = getState()
         expect(state.steps).toEqual([])
         expect(state.connections).toEqual([])
         expect(state.description).toBe('')
@@ -508,17 +517,17 @@ describe('vsmStore', () => {
       it('updates timestamp on import', () => {
         useVsmStore.getState().importFromJson(validJson)
 
-        expect(useVsmStore.getState().updatedAt).toBeDefined()
+        expect(getState().updatedAt).toBeDefined()
       })
 
       it('resets selection state on import', () => {
         useVsmStore.getState().createNewMap('Test')
         useVsmStore.getState().addStep('Step 1')
-        useVsmStore.getState().selectStep(useVsmStore.getState().steps[0].id)
+        useVsmStore.getState().selectStep(getState().steps[0].id)
 
         useVsmStore.getState().importFromJson(validJson)
 
-        const state = useVsmStore.getState()
+        const state = getState()
         expect(state.selectedStepId).toBeNull()
         expect(state.isEditing).toBe(false)
       })
@@ -541,7 +550,7 @@ describe('vsmStore', () => {
       })
 
       it('includes complete map data structure', () => {
-        const steps = useVsmStore.getState().steps
+        const steps = getState().steps
         useVsmStore.getState().addConnection(steps[0].id, steps[1].id)
 
         const json = useVsmStore.getState().exportToJson()
@@ -570,8 +579,8 @@ describe('vsmStore', () => {
         const result = useVsmStore.getState().importFromJson(json)
 
         expect(result).toBe(true)
-        expect(useVsmStore.getState().name).toBe('Export Test')
-        expect(useVsmStore.getState().steps).toHaveLength(2)
+        expect(getState().name).toBe('Export Test')
+        expect(getState().steps).toHaveLength(2)
       })
     })
   })
