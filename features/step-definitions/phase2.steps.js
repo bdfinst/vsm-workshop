@@ -2,13 +2,14 @@ import { Given, When, Then } from '@cucumber/cucumber'
 import { expect } from 'chai'
 import { useVsmStore } from '../../src/stores/vsmStore.js'
 import * as metrics from '../../src/utils/calculations/metrics.js'
+import * as assertions from './helpers/AssertionHelpers.js'
 
 // Helpers
 const getVsmState = (world) => world.vsmState
-const findStep = (world, name) => getVsmState(world).steps.find((s) => s.name === name)
+const findStepByName = (world, name) => getVsmState(world).steps.find((s) => s.name === name)
 const findConnection = (world, sourceName, targetName) => {
-  const source = findStep(world, sourceName)
-  const target = findStep(world, targetName)
+  const source = findStepByName(world, sourceName)
+  const target = findStepByName(world, targetName)
   if (!source || !target) return null
   return getVsmState(world).connections.find(
     (c) => c.source === source.id && c.target === target.id
@@ -20,11 +21,11 @@ const findConnection = (world, sourceName, targetName) => {
 // ==========================================
 
 Given('I have a forward connection from {string} to {string}', function (source, target) {
-  this.addConnection(source, target, 'forward', 0)
+  this.vsm.addConnection(source, target, 'forward', 0)
 })
 
 Given('I have a rework connection from {string} to {string}', function (source, target) {
-  this.addConnection(source, target, 'rework', 20)
+  this.vsm.addConnection(source, target, 'rework', 20)
 })
 
 When('I create a connection from {string} back to {string}', function (source, target) {
@@ -40,7 +41,7 @@ When('I mark it as a {string} connection', function (type) {
 When('I set rework rate to {int}%', function (rate) {
   const vsmState = getVsmState(this)
   if (this.pendingConnection) {
-    this.addConnection(
+    this.vsm.addConnection(
       this.pendingConnection.source,
       this.pendingConnection.target,
       this.pendingConnection.type,
@@ -93,11 +94,11 @@ When('I enter a rework rate of {int}%', function (rate) {
 
 Given('I am editing a rework connection', function () {
   if (!getVsmState(this).id) {
-    this.createVSM('Test Map')
-    this.addStep('Development')
-    this.addStep('Testing')
+    this.vsm.createVSM('Test Map')
+    this.vsm.addStep('Development')
+    this.vsm.addStep('Testing')
   }
-  const conn = this.addConnection('Testing', 'Development', 'rework', 20)
+  const conn = this.vsm.addConnection('Testing', 'Development', 'rework', 20)
   getVsmState(this).selectConnection(conn.id)
 })
 
@@ -107,23 +108,21 @@ Then('the connection editor should open', function () {
 
 Then('I should see a rework connection from {string} to {string}', function (source, target) {
   const conn = findConnection(this, source, target)
-  expect(conn).to.exist
-  expect(conn.type).to.equal('rework')
+  assertions.assertConnectionType(conn, 'rework')
 })
 
 Then('it should display {string}', function (expected) {
   if (expected.includes('rework')) {
     const rate = parseInt(expected)
     const reworkConn = getVsmState(this).connections.find((c) => c.type === 'rework')
-    expect(reworkConn).to.exist
-    expect(reworkConn.reworkRate).to.equal(rate)
+    assertions.assertReworkRate(reworkConn, rate)
   }
 })
 
 Then('the connection should display as a rework loop', function () {
   const vsmState = getVsmState(this)
   const conn = vsmState.connections.find(c => c.id === vsmState.selectedConnectionId)
-  expect(conn.type).to.equal('rework')
+  assertions.assertConnectionType(conn, 'rework')
 })
 
 Then('it should show {string}', function (expected) {
@@ -131,13 +130,12 @@ Then('it should show {string}', function (expected) {
   const conn = vsmState.connections.find(c => c.id === vsmState.selectedConnectionId)
   if (expected.includes('rework')) {
     const rate = parseInt(expected)
-    expect(conn.reworkRate).to.equal(rate)
+    assertions.assertReworkRate(conn, rate)
   }
 })
 
 Then('the rework connection should be removed', function () {
-  const reworkConns = getVsmState(this).connections.filter((c) => c.type === 'rework')
-  expect(reworkConns).to.have.lengthOf(0)
+  assertions.assertNoReworkConnections(getVsmState(this).connections)
 })
 
 // ==========================================
@@ -146,18 +144,18 @@ Then('the rework connection should be removed', function () {
 
 Given('I have a step {string} with queue size of {int}', function (name, queueSize) {
   if (!getVsmState(this).id) {
-    this.createVSM('Test Map')
+    this.vsm.createVSM('Test Map')
   }
-  this.addStep(name, 'custom', { queueSize })
+  this.vsm.addStep(name, 'custom', { queueSize })
 })
 
 Given('I have a step with queue size of {int}', function (queueSize) {
   if (!getVsmState(this).id) {
-    this.createVSM('Test Map')
+    this.vsm.createVSM('Test Map')
   }
   // Add a second step with a small queue to make the average lower
-  this.addStep('Normal Step', 'custom', { queueSize: 1 })
-  this.addStep('Bottleneck Step', 'custom', { queueSize })
+  this.vsm.addStep('Normal Step', 'custom', { queueSize: 1 })
+  this.vsm.addStep('Bottleneck Step', 'custom', { queueSize })
 })
 
 When('I view the canvas', function () {
@@ -167,27 +165,27 @@ When('I view the canvas', function () {
 Then('I should see a queue badge showing {string} on the step', function (expected) {
   const { steps } = getVsmState(this)
   const step = steps[steps.length - 1]
-  expect(step.queueSize).to.equal(parseInt(expected))
-  expect(step.queueSize).to.be.greaterThan(0)
+  assertions.assertQueueSize(step, parseInt(expected))
+  assertions.assertQueueBadgeVisible(step)
 })
 
 Then('I should not see a queue badge on the step', function () {
   const { steps } = getVsmState(this)
   const step = steps[steps.length - 1]
-  expect(step.queueSize).to.equal(0)
+  assertions.assertQueueSize(step, 0)
 })
 
 Then('the queue badge should be highlighted as high', function () {
   const { steps } = getVsmState(this)
   const step = steps[steps.length - 1]
-  expect(step.queueSize).to.be.at.least(5) // Threshold is arbitrary in UI
+  assertions.assertHighQueueThreshold(step, 5)
 })
 
 Then('the step should be marked as a potential bottleneck', function () {
   const latestSteps = getVsmState(this).steps
   const step = latestSteps[latestSteps.length - 1]
   const bottlenecks = metrics.identifyBottlenecks(latestSteps)
-  expect(bottlenecks).to.include(step.id)
+  assertions.assertIsBottleneck(step.id, bottlenecks)
 })
 
 Then('total queue should show {string}', function (expected) {
@@ -202,16 +200,16 @@ Then('total queue should show {string}', function (expected) {
 
 Given('I have a step {string} with batch size of {int}', function (name, batchSize) {
   if (!getVsmState(this).id) {
-    this.createVSM('Test Map')
+    this.vsm.createVSM('Test Map')
   }
-  this.addStep(name, 'custom', { batchSize })
+  this.vsm.addStep(name, 'custom', { batchSize })
 })
 
 Given('I have a step with batch size of {int}', function (batchSize) {
   if (!getVsmState(this).id) {
-    this.createVSM('Test Map')
+    this.vsm.createVSM('Test Map')
   }
-  const step = this.addStep('Test Step', 'custom', { batchSize })
+  const step = this.vsm.addStep('Test Step', 'custom', { batchSize })
   getVsmState(this).selectStep(step.id)
 })
 
@@ -225,19 +223,19 @@ When('I change batch size to {int}', function (batchSize) {
 Then('I should see a batch badge showing {string} on the step', function (expected) {
   const { steps } = getVsmState(this)
   const step = steps[steps.length - 1]
-  expect(`${step.batchSize}x`).to.equal(expected)
+  assertions.assertBatchBadge(step, expected)
 })
 
 Then('I should not see a batch badge on the step', function () {
   const { steps } = getVsmState(this)
   const step = steps[steps.length - 1]
-  expect(step.batchSize).to.equal(1)
+  assertions.assertBatchSize(step, 1)
 })
 
 Then('the step should show a batch badge {string}', function (expected) {
   const { steps, selectedStepId } = getVsmState(this)
   const step = steps.find(s => s.id === selectedStepId)
-  expect(`${step.batchSize}x`).to.equal(expected)
+  assertions.assertBatchBadge(step, expected)
 })
 
 // ==========================================
@@ -262,7 +260,7 @@ When('I click on the {string} template', function (templateName) {
   if (template) {
     // This is a simplified version of loading a template.
     // In reality, it would be a single step. Here we add it.
-    this.addStep(template.steps[0].name, 'custom', template.steps[0])
+    this.vsm.addStep(template.steps[0].name, 'custom', template.steps[0])
   }
 })
 
@@ -307,28 +305,27 @@ Then('I should see template categories', function () {
 })
 
 Then('a {string} step should be added to the canvas', function (stepName) {
-  const step = findStep(this, stepName)
+  const step = findStepByName(this, stepName)
   expect(step).to.exist
 })
 
 Then('it should have pre-configured process time and lead time', function () {
   const { steps } = getVsmState(this)
   const step = steps[steps.length - 1]
-  expect(step.processTime).to.be.greaterThan(0)
-  expect(step.leadTime).to.be.greaterThan(0)
+  assertions.assertHasTimingConfiguration(step)
 })
 
 Then('a new map should be created with multiple steps', function () {
-  expect(getVsmState(this).steps.length).to.be.at.least(3)
+  assertions.assertMinimumSteps(getVsmState(this).steps, 3)
 })
 
 Then('the steps should be connected', function () {
-  expect(getVsmState(this).connections.length).to.be.at.least(2)
+  assertions.assertMinimumConnections(getVsmState(this).connections, 2)
 })
 
 Then('a new map should be created with support workflow steps', function () {
-  expect(getVsmState(this).steps.length).to.be.at.least(3)
-  expect(findStep(this, 'Triage') || findStep(this, 'Investigation')).to.exist
+  assertions.assertMinimumSteps(getVsmState(this).steps, 3)
+  expect(findStepByName(this, 'Triage') || findStepByName(this, 'Investigation')).to.exist
 })
 
 // ==========================================
@@ -336,13 +333,13 @@ Then('a new map should be created with support workflow steps', function () {
 // ==========================================
 
 Given('a value stream with total lead time of {int} minutes', function (lt) {
-  this.createVSM('Test Map')
-  this.addStep('Step 1', 'custom', { processTime: Math.floor(lt / 4), leadTime: lt })
+  this.vsm.createVSM('Test Map')
+  this.vsm.addStep('Step 1', 'custom', { processTime: Math.floor(lt / 4), leadTime: lt })
 })
 
 Given('a rework loop with {int}% rework rate', function (rate) {
   if (!getVsmState(this).id) {
-    this.createVSM('Test Map')
+    this.vsm.createVSM('Test Map')
   }
   
   let { steps, connections } = getVsmState(this)
@@ -350,8 +347,8 @@ Given('a rework loop with {int}% rework rate', function (rate) {
 
   // Ensure at least two steps exist
   if (steps.length < 2) {
-    targetStep = this.addStep('Step 1')
-    sourceStep = this.addStep('Step 2')
+    targetStep = this.vsm.addStep('Step 1')
+    sourceStep = this.vsm.addStep('Step 2')
     steps = getVsmState(this).steps // Refresh steps array
   } else {
     sourceStep = steps[1]
@@ -362,55 +359,59 @@ Given('a rework loop with {int}% rework rate', function (rate) {
   const nonReworkConnections = connections.filter(c => c.type !== 'rework');
   useVsmStore.setState({ connections: nonReworkConnections });
 
-  this.addConnection(sourceStep.name, targetStep.name, 'rework', rate)
+  this.vsm.addConnection(sourceStep.name, targetStep.name, 'rework', rate)
 })
 
 Given('a value stream with no rework connections', function () {
-  this.createVSM('Test Map')
-  this.addStep('Step 1')
-  this.addStep('Step 2')
-  this.addConnection('Step 1', 'Step 2', 'forward')
+  this.vsm.createVSM('Test Map')
+  this.vsm.addStep('Step 1')
+  this.vsm.addStep('Step 2')
+  this.vsm.addConnection('Step 1', 'Step 2', 'forward')
 })
 
 Then('average process time should show {string}', function (expected) {
   const { steps } = getVsmState(this)
   const result = metrics.calculateActivityRatio(steps)
-  expect(result.displayValue).to.equal(expected)
+  assertions.assertDisplayValue(result.displayValue, expected)
 })
 
 Then('effective lead time should be greater than base lead time', function () {
   const { steps, connections } = getVsmState(this)
   const baseLeadTime = metrics.calculateTotalLeadTime(steps)
   const reworkImpact = metrics.calculateReworkImpact(steps, connections)
-  expect(reworkImpact.effectiveLeadTime).to.be.greaterThan(baseLeadTime)
+  assertions.assertReworkImpact(reworkImpact.effectiveLeadTime, baseLeadTime)
 })
 
 Then('rework multiplier should show {string}', function (expected) {
   const { steps, connections } = getVsmState(this)
   const reworkImpact = metrics.calculateReworkImpact(steps, connections)
-  expect(`${reworkImpact.reworkMultiplier}x`).to.include(expected)
+  assertions.assertReworkMultiplier(reworkImpact, expected)
 })
 
 Then('the rework impact should show good status', function () {
   const { steps, connections } = getVsmState(this)
   const reworkImpact = metrics.calculateReworkImpact(steps, connections)
-  expect(reworkImpact.status).to.equal('good')
+  assertions.assertReworkStatus(reworkImpact, 'good')
 })
 
 Then('the rework impact should show warning status', function () {
   const { steps, connections } = getVsmState(this)
   const reworkImpact = metrics.calculateReworkImpact(steps, connections)
-  expect(reworkImpact.status).to.equal('warning')
+  assertions.assertReworkStatus(reworkImpact, 'warning')
 })
 
 Then('the rework impact should show critical status', function () {
   const { steps, connections } = getVsmState(this)
   const reworkImpact = metrics.calculateReworkImpact(steps, connections)
-  expect(reworkImpact.status).to.equal('critical')
+  assertions.assertReworkStatus(reworkImpact, 'critical')
 })
 
 Then('I should not see effective lead time metric', function () {
   const { steps, connections } = getVsmState(this)
   const reworkImpact = metrics.calculateReworkImpact(steps, connections)
   expect(reworkImpact.totalReworkRate).to.equal(0)
+})
+
+Then('I should see an error {string}', function (errorMessage) {
+  expect(this.error).to.include(errorMessage)
 })

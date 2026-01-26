@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from 'react'
 import PropTypes from 'prop-types'
 import { useVsmStore } from '../../stores/vsmStore'
 import { STEP_TYPES, STEP_TYPE_CONFIG } from '../../data/stepTypes'
+import { useStepValidation } from '../../hooks/useStepValidation'
 
 function StepEditor({ stepId, onClose }) {
   const { steps, updateStep, deleteStep } = useVsmStore()
@@ -19,7 +20,7 @@ function StepEditor({ stepId, onClose }) {
     peopleCount: 1,
   })
 
-  const [errors, setErrors] = useState({})
+  const { errors, validate, clearError } = useStepValidation(formData)
 
   useEffect(() => {
     if (step) {
@@ -37,48 +38,13 @@ function StepEditor({ stepId, onClose }) {
     }
   }, [step])
 
-  const validate = useCallback(() => {
-    const newErrors = {}
-
-    if (!formData.name.trim()) {
-      newErrors.name = 'Name is required'
-    }
-
-    if (formData.processTime < 0) {
-      newErrors.processTime = 'Process time must be >= 0'
-    }
-
-    if (formData.leadTime < 0) {
-      newErrors.leadTime = 'Lead time must be >= 0'
-    }
-
-    if (formData.leadTime < formData.processTime) {
-      newErrors.leadTime = 'Lead time must be >= process time'
-    }
-
-    if (
-      formData.percentCompleteAccurate < 0 ||
-      formData.percentCompleteAccurate > 100
-    ) {
-      newErrors.percentCompleteAccurate = '%C&A must be between 0 and 100'
-    }
-
-    if (formData.queueSize < 0) {
-      newErrors.queueSize = 'Queue size must be >= 0'
-    }
-
-    if (formData.batchSize < 1) {
-      newErrors.batchSize = 'Batch size must be >= 1'
-    }
-
-    setErrors(newErrors)
-    return Object.keys(newErrors).length === 0
-  }, [formData])
-
-  const handleChange = useCallback((field, value) => {
-    setFormData((prev) => ({ ...prev, [field]: value }))
-    setErrors((prev) => ({ ...prev, [field]: undefined }))
-  }, [])
+  const handleChange = useCallback(
+    (field, value) => {
+      setFormData((prev) => ({ ...prev, [field]: value }))
+      clearError(field)
+    },
+    [clearError]
+  )
 
   const handleSubmit = useCallback(
     (e) => {

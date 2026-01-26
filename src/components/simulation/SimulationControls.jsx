@@ -8,7 +8,7 @@ const SPEED_OPTIONS = [
   { value: 4, label: '4x' },
 ]
 
-const WORK_ITEM_OPTIONS = [5, 10, 20, 50, 100]
+const AVAILABLE_WORK_ITEM_COUNTS = [5, 10, 20, 50, 100]
 
 export function SimulationControls() {
   const {
@@ -118,7 +118,7 @@ export function SimulationControls() {
             disabled={isRunning || isPaused}
             className="px-2 py-1 text-sm border border-slate-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50"
           >
-            {WORK_ITEM_OPTIONS.map((count) => (
+            {AVAILABLE_WORK_ITEM_COUNTS.map((count) => (
               <option key={count} value={count}>
                 {count}
               </option>

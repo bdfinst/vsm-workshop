@@ -12,7 +12,7 @@ describe('simulationStore', () => {
       workItems: [],
       completedCount: 0,
       elapsedTime: 0,
-      queueSizes: {},
+      queueSizesByStepId: {},
       queueHistory: [],
       detectedBottlenecks: [],
       results: null,
@@ -142,11 +142,11 @@ describe('simulationStore', () => {
   describe('updateQueueSizes', () => {
     it('updates queue sizes map', () => {
       const { updateQueueSizes } = useSimulationStore.getState()
-      const queueSizes = { 'step-1': 5, 'step-2': 3 }
+      const queueSizesByStepId = { 'step-1': 5, 'step-2': 3 }
 
-      updateQueueSizes(queueSizes)
+      updateQueueSizes(queueSizesByStepId)
 
-      expect(useSimulationStore.getState().queueSizes).toEqual(queueSizes)
+      expect(useSimulationStore.getState().queueSizesByStepId).toEqual(queueSizesByStepId)
     })
   })
 
@@ -279,6 +279,211 @@ describe('simulationStore', () => {
 
         expect(useSimulationStore.getState().comparisonResults).toEqual(comparison)
       })
+    })
+  })
+
+  describe('integration: simulation lifecycle', () => {
+    it('completes full simulation lifecycle: start → pause → resume → complete', () => {
+      const {
+        setRunning,
+        setPaused,
+        updateWorkItems,
+        incrementCompletedCount,
+        updateQueueSizes,
+        addQueueHistoryEntry,
+        setResults,
+        reset,
+      } = useSimulationStore.getState()
+
+      // Initial state
+      let state = useSimulationStore.getState()
+      expect(state.isRunning).toBe(false)
+      expect(state.isPaused).toBe(false)
+      expect(state.completedCount).toBe(0)
+
+      // Start simulation
+      setRunning(true)
+      state = useSimulationStore.getState()
+      expect(state.isRunning).toBe(true)
+      expect(state.isPaused).toBe(false)
+
+      // Simulate some progress
+      updateWorkItems([
+        { id: '1', progress: 50 },
+        { id: '2', progress: 25 },
+      ])
+      updateQueueSizes({ 'step-1': 3, 'step-2': 2 })
+      addQueueHistoryEntry({ tick: 1, stepId: 'step-1', queueSize: 3 })
+      incrementCompletedCount()
+
+      state = useSimulationStore.getState()
+      expect(state.workItems).toHaveLength(2)
+      expect(state.completedCount).toBe(1)
+      expect(state.queueSizesByStepId).toEqual({ 'step-1': 3, 'step-2': 2 })
+
+      // Pause simulation
+      setPaused(true)
+      state = useSimulationStore.getState()
+      expect(state.isRunning).toBe(false)
+      expect(state.isPaused).toBe(true)
+      expect(state.completedCount).toBe(1) // State preserved
+
+      // Resume simulation
+      setRunning(true)
+      state = useSimulationStore.getState()
+      expect(state.isRunning).toBe(true)
+      expect(state.isPaused).toBe(false)
+      expect(state.completedCount).toBe(1) // State still preserved
+
+      // Continue and complete simulation
+      incrementCompletedCount()
+      incrementCompletedCount()
+      setResults({
+        completedCount: 3,
+        avgLeadTime: 150,
+        throughput: 0.5,
+        bottlenecks: ['step-1'],
+      })
+      setRunning(false)
+
+      state = useSimulationStore.getState()
+      expect(state.isRunning).toBe(false)
+      expect(state.completedCount).toBe(3)
+      expect(state.results).toEqual({
+        completedCount: 3,
+        avgLeadTime: 150,
+        throughput: 0.5,
+        bottlenecks: ['step-1'],
+      })
+
+      // Reset for next simulation
+      reset()
+      state = useSimulationStore.getState()
+      expect(state.isRunning).toBe(false)
+      expect(state.isPaused).toBe(false)
+      expect(state.completedCount).toBe(0)
+      expect(state.workItems).toEqual([])
+      expect(state.queueHistory).toEqual([])
+      expect(state.results).toBeNull()
+    })
+
+    it('handles speed changes during active simulation', () => {
+      const { setRunning, setSpeed } = useSimulationStore.getState()
+
+      // Start simulation at normal speed
+      setRunning(true)
+      setSpeed(1.0)
+
+      let state = useSimulationStore.getState()
+      expect(state.isRunning).toBe(true)
+      expect(state.speed).toBe(1.0)
+
+      // Speed up during simulation
+      setSpeed(2.0)
+      state = useSimulationStore.getState()
+      expect(state.isRunning).toBe(true)
+      expect(state.speed).toBe(2.0)
+
+      // Slow down
+      setSpeed(0.5)
+      state = useSimulationStore.getState()
+      expect(state.isRunning).toBe(true)
+      expect(state.speed).toBe(0.5)
+    })
+
+    it('tracks queue history throughout simulation', () => {
+      const { setRunning, addQueueHistoryEntry, setRunning: stopRunning } =
+        useSimulationStore.getState()
+
+      setRunning(true)
+
+      // Simulate multiple ticks with queue changes
+      addQueueHistoryEntry({ tick: 1, stepId: 'step-1', queueSize: 5 })
+      addQueueHistoryEntry({ tick: 2, stepId: 'step-1', queueSize: 7 })
+      addQueueHistoryEntry({ tick: 3, stepId: 'step-1', queueSize: 4 })
+      addQueueHistoryEntry({ tick: 1, stepId: 'step-2', queueSize: 2 })
+
+      const state = useSimulationStore.getState()
+      expect(state.queueHistory).toHaveLength(4)
+      expect(state.queueHistory[0]).toEqual({
+        tick: 1,
+        stepId: 'step-1',
+        queueSize: 5,
+      })
+      expect(state.queueHistory[1]).toEqual({
+        tick: 2,
+        stepId: 'step-1',
+        queueSize: 7,
+      })
+    })
+
+    it('handles scenario switching during simulation workflow', () => {
+      const {
+        addScenario,
+        setActiveScenario,
+        setRunning,
+        setResults,
+        setComparisonResults,
+        reset,
+      } = useSimulationStore.getState()
+
+      // Add baseline scenario
+      const baseline = {
+        id: 'baseline',
+        name: 'Current State',
+        steps: [],
+        connections: [],
+      }
+      addScenario(baseline)
+      setActiveScenario('baseline')
+
+      // Run baseline simulation
+      setRunning(true)
+      setResults({
+        completedCount: 10,
+        avgLeadTime: 200,
+        throughput: 0.5,
+        bottlenecks: ['step-1'],
+      })
+      setRunning(false)
+
+      const baselineResults = useSimulationStore.getState().results
+
+      // Add improved scenario
+      const improved = {
+        id: 'improved',
+        name: 'Future State',
+        steps: [],
+        connections: [],
+      }
+      addScenario(improved)
+      setActiveScenario('improved')
+
+      let state = useSimulationStore.getState()
+      expect(state.activeScenarioId).toBe('improved')
+      expect(state.scenarios).toHaveLength(2)
+
+      // Reset and run improved scenario
+      reset()
+      setRunning(true)
+      setResults({
+        completedCount: 10,
+        avgLeadTime: 150,
+        throughput: 0.67,
+        bottlenecks: [],
+      })
+      setRunning(false)
+
+      // Set comparison results
+      setComparisonResults({
+        baseline: baselineResults,
+        scenario: useSimulationStore.getState().results,
+        improvement: { leadTime: 50 },
+      })
+
+      state = useSimulationStore.getState()
+      expect(state.comparisonResults).toBeDefined()
+      expect(state.comparisonResults.improvement.leadTime).toBe(50)
     })
   })
 })

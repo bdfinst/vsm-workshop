@@ -22,7 +22,7 @@ function formatDuration(minutes) {
 }
 
 export function SimulationResults() {
-  const { results, queueSizes } = useSimulation()
+  const { results, queueSizesByStepId } = useSimulation()
   const steps = useVsmStore((state) => state.steps)
 
   // Prepare chart data for queue sizes
@@ -32,9 +32,9 @@ export function SimulationResults() {
       fullName: step.name,
       peakQueue:
         results?.bottlenecks.find((b) => b.stepId === step.id)?.peakQueueSize || 0,
-      currentQueue: queueSizes[step.id] || 0,
+      currentQueue: queueSizesByStepId[step.id] || 0,
     }))
-  }, [steps, results, queueSizes])
+  }, [steps, results, queueSizesByStepId])
 
   if (!results) {
     return null

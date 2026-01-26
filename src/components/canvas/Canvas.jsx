@@ -45,7 +45,7 @@ function Canvas() {
     clearConnectionSelection,
   } = useVsmStore()
 
-  const { detectedBottlenecks, queueSizes, isRunning } = useSimulationStore()
+  const { detectedBottlenecks, queueSizesByStepId, isRunning } = useSimulationStore()
 
   const nodes = useMemo(
     () =>
@@ -55,13 +55,12 @@ function Canvas() {
         position: step.position,
         data: {
           ...step,
-          // Override queue size with simulation queue if running
-          queueSize: isRunning ? (queueSizes[step.id] || 0) : step.queueSize,
+          simulationQueueSize: isRunning ? queueSizesByStepId[step.id] : undefined,
           isSimulationBottleneck: detectedBottlenecks.includes(step.id),
         },
         selected: step.id === selectedStepId,
       })),
-    [steps, selectedStepId, isRunning, queueSizes, detectedBottlenecks]
+    [steps, selectedStepId, isRunning, queueSizesByStepId, detectedBottlenecks]
   )
 
   const edges = useMemo(

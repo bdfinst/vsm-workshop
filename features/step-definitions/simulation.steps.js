@@ -6,18 +6,18 @@ import { useSimulationStore } from '../../src/stores/simulationStore.js'
 // Helpers to access state
 const getVsmState = (world) => world.vsmState
 const getSimState = (world) => world.simState
-const findStep = (world, name) => getVsmState(world).steps.find((s) => s.name === name)
+const findStepByName = (world, name) => getVsmState(world).steps.find((s) => s.name === name)
 
 // ==========================================
 // Simulation Setup Steps
 // ==========================================
 
 Given('I have a value stream map with {int} connected steps', function (stepCount) {
-  this.createVSM('Simulation Test Map')
+  this.vsm.createVSM('Simulation Test Map')
   const stepNames = ['Backlog', 'Development', 'Testing', 'Deployment']
   for (let i = 0; i < stepCount; i++) {
     const name = stepNames[i] || `Step ${i + 1}`
-    this.addStep(name, 'custom', {
+    this.vsm.addStep(name, 'custom', {
       processTime: 30 + i * 10,
       leadTime: 60 + i * 20,
     })
@@ -25,62 +25,62 @@ Given('I have a value stream map with {int} connected steps', function (stepCoun
   // Connect steps in sequence
   const { steps } = getVsmState(this)
   for (let i = 0; i < steps.length - 1; i++) {
-    this.addConnection(steps[i].name, steps[i + 1].name)
+    this.vsm.addConnection(steps[i].name, steps[i + 1].name)
   }
 })
 
 Given('a value stream with a slow step', function () {
-  this.createVSM('Bottleneck Test Map')
-  this.addStep('Step 1', 'custom', { processTime: 30, leadTime: 60 })
-  this.addStep('Slow Step', 'custom', { processTime: 120, leadTime: 240 })
-  this.addStep('Step 3', 'custom', { processTime: 30, leadTime: 60 })
-  this.addConnection('Step 1', 'Slow Step')
-  this.addConnection('Slow Step', 'Step 3')
+  this.vsm.createVSM('Bottleneck Test Map')
+  this.vsm.addStep('Step 1', 'custom', { processTime: 30, leadTime: 60 })
+  this.vsm.addStep('Slow Step', 'custom', { processTime: 120, leadTime: 240 })
+  this.vsm.addStep('Step 3', 'custom', { processTime: 30, leadTime: 60 })
+  this.vsm.addConnection('Step 1', 'Slow Step')
+  this.vsm.addConnection('Slow Step', 'Step 3')
 })
 
 Given('the slow step has process time twice the average', function () {
-  const slowStep = findStep(this, 'Slow Step')
+  const slowStep = findStepByName(this, 'Slow Step')
   const otherSteps = getVsmState(this).steps.filter((s) => s.name !== 'Slow Step')
   const avgProcessTime =
     otherSteps.reduce((sum, s) => sum + s.processTime, 0) / otherSteps.length
-  this.updateStep(slowStep.id, { processTime: avgProcessTime * 2 })
+  this.vsm.updateStep(slowStep.id, { processTime: avgProcessTime * 2 })
 })
 
 Given('a value stream with two slow steps', function () {
-  this.createVSM('Multi-Bottleneck Test Map')
-  this.addStep('Step 1', 'custom', { processTime: 30, leadTime: 60 })
-  this.addStep('Slow Step A', 'custom', { processTime: 90, leadTime: 180 })
-  this.addStep('Step 2', 'custom', { processTime: 30, leadTime: 60 })
-  this.addStep('Slow Step B', 'custom', { processTime: 90, leadTime: 180 })
-  this.addStep('Step 3', 'custom', { processTime: 30, leadTime: 60 })
-  this.addConnection('Step 1', 'Slow Step A')
-  this.addConnection('Slow Step A', 'Step 2')
-  this.addConnection('Step 2', 'Slow Step B')
-  this.addConnection('Slow Step B', 'Step 3')
+  this.vsm.createVSM('Multi-Bottleneck Test Map')
+  this.vsm.addStep('Step 1', 'custom', { processTime: 30, leadTime: 60 })
+  this.vsm.addStep('Slow Step A', 'custom', { processTime: 90, leadTime: 180 })
+  this.vsm.addStep('Step 2', 'custom', { processTime: 30, leadTime: 60 })
+  this.vsm.addStep('Slow Step B', 'custom', { processTime: 90, leadTime: 180 })
+  this.vsm.addStep('Step 3', 'custom', { processTime: 30, leadTime: 60 })
+  this.vsm.addConnection('Step 1', 'Slow Step A')
+  this.vsm.addConnection('Slow Step A', 'Step 2')
+  this.vsm.addConnection('Step 2', 'Slow Step B')
+  this.vsm.addConnection('Slow Step B', 'Step 3')
 })
 
 Given('a value stream with batch size {int} at deployment', function (batchSize) {
-  this.createVSM('Batch Test Map')
-  this.addStep('Development', 'development', { processTime: 60, leadTime: 120 })
-  this.addStep('Testing', 'testing', { processTime: 30, leadTime: 60 })
-  this.addStep('Deployment', 'deployment', { processTime: 15, leadTime: 30, batchSize })
-  this.addConnection('Development', 'Testing')
-  this.addConnection('Testing', 'Deployment')
+  this.vsm.createVSM('Batch Test Map')
+  this.vsm.addStep('Development', 'development', { processTime: 60, leadTime: 120 })
+  this.vsm.addStep('Testing', 'testing', { processTime: 30, leadTime: 60 })
+  this.vsm.addStep('Deployment', 'deployment', { processTime: 15, leadTime: 30, batchSize })
+  this.vsm.addConnection('Development', 'Testing')
+  this.vsm.addConnection('Testing', 'Deployment')
 })
 
 Given('a value stream with a bottleneck step', function () {
-  this.createVSM('Capacity Test Map')
-  this.addStep('Intake', 'custom', { processTime: 20, leadTime: 40, peopleCount: 2 })
-  this.addStep('Bottleneck', 'custom', { processTime: 60, leadTime: 120, peopleCount: 1 })
-  this.addStep('Finish', 'custom', { processTime: 20, leadTime: 40, peopleCount: 2 })
-  this.addConnection('Intake', 'Bottleneck')
-  this.addConnection('Bottleneck', 'Finish')
+  this.vsm.createVSM('Capacity Test Map')
+  this.vsm.addStep('Intake', 'custom', { processTime: 20, leadTime: 40, peopleCount: 2 })
+  this.vsm.addStep('Bottleneck', 'custom', { processTime: 60, leadTime: 120, peopleCount: 1 })
+  this.vsm.addStep('Finish', 'custom', { processTime: 20, leadTime: 40, peopleCount: 2 })
+  this.vsm.addConnection('Intake', 'Bottleneck')
+  this.vsm.addConnection('Bottleneck', 'Finish')
 })
 
 Given('the bottleneck step has {int} worker', function (workers) {
-  const bottleneck = findStep(this, 'Bottleneck')
+  const bottleneck = findStepByName(this, 'Bottleneck')
   if (bottleneck) {
-    this.updateStep(bottleneck.id, { peopleCount: workers })
+    this.vsm.updateStep(bottleneck.id, { peopleCount: workers })
   }
 })
 
@@ -89,7 +89,7 @@ Given('the bottleneck step has {int} worker', function (workers) {
 // ==========================================
 
 When('I click the Run Simulation button', function () {
-  this.initSimulation()
+  this.simulation.initSimulation()
   getSimState(this).setRunning(true)
 })
 
@@ -103,49 +103,52 @@ When('I click the Resume button', function () {
 })
 
 When('I click the Reset button', function () {
-  this.resetSimulation()
+  this.simulation.resetSimulation()
 })
 
 When('I click the Create Scenario button', function () {
-  this.createScenario()
+  this.simulation.createScenario()
 })
 
 When('I set work items to {int}', function (count) {
   getSimState(this).setWorkItemCount(count)
-  const workItems = this.generateWorkItems(count)
+  const workItems = this.simulation.generateWorkItems(count)
   getSimState(this).updateWorkItems(workItems)
 })
 
 When('I start the simulation with {int} work items', function (count) {
-  this.initSimulation()
+  this.simulation.initSimulation()
   getSimState(this).setWorkItemCount(count)
-  const workItems = this.generateWorkItems(count)
+  const workItems = this.simulation.generateWorkItems(count)
   getSimState(this).updateWorkItems(workItems)
   getSimState(this).setRunning(true)
   // Run a few ticks to progress items
   for (let i = 0; i < 100; i++) {
-    this.processTick()
+    this.simulation.processTick()
   }
 })
 
 When('the simulation runs to completion', function () {
-  this.runSimulationToCompletion()
+  this.simulation.runSimulationToCompletion()
+  expect(getSimState(this).completedCount).to.equal(getSimState(this).workItemCount)
 })
 
 When('I run the simulation with {int} work items', function (count) {
-  this.initSimulation()
+  this.simulation.initSimulation()
   getSimState(this).setWorkItemCount(count)
-  const workItems = this.generateWorkItems(count)
+  const workItems = this.simulation.generateWorkItems(count)
   getSimState(this).updateWorkItems(workItems)
-  this.runSimulationToCompletion()
+  this.simulation.runSimulationToCompletion()
+  expect(getSimState(this).completedCount).to.equal(getSimState(this).workItemCount)
 })
 
 When('I run the simulation', function () {
-  this.initSimulation()
+  this.simulation.initSimulation()
   getSimState(this).setWorkItemCount(10)
-  const workItems = this.generateWorkItems(10)
+  const workItems = this.simulation.generateWorkItems(10)
   getSimState(this).updateWorkItems(workItems)
-  this.runSimulationToCompletion()
+  this.simulation.runSimulationToCompletion()
+  expect(getSimState(this).completedCount).to.equal(getSimState(this).workItemCount)
 })
 
 When('I set simulation speed to {float}x', function (speed) {
@@ -154,72 +157,74 @@ When('I set simulation speed to {float}x', function (speed) {
 
 Given('a running simulation', function () {
   if (!getVsmState(this).id) {
-    this.createVSM('Running Simulation Test')
-    this.addStep('Step 1', 'custom', { processTime: 30, leadTime: 60 })
-    this.addStep('Step 2', 'custom', { processTime: 30, leadTime: 60 })
-    this.addConnection('Step 1', 'Step 2')
+    this.vsm.createVSM('Running Simulation Test')
+    this.vsm.addStep('Step 1', 'custom', { processTime: 30, leadTime: 60 })
+    this.vsm.addStep('Step 2', 'custom', { processTime: 30, leadTime: 60 })
+    this.vsm.addConnection('Step 1', 'Step 2')
   }
-  this.initSimulation()
+  this.simulation.initSimulation()
   getSimState(this).setWorkItemCount(5)
-  const workItems = this.generateWorkItems(5)
+  const workItems = this.simulation.generateWorkItems(5)
   getSimState(this).updateWorkItems(workItems)
   getSimState(this).setRunning(true)
   // Process a few ticks
   for (let i = 0; i < 10; i++) {
-    this.processTick()
+    this.simulation.processTick()
   }
 })
 
 Given('a completed simulation', function () {
   if (!getVsmState(this).id) {
-    this.createVSM('Completed Simulation Test')
-    this.addStep('Step 1', 'custom', { processTime: 30, leadTime: 60 })
-    this.addStep('Step 2', 'custom', { processTime: 30, leadTime: 60 })
-    this.addConnection('Step 1', 'Step 2')
+    this.vsm.createVSM('Completed Simulation Test')
+    this.vsm.addStep('Step 1', 'custom', { processTime: 30, leadTime: 60 })
+    this.vsm.addStep('Step 2', 'custom', { processTime: 30, leadTime: 60 })
+    this.vsm.addConnection('Step 1', 'Step 2')
   }
-  this.initSimulation()
+  this.simulation.initSimulation()
   getSimState(this).setWorkItemCount(5)
-  const workItems = this.generateWorkItems(5)
+  const workItems = this.simulation.generateWorkItems(5)
   getSimState(this).updateWorkItems(workItems)
-  this.runSimulationToCompletion()
+  this.simulation.runSimulationToCompletion()
+  expect(getSimState(this).completedCount).to.equal(getSimState(this).workItemCount)
 })
 
 Given('a simulation with an active bottleneck', function () {
-  this.createVSM('Active Bottleneck Test')
-  this.addStep('Fast', 'custom', { processTime: 10, leadTime: 20 })
-  this.addStep('Slow', 'custom', { processTime: 100, leadTime: 200 })
-  this.addConnection('Fast', 'Slow')
-  this.initSimulation()
+  this.vsm.createVSM('Active Bottleneck Test')
+  this.vsm.addStep('Fast', 'custom', { processTime: 10, leadTime: 20 })
+  this.vsm.addStep('Slow', 'custom', { processTime: 100, leadTime: 200 })
+  this.vsm.addConnection('Fast', 'Slow')
+  this.simulation.initSimulation()
   getSimState(this).setWorkItemCount(10)
-  const workItems = this.generateWorkItems(10)
+  const workItems = this.simulation.generateWorkItems(10)
   getSimState(this).updateWorkItems(workItems)
   // Run until bottleneck forms
   for (let i = 0; i < 50; i++) {
-    this.processTick()
+    this.simulation.processTick()
   }
-  getSimState(this).setDetectedBottlenecks([findStep(this, 'Slow').id])
+  getSimState(this).setDetectedBottlenecks([findStepByName(this, 'Slow').id])
 })
 
 Given('a completed simulation with bottleneck data', function () {
-  this.createVSM('Bottleneck Data Test')
-  this.addStep('Fast', 'custom', { processTime: 10, leadTime: 20 })
-  this.addStep('Slow', 'custom', { processTime: 60, leadTime: 120 })
-  this.addStep('End', 'custom', { processTime: 10, leadTime: 20 })
-  this.addConnection('Fast', 'Slow')
-  this.addConnection('Slow', 'End')
-  this.initSimulation()
+  this.vsm.createVSM('Bottleneck Data Test')
+  this.vsm.addStep('Fast', 'custom', { processTime: 10, leadTime: 20 })
+  this.vsm.addStep('Slow', 'custom', { processTime: 60, leadTime: 120 })
+  this.vsm.addStep('End', 'custom', { processTime: 10, leadTime: 20 })
+  this.vsm.addConnection('Fast', 'Slow')
+  this.vsm.addConnection('Slow', 'End')
+  this.simulation.initSimulation()
   getSimState(this).setWorkItemCount(10)
-  const workItems = this.generateWorkItems(10)
+  const workItems = this.simulation.generateWorkItems(10)
   getSimState(this).updateWorkItems(workItems)
-  this.runSimulationToCompletion()
+  this.simulation.runSimulationToCompletion()
+  expect(getSimState(this).completedCount).to.equal(getSimState(this).workItemCount)
 })
 
 When('the queue at the bottleneck step reduces below threshold', function () {
-  const slowStep = findStep(this, 'Slow')
+  const slowStep = findStepByName(this, 'Slow')
   if (slowStep) {
-    const newQueueSizes = { ...getSimState(this).queueSizes, [slowStep.id]: 1 }
+    const newQueueSizes = { ...getSimState(this).queueSizesByStepId, [slowStep.id]: 1 }
     getSimState(this).updateQueueSizes(newQueueSizes)
-    this.detectBottlenecks()
+    this.simulation.detectBottlenecks()
   }
 })
 
@@ -228,7 +233,7 @@ When('the queue at the bottleneck step reduces below threshold', function () {
 // ==========================================
 
 When('I create a scenario with batch size {int} at deployment', function (batchSize) {
-  const scenario = this.createScenario()
+  const scenario = this.simulation.createScenario()
   const deployment = scenario.steps.find((s) => s.name === 'Deployment')
   if (deployment) {
     deployment.batchSize = batchSize
@@ -236,7 +241,7 @@ When('I create a scenario with batch size {int} at deployment', function (batchS
 })
 
 When('I create a scenario with {int} workers at the bottleneck', function (workers) {
-  const scenario = this.createScenario()
+  const scenario = this.simulation.createScenario()
   const bottleneck = scenario.steps.find((s) => s.name === 'Bottleneck')
   if (bottleneck) {
     bottleneck.peopleCount = workers
@@ -245,28 +250,44 @@ When('I create a scenario with {int} workers at the bottleneck', function (worke
 
 When('I run both simulations', function () {
   // Run original
-  this.initSimulation()
+  this.simulation.initSimulation()
   getSimState(this).setWorkItemCount(10)
-  getSimState(this).updateWorkItems(this.generateWorkItems(10))
-  this.runSimulationToCompletion()
+  getSimState(this).updateWorkItems(this.simulation.generateWorkItems(10))
+  this.simulation.runSimulationToCompletion()
+  expect(getSimState(this).completedCount).to.equal(getSimState(this).workItemCount)
   this.baselineResults = { ...getSimState(this).results }
 
-  // Run scenario
+  // Run scenario with isolated simulation state
   const scenarios = getSimState(this).scenarios
   if (scenarios.length > 0) {
     const scenario = scenarios[scenarios.length - 1]
-    // Temporarily replace the main store's state with the scenario's state
-    const originalVsmState = { steps: this.vsmState.steps, connections: this.vsmState.connections }
-    useVsmStore.setState({ steps: scenario.steps, connections: scenario.connections })
+    // Preserve original state
+    const originalSteps = [...getVsmState(this).steps]
+    const originalConnections = [...getVsmState(this).connections]
 
-    this.initSimulation()
-    getSimState(this).setWorkItemCount(10)
-    getSimState(this).updateWorkItems(this.generateWorkItems(10))
-    this.runSimulationToCompletion()
-    this.scenarioResults = { ...getSimState(this).results }
+    // Run scenario simulation with isolated state
+    const scenarioConfig = { workItemCount: 10 }
+    const scenarioInitialState = this.simEngine.initSimulation(
+      scenario.steps,
+      scenario.connections,
+      scenarioConfig
+    )
+    const workItems = this.simEngine.generateWorkItems(10, scenario.steps[0]?.id)
+    scenarioInitialState.workItems = workItems
+    scenarioInitialState.workItemCount = 10
 
-    // Restore original state
-    useVsmStore.setState(originalVsmState)
+    const scenarioFinalState = this.simEngine.runSimulationToCompletion(
+      scenarioInitialState,
+      scenario.steps,
+      scenario.connections,
+      10000
+    )
+    expect(scenarioFinalState.completedCount).to.equal(scenarioFinalState.workItemCount)
+    this.scenarioResults = { ...scenarioFinalState.results }
+
+    // Verify original state was not mutated
+    expect(getVsmState(this).steps).to.deep.equal(originalSteps)
+    expect(getVsmState(this).connections).to.deep.equal(originalConnections)
   }
 })
 
@@ -283,38 +304,40 @@ When('I save the scenario', function () {
 
 Given('I have created a what-if scenario', function () {
   if (!getVsmState(this).id) {
-    this.createVSM('Scenario Test')
-    this.addStep('Step 1', 'custom')
-    this.addStep('Step 2', 'custom')
-    this.addConnection('Step 1', 'Step 2')
+    this.vsm.createVSM('Scenario Test')
+    this.vsm.addStep('Step 1', 'custom')
+    this.vsm.addStep('Step 2', 'custom')
+    this.vsm.addConnection('Step 1', 'Step 2')
   }
-  this.createScenario()
+  this.simulation.createScenario()
 })
 
 Given('two completed scenario simulations', function () {
-  this.createVSM('Comparison Test')
-  this.addStep('Step 1', 'custom', { processTime: 30, leadTime: 60 })
-  this.addStep('Step 2', 'custom', { processTime: 30, leadTime: 60 })
-  this.addConnection('Step 1', 'Step 2')
+  this.vsm.createVSM('Comparison Test')
+  this.vsm.addStep('Step 1', 'custom', { processTime: 30, leadTime: 60 })
+  this.vsm.addStep('Step 2', 'custom', { processTime: 30, leadTime: 60 })
+  this.vsm.addConnection('Step 1', 'Step 2')
 
   // Run baseline
-  this.initSimulation()
+  this.simulation.initSimulation()
   getSimState(this).setWorkItemCount(10)
-  getSimState(this).updateWorkItems(this.generateWorkItems(10))
-  this.runSimulationToCompletion()
+  getSimState(this).updateWorkItems(this.simulation.generateWorkItems(10))
+  this.simulation.runSimulationToCompletion()
+  expect(getSimState(this).completedCount).to.equal(getSimState(this).workItemCount)
   this.baselineResults = { ...getSimState(this).results }
 
   // Create and run scenario
-  const scenario = this.createScenario()
+  const scenario = this.simulation.createScenario()
   scenario.steps[1].processTime = 15 // Faster
 
   const originalVsmState = { steps: this.vsmState.steps, connections: this.vsmState.connections }
   useVsmStore.setState({ steps: scenario.steps, connections: scenario.connections })
 
-  this.initSimulation()
+  this.simulation.initSimulation()
   getSimState(this).setWorkItemCount(10)
-  getSimState(this).updateWorkItems(this.generateWorkItems(10))
-  this.runSimulationToCompletion()
+  getSimState(this).updateWorkItems(this.simulation.generateWorkItems(10))
+  this.simulation.runSimulationToCompletion()
+  expect(getSimState(this).completedCount).to.equal(getSimState(this).workItemCount)
   this.scenarioResults = { ...getSimState(this).results }
 
   // Restore
@@ -363,7 +386,7 @@ Then('the simulation should be paused', function () {
 
 Then('work items should stop moving', function () {
   const positionsBefore = getSimState(this).workItems.map((w) => w.progress)
-  this.processTick() // Should not advance when paused
+  this.simulation.processTick() // Should not advance when paused
   const positionsAfter = getSimState(this).workItems.map((w) => w.progress)
   expect(positionsBefore).to.deep.equal(positionsAfter)
 })
@@ -397,26 +420,26 @@ Then('all work items should be cleared', function () {
 // ==========================================
 
 Then('work should queue up before the slow step', function () {
-  const slowStep = findStep(this, 'Slow Step') || findStep(this, 'Slow')
+  const slowStep = findStepByName(this, 'Slow Step') || findStepByName(this, 'Slow')
   expect(slowStep).to.exist
-  const queueSize = getSimState(this).queueSizes[slowStep.id] || 0
+  const queueSize = getSimState(this).queueSizesByStepId[slowStep.id] || 0
   expect(queueSize).to.be.greaterThan(0)
 })
 
 Then('the slow step should be highlighted as a bottleneck', function () {
-  const slowStep = findStep(this, 'Slow Step') || findStep(this, 'Slow')
+  const slowStep = findStepByName(this, 'Slow Step') || findStepByName(this, 'Slow')
   expect(getSimState(this).detectedBottlenecks).to.include(slowStep.id)
 })
 
 Then('both slow steps should be highlighted as bottlenecks', function () {
-  const slowA = findStep(this, 'Slow Step A')
-  const slowB = findStep(this, 'Slow Step B')
+  const slowA = findStepByName(this, 'Slow Step A')
+  const slowB = findStepByName(this, 'Slow Step B')
   expect(getSimState(this).detectedBottlenecks).to.include(slowA.id)
   expect(getSimState(this).detectedBottlenecks).to.include(slowB.id)
 })
 
 Then('the step should no longer be highlighted as a bottleneck', function () {
-  const slowStep = findStep(this, 'Slow')
+  const slowStep = findStepByName(this, 'Slow')
   expect(getSimState(this).detectedBottlenecks).to.not.include(slowStep.id)
 })
 
@@ -427,7 +450,7 @@ Then('I should see a chart of queue sizes over time', function () {
 })
 
 Then('the bottleneck step should have the highest peak queue', function () {
-  const slowStep = findStep(this, 'Slow')
+  const slowStep = findStepByName(this, 'Slow')
   const peakQueues = {}
   getSimState(this).queueHistory.forEach((record) => {
     if (!peakQueues[record.stepId] || record.queueSize > peakQueues[record.stepId]) {

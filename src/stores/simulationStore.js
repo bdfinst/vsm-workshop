@@ -1,137 +1,73 @@
-import { create } from 'zustand'
+/**
+ * Compatibility wrapper for legacy simulation store
+ *
+ * This file has been refactored to address the large API surface issue.
+ * The original 25+ properties have been properly separated into focused stores:
+ * - useSimulationControlStore: UI control state (isRunning, isPaused, speed)
+ * - useSimulationDataStore: Simulation domain state (workItems, queues, results)
+ * - useScenarioStore: Scenario management
+ *
+ * This wrapper is maintained for backward compatibility only.
+ * @deprecated Use the separated stores directly in new code.
+ */
 
-export const useSimulationStore = create((set, get) => ({
-  // Control state
-  isRunning: false,
-  isPaused: false,
-  speed: 1.0,
+import { useSimulationControlStore } from './simulationControlStore'
+import { useSimulationDataStore } from './simulationDataStore'
+import { useScenarioStore } from './scenarioStore'
 
-  // Work items
-  workItemCount: 10,
-  workItems: [],
+/**
+ * @deprecated Use the separated stores instead
+ * Legacy wrapper that delegates to properly separated stores
+ */
+export const useSimulationStore = () => {
+  const controlStore = useSimulationControlStore()
+  const dataStore = useSimulationDataStore()
+  const scenarioStore = useScenarioStore()
 
-  // Live metrics
-  completedCount: 0,
-  elapsedTime: 0,
-  queueSizes: {},
-  queueHistory: [],
+  return {
+    // Control state (from controlStore)
+    isRunning: controlStore.isRunning,
+    isPaused: controlStore.isPaused,
+    speed: controlStore.speed,
+    setRunning: controlStore.setRunning,
+    setPaused: controlStore.setPaused,
+    setSpeed: controlStore.setSpeed,
 
-  // Bottlenecks
-  detectedBottlenecks: [],
+    // Simulation data (from dataStore)
+    workItemCount: dataStore.workItemCount,
+    workItems: dataStore.workItems,
+    completedCount: dataStore.completedCount,
+    elapsedTime: dataStore.elapsedTime,
+    queueSizesByStepId: dataStore.queueSizesByStepId,
+    queueHistory: dataStore.queueHistory,
+    detectedBottlenecks: dataStore.detectedBottlenecks,
+    results: dataStore.results,
+    setWorkItemCount: dataStore.setWorkItemCount,
+    // updateWorkItems and updateQueueSizes removed - internal simulation state should only be modified through domain operations like processTick()
+    incrementCompletedCount: dataStore.incrementCompletedCount,
+    updateElapsedTime: dataStore.updateElapsedTime,
+    addQueueHistoryEntry: dataStore.addQueueHistoryEntry,
+    setDetectedBottlenecks: dataStore.setDetectedBottlenecks,
+    setResults: dataStore.setResults,
+    reset: () => {
+      controlStore.reset()
+      dataStore.reset()
+    },
 
-  // Results
-  results: null,
+    // Scenarios (from scenarioStore)
+    scenarios: scenarioStore.scenarios,
+    activeScenarioId: scenarioStore.activeScenarioId,
+    comparisonResults: scenarioStore.comparisonResults,
+    addScenario: scenarioStore.addScenario,
+    removeScenario: scenarioStore.removeScenario,
+    updateScenario: scenarioStore.updateScenario,
+    setActiveScenario: scenarioStore.setActiveScenario,
+    setComparisonResults: scenarioStore.setComparisonResults,
+    clearComparison: scenarioStore.clearComparison,
+  }
+}
 
-  // What-if scenarios
-  scenarios: [],
-  activeScenarioId: null,
-  comparisonResults: null,
-
-  // Actions
-  setRunning: (isRunning) => {
-    set({
-      isRunning,
-      isPaused: isRunning ? false : get().isPaused,
-    })
-  },
-
-  setPaused: (isPaused) => {
-    set({
-      isPaused,
-      isRunning: isPaused ? false : get().isRunning,
-    })
-  },
-
-  setSpeed: (speed) => {
-    const clampedSpeed = Math.min(4.0, Math.max(0.25, speed))
-    set({ speed: clampedSpeed })
-  },
-
-  setWorkItemCount: (count) => {
-    set({ workItemCount: Math.max(0, count) })
-  },
-
-  updateWorkItems: (workItems) => {
-    set({ workItems })
-  },
-
-  incrementCompletedCount: () => {
-    set((state) => ({ completedCount: state.completedCount + 1 }))
-  },
-
-  updateElapsedTime: (elapsedTime) => {
-    set({ elapsedTime })
-  },
-
-  updateQueueSizes: (queueSizes) => {
-    set({ queueSizes })
-  },
-
-  addQueueHistoryEntry: (entry) => {
-    set((state) => ({
-      queueHistory: [...state.queueHistory, entry],
-    }))
-  },
-
-  setDetectedBottlenecks: (bottlenecks) => {
-    set({ detectedBottlenecks: bottlenecks })
-  },
-
-  setResults: (results) => {
-    set({ results })
-  },
-
-  reset: () => {
-    const { workItemCount } = get()
-    set({
-      isRunning: false,
-      isPaused: false,
-      workItems: [],
-      completedCount: 0,
-      elapsedTime: 0,
-      queueSizes: {},
-      queueHistory: [],
-      detectedBottlenecks: [],
-      results: null,
-      workItemCount, // Preserve this setting
-    })
-  },
-
-  // Scenario management
-  addScenario: (scenario) => {
-    set((state) => ({
-      scenarios: [...state.scenarios, scenario],
-    }))
-  },
-
-  removeScenario: (scenarioId) => {
-    set((state) => ({
-      scenarios: state.scenarios.filter((s) => s.id !== scenarioId),
-      activeScenarioId:
-        state.activeScenarioId === scenarioId ? null : state.activeScenarioId,
-    }))
-  },
-
-  updateScenario: (scenarioId, updates) => {
-    set((state) => ({
-      scenarios: state.scenarios.map((s) =>
-        s.id === scenarioId ? { ...s, ...updates } : s
-      ),
-    }))
-  },
-
-  setActiveScenario: (scenarioId) => {
-    set({ activeScenarioId: scenarioId })
-  },
-
-  setComparisonResults: (comparisonResults) => {
-    set({ comparisonResults })
-  },
-
-  clearComparison: () => {
-    set({
-      comparisonResults: null,
-      activeScenarioId: null,
-    })
-  },
-}))
+// Re-export the separated stores for new code
+export { useSimulationControlStore } from './simulationControlStore'
+export { useSimulationDataStore } from './simulationDataStore'
+export { useScenarioStore } from './scenarioStore'

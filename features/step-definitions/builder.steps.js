@@ -4,7 +4,7 @@ import { useVsmStore } from '../../src/stores/vsmStore.js'
 
 // Helpers to access state
 const getVsmState = (world) => useVsmStore.getState()
-const findStep = (world, name) => getVsmState(world).steps.find((s) => s.name === name)
+const findStepByName = (world, name) => getVsmState(world).steps.find((s) => s.name === name)
 
 // Create VSM steps
 Given('I am on the home page', function () {
@@ -12,28 +12,28 @@ Given('I am on the home page', function () {
 })
 
 Given('I have an empty value stream map', function () {
-  this.createVSM('Test Map')
+  this.vsm.createVSM('Test Map')
 })
 
 Given('I have created a map named {string}', function (name) {
-  this.createVSM(name)
+  this.vsm.createVSM(name)
 })
 
 Given('I have created a value stream map', function () {
-  this.createVSM('Test Map')
+  this.vsm.createVSM('Test Map')
 })
 
 Given('I have a value stream map', function () {
-  this.createVSM('Test Map')
+  this.vsm.createVSM('Test Map')
 })
 
 Given('an empty value stream map', function () {
-  this.createVSM('Empty Map')
+  this.vsm.createVSM('Empty Map')
 })
 
 When('I click {string}', function (buttonText) {
   if (buttonText === 'Create New Map') {
-    this.createVSM()
+    this.vsm.createVSM()
   } else if (buttonText === 'Delete') {
     this.pendingDelete = this.vsmState.selectedStepId
   } else if (buttonText === 'Export') {
@@ -47,7 +47,7 @@ When('I click {string}', function (buttonText) {
 
 When('I click {string} without entering a name', function (buttonText) {
   if (buttonText === 'Create New Map') {
-    this.createVSM() // Default name is handled by the store
+    this.vsm.createVSM() // Default name is handled by the store
   }
 })
 
@@ -55,7 +55,7 @@ When('I enter {string} as the map name', function (name) {
   if (this.vsmState.id) {
     this.vsmState.updateMapName(name)
   } else {
-    this.createVSM(name)
+    this.vsm.createVSM(name)
   }
 })
 
@@ -82,50 +82,50 @@ Then('a map should be created with name {string}', function (name) {
 
 // Add step steps
 Given('I have a value stream map with a {string} step', function (stepName) {
-  this.createVSM('Test Map')
-  this.addStep(stepName)
+  this.vsm.createVSM('Test Map')
+  this.vsm.addStep(stepName)
 })
 
 Given('I have a value stream map with steps {string} and {string}', function (step1, step2) {
-  this.createVSM('Test Map')
-  this.addStep(step1)
-  this.addStep(step2)
+  this.vsm.createVSM('Test Map')
+  this.vsm.addStep(step1)
+  this.vsm.addStep(step2)
 })
 
 Given('I have steps {string} and {string}', function (step1, step2) {
-  this.createVSM('Test Map')
-  this.addStep(step1)
-  this.addStep(step2)
+  this.vsm.createVSM('Test Map')
+  this.vsm.addStep(step1)
+  this.vsm.addStep(step2)
 })
 
 When('I click the {string} button', function (buttonText) {
   if (buttonText === 'Add Step') {
-    this.addStep('New Step')
+    this.vsm.addStep('New Step')
   }
 })
 
 When('I add a step named {string}', function (name) {
-  this.addStep(name)
+  this.vsm.addStep(name)
 })
 
 When('I add a step', function () {
-  this.addStep('New Step')
+  this.vsm.addStep('New Step')
 })
 
 When('I add steps {string}, {string}, {string}', function (s1, s2, s3) {
-  this.addStep(s1)
-  this.addStep(s2)
-  this.addStep(s3)
+  this.vsm.addStep(s1)
+  this.vsm.addStep(s2)
+  this.vsm.addStep(s3)
 })
 
 When('I add {int} steps', function (count) {
   for (let i = 0; i < count; i++) {
-    this.addStep(`Step ${i + 1}`)
+    this.vsm.addStep(`Step ${i + 1}`)
   }
 })
 
 Then('I should see a {string} step on the canvas', function (stepName) {
-  const step = findStep(this, stepName)
+  const step = findStepByName(this, stepName)
   expect(step).to.exist
 })
 
@@ -153,36 +153,36 @@ Then('the steps should be arranged left to right', function () {
 
 // Edit step steps
 Given('I have a step named {string}', function (name) {
-  this.createVSM('Test Map')
-  this.addStep(name)
+  this.vsm.createVSM('Test Map')
+  this.vsm.addStep(name)
 })
 
 Given('I have the step editor open for {string}', function (name) {
   if (!this.vsmState.id) {
-    this.createVSM('Test Map')
+    this.vsm.createVSM('Test Map')
   }
-  let step = findStep(this, name)
+  let step = findStepByName(this, name)
   if (!step) {
-    step = this.addStep(name)
+    step = this.vsm.addStep(name)
   }
   this.vsmState.selectStep(step.id)
 })
 
 Given('I have a step with process time {int} and lead time {int}', function (pt, lt) {
-  this.createVSM('Test Map')
-  const step = this.addStep('Test Step', 'custom', { processTime: pt, leadTime: lt })
+  this.vsm.createVSM('Test Map')
+  const step = this.vsm.addStep('Test Step', 'custom', { processTime: pt, leadTime: lt })
   this.vsmState.selectStep(step.id)
 })
 
 Given('I have a step with %C&A of {int}', function (pca) {
-  this.createVSM('Test Map')
-  const step = this.addStep('Test Step', 'custom', { percentCompleteAccurate: pca })
+  this.vsm.createVSM('Test Map')
+  const step = this.vsm.addStep('Test Step', 'custom', { percentCompleteAccurate: pca })
   this.vsmState.selectStep(step.id)
 })
 
 Given('I am editing a step', function () {
-  this.createVSM('Test Map')
-  const step = this.addStep('Test Step')
+  this.vsm.createVSM('Test Map')
+  const step = this.vsm.addStep('Test Step')
   this.vsmState.selectStep(step.id)
 })
 
@@ -202,34 +202,35 @@ When('I edit the step', function () {
 })
 
 When('I change the step name to {string}', function (name) {
-  this.updateStep(this.vsmState.selectedStepId, { name })
+  this.vsm.updateStep(this.vsmState.selectedStepId, { name })
 })
 
 When('I change process time to {int}', function (pt) {
-  this.updateStep(this.vsmState.selectedStepId, { processTime: pt })
+  this.vsm.updateStep(this.vsmState.selectedStepId, { processTime: pt })
 })
 
 When('I change lead time to {int}', function (lt) {
-  this.updateStep(this.vsmState.selectedStepId, { leadTime: lt })
+  this.vsm.updateStep(this.vsmState.selectedStepId, { leadTime: lt })
 })
 
 When('I change %C&A to {int}', function (pca) {
-  this.updateStep(this.vsmState.selectedStepId, { percentCompleteAccurate: pca })
+  this.vsm.updateStep(this.vsmState.selectedStepId, { percentCompleteAccurate: pca })
 })
 
 When('I enter process time of {int} minutes', function (pt) {
-  const step = this.findStepById(this.vsmState.selectedStepId)
+  const step = this.vsm.findStepById(this.vsmState.selectedStepId)
   this.tempStepState = { ...step, processTime: pt }
 })
 
 When('I enter lead time of {int} minutes', function (lt) {
   this.tempStepState = { ...this.tempStepState, leadTime: lt }
-  this.error = this.validateStep(this.tempStepState)
+  this.error = this.vsm.validateStep(this.tempStepState)
 })
 
 When('I save the changes', function () {
-  // In the real app, this would be a UI action. Here, the changes
-  // are applied directly, so this step is a no-op for logic tests.
+  if (this.tempStepState && !this.error) {
+    this.vsm.updateStep(this.vsmState.selectedStepId, this.tempStepState)
+  }
 })
 
 Then('the step editor should open', function () {
@@ -237,18 +238,18 @@ Then('the step editor should open', function () {
 })
 
 Then('the step should display {string}', function (name) {
-  const step = findStep(this, name)
+  const step = findStepByName(this, name)
   expect(step).to.exist
 })
 
 Then('the step should show PT: {int}m and LT: {int}m', function (pt, lt) {
-  const step = this.findStepById(this.vsmState.selectedStepId)
+  const step = this.vsm.findStepById(this.vsmState.selectedStepId)
   expect(step.processTime).to.equal(pt)
   expect(step.leadTime).to.equal(lt)
 })
 
 Then('the step should show %C&A: {int}%', function (pca) {
-  const step = this.findStepById(this.vsmState.selectedStepId)
+  const step = this.vsm.findStepById(this.vsmState.selectedStepId)
   expect(step.percentCompleteAccurate).to.equal(pca)
 })
 
@@ -262,24 +263,24 @@ Then('the save button should be disabled', function () {
 
 // Delete step steps
 Given('I have a step selected', function () {
-  this.createVSM('Test Map')
-  const step = this.addStep('Selected Step')
+  this.vsm.createVSM('Test Map')
+  const step = this.vsm.addStep('Selected Step')
   this.vsmState.selectStep(step.id)
 })
 
 Given('{string} is connected to {string}', function (sourceName, targetName) {
   if (!this.vsmState.id) {
-    this.createVSM('Test Map')
+    this.vsm.createVSM('Test Map')
   }
-  let source = findStep(this, sourceName)
-  let target = findStep(this, targetName)
-  if (!source) source = this.addStep(sourceName)
-  if (!target) target = this.addStep(targetName)
-  this.addConnection(source.name, target.name)
+  let source = findStepByName(this, sourceName)
+  let target = findStepByName(this, targetName)
+  if (!source) source = this.vsm.addStep(sourceName)
+  if (!target) target = this.vsm.addStep(targetName)
+  this.vsm.addConnection(source.name, target.name)
 })
 
 When('I open the editor for {string}', function (name) {
-  const step = findStep(this, name)
+  const step = findStepByName(this, name)
   this.vsmState.selectStep(step.id)
 })
 
@@ -294,9 +295,9 @@ When('I confirm the deletion', function () {
       (c) => c.id === this.pendingDelete
     )
     if (isConnection) {
-      this.deleteConnection(this.pendingDelete)
+      this.vsm.deleteConnection(this.pendingDelete)
     } else {
-      this.deleteStep(this.pendingDelete)
+      this.vsm.deleteStep(this.pendingDelete)
     }
     this.pendingDelete = null
   }
@@ -311,15 +312,15 @@ When('I cancel the confirmation', function () {
 })
 
 When('I delete {string}', function (name) {
-  const step = findStep(this, name)
+  const step = findStepByName(this, name)
   if (step) {
-    this.deleteStep(step.id)
+    this.vsm.deleteStep(step.id)
   }
 })
 
 When('I confirm', function () {
   if (this.pendingDelete) {
-    this.deleteStep(this.pendingDelete)
+    this.vsm.deleteStep(this.pendingDelete)
     this.pendingDelete = null
   } else if (this.newMapClicked) {
     this.vsmState.clearMap()
@@ -333,7 +334,7 @@ Then('the canvas should only show {string}', function (name) {
 
 Then('the step should be removed', function () {
   const deletedStepId = this.vsmState.selectedStepId
-  expect(this.findStepById(deletedStepId)).to.be.undefined
+  expect(this.vsm.findStepById(deletedStepId)).to.be.undefined
 })
 
 Then('the step should still exist', function () {
@@ -346,12 +347,12 @@ Then('the connection should also be removed', function () {
 
 // Connect steps
 When('I drag from the output handle of {string}', function (sourceName) {
-  this.dragSource = findStep(this, sourceName)
+  this.dragSource = findStepByName(this, sourceName)
 })
 
 When('I drop on the input handle of {string}', function (targetName) {
   if (this.dragSource) {
-    this.addConnection(this.dragSource.name, targetName)
+    this.vsm.addConnection(this.dragSource.name, targetName)
     this.dragSource = null
   }
 })
@@ -362,12 +363,12 @@ When('I click on the connection', function () {
 
 When('I confirm deletion', function () {
   if (this.vsmState.selectedConnectionId) {
-    this.deleteConnection(this.vsmState.selectedConnectionId)
+    this.vsm.deleteConnection(this.vsmState.selectedConnectionId)
   }
 })
 
 When('I try to connect {string} to {string} again', function (source, target) {
-  const result = this.addConnection(source, target)
+  const result = this.vsm.addConnection(source, target)
   this.duplicateAttempt = result === null
 })
 

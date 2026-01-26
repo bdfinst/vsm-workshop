@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach } from 'vitest'
+import { describe, it, expect, beforeEach, vi } from 'vitest'
 import {
   initSimulation,
   processTick,
@@ -37,14 +37,14 @@ describe('simulationEngine', () => {
       const state = initSimulation(mockSteps, mockConnections, { workItemCount: 5 })
 
       mockSteps.forEach((step) => {
-        expect(state.queueSizes[step.id]).toBe(0)
+        expect(state.queueSizesByStepId[step.id]).toBe(0)
       })
     })
 
     it('handles empty steps array', () => {
       const state = initSimulation([], [], { workItemCount: 5 })
 
-      expect(state.queueSizes).toEqual({})
+      expect(state.queueSizesByStepId).toEqual({})
       expect(state.workItems).toEqual([])
     })
   })
@@ -76,11 +76,16 @@ describe('simulationEngine', () => {
     })
 
     it('creates unique IDs for each work item', () => {
+      let idCounter = 0
+      vi.spyOn(crypto, 'randomUUID').mockImplementation(() => `item-${idCounter++}`)
+
       const items = generateWorkItems(10, mockSteps[0].id)
       const ids = items.map((i) => i.id)
       const uniqueIds = new Set(ids)
 
       expect(uniqueIds.size).toBe(10)
+
+      vi.restoreAllMocks()
     })
   })
 
@@ -93,6 +98,19 @@ describe('simulationEngine', () => {
       const newState = processTick(state, mockSteps, mockConnections)
 
       expect(newState.workItems[0].progress).toBeGreaterThan(0)
+    })
+
+    it('updates queue sizes when work items transition between steps', () => {
+      const state = initSimulation(mockSteps, mockConnections, { workItemCount: 1 })
+      state.workItems = generateWorkItems(1, mockSteps[0].id)
+      state.workItems[0].progress = mockSteps[0].processTime + 1
+      state.isRunning = true
+
+      const initialQueueSize = state.queueSizesByStepId[mockSteps[1].id]
+
+      const newState = processTick(state, mockSteps, mockConnections)
+
+      expect(newState.queueSizesByStepId[mockSteps[1].id]).toBeGreaterThan(initialQueueSize)
     })
 
     it('does not advance when simulation is paused', () => {
@@ -141,10 +159,11 @@ describe('simulationEngine', () => {
       }]
       state.isRunning = true
 
+      const initialCompletedCount = state.completedCount
       const newState = processTick(state, mockSteps, mockConnections)
 
       expect(newState.workItems[0].currentStepId).toBe(null)
-      expect(newState.completedCount).toBe(1)
+      expect(newState.completedCount).toBe(initialCompletedCount + 1)
     })
 
     it('applies speed multiplier to progress', () => {
@@ -219,10 +238,19 @@ describe('simulationEngine', () => {
         { id: 'rework-1', source: 'step-1', target: 'step-1', type: 'rework', reworkRate: 100 },
       ]
 
-      // With 50% C&A and random < 0.5, should trigger rework
-      const result = shouldRework(step, connectionsWithRework, () => 0.4)
+      // Run shouldRework multiple times and verify the percentage matches expected probability
+      const iterations = 1000
+      let reworkCount = 0
+      for (let i = 0; i < iterations; i++) {
+        if (shouldRework(step, connectionsWithRework)) {
+          reworkCount++
+        }
+      }
 
-      expect(result).toBe(true)
+      const reworkPercentage = (reworkCount / iterations) * 100
+      // With 50% C&A, expect ~50% rework rate (allow ±5% margin for randomness)
+      expect(reworkPercentage).toBeGreaterThan(45)
+      expect(reworkPercentage).toBeLessThan(55)
     })
 
     it('returns false when no rework connection exists', () => {
@@ -236,13 +264,13 @@ describe('simulationEngine', () => {
 
   describe('detectBottlenecks', () => {
     it('identifies steps with high queue sizes', () => {
-      const queueSizes = {
+      const queueSizesByStepId = {
         'step-1': 2,
         'step-2': 8,
         'step-3': 1,
       }
 
-      const bottlenecks = detectBottlenecks(mockSteps, queueSizes, 5)
+      const bottlenecks = detectBottlenecks(mockSteps, queueSizesByStepId, 5)
 
       expect(bottlenecks).toContain('step-2')
       expect(bottlenecks).not.toContain('step-1')
@@ -250,37 +278,37 @@ describe('simulationEngine', () => {
     })
 
     it('returns empty array when no bottlenecks', () => {
-      const queueSizes = {
+      const queueSizesByStepId = {
         'step-1': 1,
         'step-2': 2,
         'step-3': 1,
       }
 
-      const bottlenecks = detectBottlenecks(mockSteps, queueSizes, 5)
+      const bottlenecks = detectBottlenecks(mockSteps, queueSizesByStepId, 5)
 
       expect(bottlenecks).toEqual([])
     })
 
     it('identifies multiple bottlenecks', () => {
-      const queueSizes = {
+      const queueSizesByStepId = {
         'step-1': 6,
         'step-2': 8,
         'step-3': 7,
       }
 
-      const bottlenecks = detectBottlenecks(mockSteps, queueSizes, 5)
+      const bottlenecks = detectBottlenecks(mockSteps, queueSizesByStepId, 5)
 
       expect(bottlenecks).toHaveLength(3)
     })
 
     it('uses default threshold when not provided', () => {
-      const queueSizes = {
+      const queueSizesByStepId = {
         'step-1': 2,
         'step-2': 4,
         'step-3': 1,
       }
 
-      const bottlenecks = detectBottlenecks(mockSteps, queueSizes)
+      const bottlenecks = detectBottlenecks(mockSteps, queueSizesByStepId)
 
       // Default threshold is 3
       expect(bottlenecks).toContain('step-2')
@@ -330,14 +358,23 @@ describe('simulationEngine', () => {
           { tick: 1, stepId: 'step-1', queueSize: 2 },
           { tick: 1, stepId: 'step-2', queueSize: 8 },
           { tick: 2, stepId: 'step-2', queueSize: 10 },
+          { tick: 3, stepId: 'step-3', queueSize: 1 },
         ],
       }
 
       const results = calculateResults(state, mockSteps)
 
-      expect(results.bottlenecks.length).toBeGreaterThan(0)
+      // Should identify step-2 as bottleneck (peak 10 > threshold 3)
+      expect(results.bottlenecks).toHaveLength(1)
       expect(results.bottlenecks[0].stepId).toBe('step-2')
       expect(results.bottlenecks[0].peakQueueSize).toBe(10)
+      expect(results.bottlenecks[0].stepName).toBe('Step 2')
+
+      // Should not identify step-1 (peak 2 < threshold 3)
+      expect(results.bottlenecks.find(b => b.stepId === 'step-1')).toBeUndefined()
+
+      // Should not identify step-3 (peak 1 < threshold 3)
+      expect(results.bottlenecks.find(b => b.stepId === 'step-3')).toBeUndefined()
     })
 
     it('handles zero elapsed time', () => {

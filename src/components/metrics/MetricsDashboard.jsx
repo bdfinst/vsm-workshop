@@ -1,10 +1,6 @@
-import { useMemo } from 'react'
 import PropTypes from 'prop-types'
-import { useVsmStore } from '../../stores/vsmStore'
-import {
-  calculateAllMetrics,
-  formatDuration,
-} from '../../utils/calculations/metrics'
+import { useVsmStore, selectMetrics } from '../../stores/vsmStore'
+import { formatDuration } from '../../utils/calculations/metrics'
 
 function MetricCard({ title, value, subtitle, status, tooltip }) {
   const statusColors = {
@@ -45,12 +41,9 @@ MetricCard.defaultProps = {
 }
 
 function MetricsDashboard() {
-  const { steps, connections } = useVsmStore()
-
-  const metrics = useMemo(
-    () => calculateAllMetrics(steps, connections),
-    [steps, connections]
-  )
+  const steps = useVsmStore((state) => state.steps)
+  const connections = useVsmStore((state) => state.connections)
+  const metrics = useVsmStore(selectMetrics)
 
   const hasRework = connections.some((c) => c.type === 'rework')
 

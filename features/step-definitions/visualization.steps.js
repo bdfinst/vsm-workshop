@@ -7,37 +7,17 @@ const getVsmState = () => useVsmStore.getState()
 
 // Canvas display steps
 Given('I have steps {string}, {string}, {string}, {string}', function (s1, s2, s3, s4) {
-  this.createVSM('Test Map')
-  this.addStep(s1)
-  this.addStep(s2)
-  this.addStep(s3)
-  this.addStep(s4)
+  this.vsm.createVSM('Test Map')
+  this.vsm.addStep(s1)
+  this.vsm.addStep(s2)
+  this.vsm.addStep(s3)
+  this.vsm.addStep(s4)
 })
 
 Given('I have a step on the canvas', function () {
-  this.createVSM('Test Map')
-  this.addStep('Test Step')
+  this.vsm.createVSM('Test Map')
+  this.vsm.addStep('Test Step')
 })
-
-// When('I drag the canvas background', function () {
-//   // UI-only interaction, cannot be tested at this level
-//   this.canvasPanned = true
-// })
-
-// When('I use the mouse wheel to zoom', function () {
-//   // UI-only interaction, cannot be tested at this level
-//   this.canvasZoomed = true
-// })
-
-// When('I click the zoom in button', function () {
-//   // UI-only interaction
-//   this.zoomLevel = (this.zoomLevel || 1) * 1.2
-// })
-
-// When('I click the fit view button', function () {
-//   // UI-only interaction
-//   this.fitView = true
-// })
 
 Then('each step should be visible on the canvas', function () {
   const { steps } = getVsmState()
@@ -56,22 +36,6 @@ Then('each step should show its metrics', function () {
   })
 })
 
-// Then('the view should pan', function () {
-//   expect(this.canvasPanned).to.be.true
-// })
-
-// Then('the canvas should zoom in or out', function () {
-//   expect(this.canvasZoomed).to.be.true
-// })
-
-// Then('the canvas should zoom in', function () {
-//   expect(this.zoomLevel).to.be.greaterThan(1)
-// })
-
-// Then('all steps should be visible', function () {
-//   expect(this.fitView).to.be.true
-// })
-
 Then('the step should be highlighted as selected', function () {
   const { selectedStepId } = getVsmState()
   expect(selectedStepId).to.exist
@@ -79,10 +43,10 @@ Then('the step should be highlighted as selected', function () {
 
 // Metrics steps
 Given('a value stream with steps:', function (dataTable) {
-  this.createVSM('Test Map')
+  this.vsm.createVSM('Test Map')
   const rows = dataTable.hashes()
   rows.forEach((row) => {
-    this.addStep(row.name, 'custom', {
+    this.vsm.addStep(row.name, 'custom', {
       processTime: parseInt(row.processTime) || undefined,
       leadTime: parseInt(row.leadTime) || undefined,
       queueSize: parseInt(row.queueSize) || undefined,
@@ -92,22 +56,22 @@ Given('a value stream with steps:', function (dataTable) {
 })
 
 Given('total process time is {int} minutes', function (pt) {
-  this.createVSM('Test Map')
-  this.addStep('Test', 'custom', { processTime: pt, leadTime: pt * 4 })
+  this.vsm.createVSM('Test Map')
+  this.vsm.addStep('Test', 'custom', { processTime: pt, leadTime: pt * 4 })
 })
 
 Given('total lead time is {int} minutes', function (lt) {
   const { steps } = getVsmState()
   if (steps.length > 0) {
-    this.updateStep(steps[0].id, { leadTime: lt })
+    this.vsm.updateStep(steps[0].id, { leadTime: lt })
   }
 })
 
 Given('flow efficiency is {int}%', function (efficiency) {
-  this.createVSM('Test Map')
+  this.vsm.createVSM('Test Map')
   const lt = 100
   const pt = efficiency
-  this.addStep('Test', 'custom', { processTime: pt, leadTime: lt })
+  this.vsm.addStep('Test', 'custom', { processTime: pt, leadTime: lt })
 })
 
 When('I view the metrics dashboard', function () {

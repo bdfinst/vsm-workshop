@@ -1,21 +1,18 @@
 import { useCallback } from 'react'
 import { ReactFlowProvider } from 'reactflow'
-import { useVsmStore } from './stores/vsmStore'
+import { useAppState } from './hooks/useAppState'
 import Header from './components/ui/Header'
 import Canvas from './components/canvas/Canvas'
 import Sidebar from './components/ui/Sidebar'
 import MetricsDashboard from './components/metrics/MetricsDashboard'
 import WelcomeScreen from './components/ui/WelcomeScreen'
-import StepEditor from './components/builder/StepEditor'
-import ConnectionEditor from './components/builder/ConnectionEditor'
+import EditorPanel from './components/ui/EditorPanel'
+import SimulationPanel from './components/ui/SimulationPanel'
 import { SimulationControls } from './components/simulation/SimulationControls'
-import { SimulationResults } from './components/simulation/SimulationResults'
-import { ScenarioComparison } from './components/simulation/ScenarioComparison'
-import { useSimulation } from './hooks/useSimulation'
 
 function App() {
   const {
-    id,
+    hasVsm,
     selectedStepId,
     isEditing,
     setEditing,
@@ -23,9 +20,10 @@ function App() {
     selectedConnectionId,
     isEditingConnection,
     clearConnectionSelection,
-  } = useVsmStore()
-
-  const { results, scenarios, comparisonResults } = useSimulation()
+    simulationResults,
+    simulationScenarios,
+    comparisonResults,
+  } = useAppState()
 
   const handleCanvasClick = useCallback(() => {
     if (isEditing || isEditingConnection) return
@@ -42,7 +40,7 @@ function App() {
     clearConnectionSelection()
   }, [clearConnectionSelection])
 
-  if (!id) {
+  if (!hasVsm) {
     return <WelcomeScreen />
   }
 
@@ -57,19 +55,21 @@ function App() {
             <div className="flex-1 relative">
               <Canvas />
             </div>
-            {results && <SimulationResults />}
-            {(scenarios.length > 0 || comparisonResults) && <ScenarioComparison />}
+            <SimulationPanel
+              simulationResults={simulationResults}
+              simulationScenarios={simulationScenarios}
+              comparisonResults={comparisonResults}
+            />
             <MetricsDashboard />
           </main>
-          {selectedStepId && isEditing && (
-            <StepEditor stepId={selectedStepId} onClose={handleCloseEditor} />
-          )}
-          {selectedConnectionId && isEditingConnection && (
-            <ConnectionEditor
-              connectionId={selectedConnectionId}
-              onClose={handleCloseConnectionEditor}
-            />
-          )}
+          <EditorPanel
+            selectedStepId={selectedStepId}
+            isEditing={isEditing}
+            selectedConnectionId={selectedConnectionId}
+            isEditingConnection={isEditingConnection}
+            onCloseEditor={handleCloseEditor}
+            onCloseConnectionEditor={handleCloseConnectionEditor}
+          />
         </div>
       </div>
     </ReactFlowProvider>

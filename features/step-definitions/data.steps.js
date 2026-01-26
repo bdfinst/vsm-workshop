@@ -93,7 +93,24 @@ Then('a JSON file should download', function () {
   expect(this.exportClicked).to.be.true
   expect(this.selectedExportOption).to.include('JSON')
   expect(json).to.be.a('string')
-  expect(JSON.parse(json).steps).to.exist
+
+  // Verify the JSON structure of exported data
+  const exportedData = JSON.parse(json)
+  expect(exportedData).to.have.property('id')
+  expect(exportedData).to.have.property('name')
+  expect(exportedData).to.have.property('steps')
+  expect(exportedData).to.have.property('connections')
+  expect(exportedData.steps).to.be.an('array')
+  expect(exportedData.connections).to.be.an('array')
+
+  // Verify steps have required properties
+  if (exportedData.steps.length > 0) {
+    const step = exportedData.steps[0]
+    expect(step).to.have.property('id')
+    expect(step).to.have.property('name')
+    expect(step).to.have.property('processTime')
+    expect(step).to.have.property('leadTime')
+  }
 })
 
 Then('the map should load on the canvas', function () {

@@ -11,15 +11,15 @@ export default defineConfig({
   build: {
     rollupOptions: {
       output: {
-        manualChunks(id) {
-          if (id.includes('node_modules')) {
-            if (id.includes('reactflow')) {
+        manualChunks(moduleId) {
+          if (moduleId.includes('node_modules')) {
+            if (moduleId.includes('reactflow')) {
               return 'vendor_reactflow';
             }
-            if (id.includes('recharts')) {
+            if (moduleId.includes('recharts')) {
               return 'vendor_recharts';
             }
-            if (id.includes('react') || id.includes('react-dom')) {
+            if (moduleId.includes('react') || moduleId.includes('react-dom')) {
               return 'vendor_react';
             }
           }

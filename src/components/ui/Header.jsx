@@ -1,15 +1,22 @@
-import { useState, useCallback, useRef } from 'react'
+import { useState, useCallback } from 'react'
 import PropTypes from 'prop-types'
 import { useVsmStore } from '../../stores/vsmStore'
-import { toPng } from 'html-to-image'
-import { jsPDF } from 'jspdf'
+import useFileOperations from '../../hooks/useFileOperations'
 
 function Header() {
-  const { name, updateMapName, exportToJson, importFromJson, clearMap } =
-    useVsmStore()
+  const { name, updateMapName } = useVsmStore()
   const [isEditingName, setIsEditingName] = useState(false)
   const [tempName, setTempName] = useState(name)
-  const fileInputRef = useRef(null)
+
+  const {
+    fileInputRef,
+    handleExportJson,
+    handleExportPng,
+    handleExportPdf,
+    handleImport,
+    handleFileChange,
+    handleNewMap,
+  } = useFileOperations()
 
   const handleNameClick = useCallback(() => {
     setTempName(name)
@@ -33,86 +40,6 @@ function Header() {
     },
     [handleNameSubmit]
   )
-
-  const handleExportJson = useCallback(() => {
-    const json = exportToJson()
-    const blob = new Blob([json], { type: 'application/json' })
-    const url = URL.createObjectURL(blob)
-    const a = document.createElement('a')
-    a.href = url
-    a.download = `${name || 'vsm'}.json`
-    a.click()
-    URL.revokeObjectURL(url)
-  }, [exportToJson, name])
-
-  const handleExportPng = useCallback(async () => {
-    const canvas = document.querySelector('.react-flow')
-    if (!canvas) return
-
-    try {
-      const dataUrl = await toPng(canvas, {
-        backgroundColor: '#f3f4f6',
-        quality: 1,
-      })
-      const a = document.createElement('a')
-      a.href = dataUrl
-      a.download = `${name || 'vsm'}.png`
-      a.click()
-    } catch (err) {
-      console.error('Failed to export PNG:', err)
-    }
-  }, [name])
-
-  const handleExportPdf = useCallback(async () => {
-    const canvas = document.querySelector('.react-flow')
-    if (!canvas) return
-
-    try {
-      const dataUrl = await toPng(canvas, {
-        backgroundColor: '#f3f4f6',
-        quality: 1,
-      })
-      const pdf = new jsPDF({
-        orientation: 'landscape',
-        unit: 'px',
-      })
-      const imgProps = pdf.getImageProperties(dataUrl)
-      const pdfWidth = pdf.internal.pageSize.getWidth()
-      const pdfHeight = (imgProps.height * pdfWidth) / imgProps.width
-      pdf.addImage(dataUrl, 'PNG', 0, 0, pdfWidth, pdfHeight)
-      pdf.save(`${name || 'vsm'}.pdf`)
-    } catch (err) {
-      console.error('Failed to export PDF:', err)
-    }
-  }, [name])
-
-  const handleImport = useCallback(() => {
-    fileInputRef.current?.click()
-  }, [])
-
-  const handleFileChange = useCallback(
-    (e) => {
-      const file = e.target.files?.[0]
-      if (!file) return
-
-      const reader = new FileReader()
-      reader.onload = (event) => {
-        const result = importFromJson(event.target.result)
-        if (!result) {
-          alert('Failed to import file. Please check the format.')
-        }
-      }
-      reader.readAsText(file)
-      e.target.value = ''
-    },
-    [importFromJson]
-  )
-
-  const handleNewMap = useCallback(() => {
-    if (confirm('Create a new map? This will clear the current map.')) {
-      clearMap()
-    }
-  }, [clearMap])
 
   return (
     <header className="bg-white border-b border-gray-200 px-4 py-3 flex items-center justify-between">

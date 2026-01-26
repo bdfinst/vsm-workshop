@@ -1,0 +1,39 @@
+# VSM Workshop - Development Rules
+
+## Data Validation
+
+Always validate step metrics:
+- Process Time (PT) must be ≤ Lead Time (LT)
+- %C&A (Percent Complete & Accurate) must be between 0-100
+- Queue sizes and batch sizes must be ≥ 0
+- Time values must be in minutes
+
+## State Management
+
+Preserve Zustand store patterns:
+- Use store hooks directly in components (no prop drilling)
+- Define actions as store methods
+- Keep derived values as computed selectors
+- Follow the established store structure in `src/stores/`
+
+## Display Formatting
+
+Use `formatDuration` for time display:
+- Input/storage: always in minutes
+- Display: formatted based on magnitude (m, h, d)
+- Import from `src/utils/formatting` or calculations module
+
+## ReactFlow Integration
+
+Maintain ReactFlow node structure:
+- Nodes must have: `id`, `type`, `data`, `position`
+- Custom node types in `src/components/canvas/nodes/`
+- Edge types: `forward` (solid) or `rework` (dashed)
+- Use data-testid attributes for testing
+
+## Code Quality
+
+- Always write tests before implementation (TDD)
+- Use PropTypes for all React components
+- Follow Prettier formatting (single quotes, no semicolons)
+- Add JSDoc comments for utility functions

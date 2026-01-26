@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import PropTypes from 'prop-types'
 import { useVsmStore } from '../../stores/vsmStore'
+import { useConnectionValidation } from '../../hooks/useConnectionValidation'
 
 function ConnectionEditor({ connectionId, onClose }) {
   const { connections, steps, updateConnection, deleteConnection } = useVsmStore()
@@ -11,7 +12,7 @@ function ConnectionEditor({ connectionId, onClose }) {
     reworkRate: 0,
   })
 
-  const [errors, setErrors] = useState({})
+  const { errors, validate, clearError } = useConnectionValidation(formData)
 
   useEffect(() => {
     if (connection) {
@@ -22,26 +23,13 @@ function ConnectionEditor({ connectionId, onClose }) {
     }
   }, [connection])
 
-  const validate = useCallback(() => {
-    const newErrors = {}
-
-    if (formData.type === 'rework') {
-      if (formData.reworkRate < 0 || formData.reworkRate > 100) {
-        newErrors.reworkRate = 'Rework rate must be between 0 and 100'
-      }
-      if (formData.reworkRate === 0) {
-        newErrors.reworkRate = 'Rework connections need a rate > 0'
-      }
-    }
-
-    setErrors(newErrors)
-    return Object.keys(newErrors).length === 0
-  }, [formData])
-
-  const handleChange = useCallback((field, value) => {
-    setFormData((prev) => ({ ...prev, [field]: value }))
-    setErrors((prev) => ({ ...prev, [field]: undefined }))
-  }, [])
+  const handleChange = useCallback(
+    (field, value) => {
+      setFormData((prev) => ({ ...prev, [field]: value }))
+      clearError(field)
+    },
+    [clearError]
+  )
 
   const handleSubmit = useCallback(
     (e) => {

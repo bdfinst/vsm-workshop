@@ -34,9 +34,10 @@ describe('calculateTotalLeadTime', () => {
   it('handles missing leadTime values', () => {
     const steps = [
       { leadTime: 100 },
-      { name: 'no lead time' },
+      { name: 'no lead time' }, // Treated as 0
       { leadTime: 50 },
     ]
+    // Expected: 100 + 0 + 50 = 150
     expect(calculateTotalLeadTime(steps)).toBe(150)
   })
 })
@@ -85,9 +86,23 @@ describe('calculateFlowEfficiency', () => {
     expect(result.status).toBe('good')
   })
 
+  it('returns good status for exactly 25%', () => {
+    const steps = [{ processTime: 25, leadTime: 100 }]
+    const result = calculateFlowEfficiency(steps)
+    expect(result.percentage).toBe(25)
+    expect(result.status).toBe('good')
+  })
+
   it('returns warning status for 15-25%', () => {
     const steps = [{ processTime: 20, leadTime: 100 }]
     const result = calculateFlowEfficiency(steps)
+    expect(result.status).toBe('warning')
+  })
+
+  it('returns warning status for exactly 15%', () => {
+    const steps = [{ processTime: 15, leadTime: 100 }]
+    const result = calculateFlowEfficiency(steps)
+    expect(result.percentage).toBe(15)
     expect(result.status).toBe('warning')
   })
 
@@ -223,10 +238,11 @@ describe('calculateReworkImpact', () => {
   it('caps rework rate at 95% to avoid infinity', () => {
     const steps = [{ leadTime: 100 }]
     const connections = [
-      { type: 'rework', reworkRate: 50 },
+      { type: 'rework', reworkRate: 60 },
       { type: 'rework', reworkRate: 50 },
     ]
     const result = calculateReworkImpact(steps, connections)
+    expect(result.totalReworkRate).toBe(95) // Capped at 95
     expect(result.reworkMultiplier).toBe(20) // 1 / (1 - 0.95)
   })
 
