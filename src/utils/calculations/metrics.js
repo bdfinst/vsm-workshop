@@ -1,3 +1,51 @@
+/**
+ * VSM Metrics Calculations
+ *
+ * Pure functions for calculating value stream metrics.
+ * All times are in minutes, percentages as 0-100.
+ *
+ * See: .claude/rules/vsm-domain.md#metric-calculations
+ */
+
+// ==============================================================================
+// TYPE DEFINITIONS
+// ==============================================================================
+
+/**
+ * @typedef {Object} Step
+ * @property {string} id
+ * @property {string} name
+ * @property {number} processTime - Active work time (minutes)
+ * @property {number} leadTime - Total elapsed time (minutes)
+ * @property {number} percentCompleteAccurate - Quality metric (0-100)
+ * @property {number} queueSize - Items waiting
+ */
+
+/**
+ * @typedef {Object} Connection
+ * @property {string} source - Source step ID
+ * @property {string} target - Target step ID
+ * @property {'forward'|'rework'} type
+ * @property {number} reworkRate - Percentage (0-100)
+ */
+
+/**
+ * @typedef {Object} Metrics
+ * @property {number} totalLeadTime - Sum of all lead times (minutes)
+ * @property {number} totalProcessTime - Sum of all process times (minutes)
+ * @property {Object} flowEfficiency - Efficiency calculation result
+ * @property {number} flowEfficiency.value - Percentage (0-100)
+ * @property {string} flowEfficiency.label - Status label
+ * @property {Object} firstPassYield - Quality metric result
+ * @property {number} firstPassYield.value - Percentage (0-100)
+ * @property {string} firstPassYield.label - Status label
+ * @property {number} stepCount - Number of steps
+ * @property {number} totalQueueSize - Sum of all queue sizes
+ * @property {number} activityRatio - Process time / Lead time ratio
+ * @property {number} reworkImpact - Estimated rework overhead
+ * @property {string[]} bottleneckIds - IDs of bottleneck steps
+ */
+
 // ==============================================================================
 // PRIMARY API - Use these functions as entry points
 // ==============================================================================
@@ -7,9 +55,22 @@ const MINUTES_PER_WORK_DAY = 480
 
 /**
  * Calculate all metrics for a value stream (Main facade function)
- * @param {Array} steps - Array of process steps
- * @param {Array} connections - Array of connections between steps
- * @returns {Object} All calculated metrics
+ *
+ * This is the primary entry point for metric calculations.
+ * Computes comprehensive VSM metrics including:
+ * - Time metrics (lead time, process time)
+ * - Quality metrics (flow efficiency, first pass yield)
+ * - Bottleneck identification
+ * - Rework impact analysis
+ *
+ * @param {Step[]} steps - Array of process steps
+ * @param {Connection[]} connections - Array of connections between steps
+ * @returns {Metrics} All calculated metrics
+ *
+ * @example
+ * const metrics = calculateMetrics(steps, connections)
+ * console.log(metrics.flowEfficiency.value) // 25
+ * console.log(metrics.bottleneckIds) // ['step-2', 'step-5']
  */
 export function calculateMetrics(steps = [], connections = []) {
   return {

@@ -1,3 +1,19 @@
+/**
+ * SimulationResults - Display simulation metrics and insights
+ *
+ * Shows comprehensive results after simulation completes:
+ * - Key metrics (cycle time, throughput, flow efficiency)
+ * - Bottleneck identification with visual indicators
+ * - Queue size distribution charts
+ * - Improvement recommendations
+ *
+ * Data source: useSimulation hook provides results after completion
+ *
+ * See: .claude/guides/architecture.md#simulation-engine-flow
+ *
+ * @component
+ */
+
 import { useMemo } from 'react'
 import {
   BarChart,

@@ -1,3 +1,23 @@
+/**
+ * VSMCanvas - React Flow integration for VSM visualization
+ *
+ * This component wraps React Flow and provides:
+ * - Custom node types (StepNode for process visualization)
+ * - Zustand store integration for VSM data
+ * - Pan/zoom controls and mini-map
+ * - Node positioning and drag-to-update
+ * - Connection visualization between steps
+ *
+ * Data Flow:
+ * vsmStore (steps, connections) → Canvas transforms → React Flow renders
+ * User interactions → vsmStore updates → UI re-renders
+ *
+ * See: .claude/guides/architecture.md#reactflow-canvas-integration
+ * See: .claude/components/canvas/README.md
+ *
+ * @component
+ */
+
 import { useCallback, useMemo } from 'react'
 import ReactFlow, {
   Background,

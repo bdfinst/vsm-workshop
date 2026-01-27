@@ -1,12 +1,61 @@
 /**
  * Domain validation for VSM Step entity
  * Enforces business rules for step data
+ *
+ * See: .claude/rules/vsm-domain.md#validation-rules
  */
 
 /**
- * Validate step data
- * @param {Object} stepData - Step data to validate
- * @returns {Object} Validation result with valid flag and errors object
+ * @typedef {Object} ValidationResult
+ * @property {boolean} valid - True if all validations pass
+ * @property {Object<string, string>} errors - Map of field names to error messages
+ */
+
+/**
+ * @typedef {Object} Step
+ * @property {string} name - Step name
+ * @property {number} processTime - Active work time (minutes)
+ * @property {number} leadTime - Total elapsed time (minutes)
+ * @property {number} percentCompleteAccurate - Quality metric (0-100)
+ * @property {number} queueSize - Items waiting
+ * @property {number} batchSize - Items processed together
+ * @property {number} [peopleCount] - Resources available
+ */
+
+/**
+ * Validate step data against VSM domain rules
+ *
+ * Domain rules enforced:
+ * - Name must not be empty
+ * - Process time >= 0
+ * - Lead time >= 0
+ * - Lead time >= Process time (waiting time cannot be negative)
+ * - %C&A between 0-100 (percentage format)
+ * - Queue size >= 0
+ * - Batch size >= 1 (must process at least one item)
+ * - People count >= 1 (if specified)
+ *
+ * @param {Partial<Step>} stepData - Step data to validate
+ * @returns {ValidationResult} Validation result with errors keyed by field name
+ *
+ * @example
+ * const result = validateStep({
+ *   name: 'Development',
+ *   processTime: 60,
+ *   leadTime: 240
+ * })
+ * if (!result.valid) {
+ *   console.error('Validation errors:', result.errors)
+ * }
+ *
+ * @example
+ * // Invalid: lead time < process time
+ * const result = validateStep({
+ *   name: 'Test',
+ *   processTime: 100,
+ *   leadTime: 50
+ * })
+ * // result.errors.leadTime = 'Lead time must be >= process time'
  */
 export function validateStep(stepData) {
   const errors = {}

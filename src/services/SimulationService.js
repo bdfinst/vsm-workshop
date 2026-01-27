@@ -1,18 +1,35 @@
+/**
+ * SimulationService - Orchestrates simulation workflows
+ *
+ * Coordinates simulation execution and scenario comparisons.
+ * Manages interaction between stores, engines, and UI.
+ *
+ * See: .claude/guides/architecture.md#simulation-engine-flow
+ * See: .claude/services/README.md
+ */
+
 import { useVsmStore } from '../stores/vsmStore'
 import { useSimulationStore } from '../stores/simulationStore'
 import {
   initSimulation,
   generateWorkItems,
 } from '../utils/simulation/simulationEngine'
+// Factory function pattern - see .claude/examples/factory-functions.md
 import { createSimulationRunner } from '../utils/simulation/SimulationRunner'
 import { createComparisonEngine } from '../utils/simulation/ComparisonEngine'
 
 /**
  * Run simulation for scenario and calculate improvements
+ *
+ * Orchestrates complete simulation workflow:
+ * 1. Run baseline (current state) simulation
+ * 2. Run scenario (proposed changes) simulation
+ * 3. Calculate improvement metrics
+ *
  * @param {Object} vsmState - Current VSM state
  * @param {Object} scenario - Scenario to compare
  * @param {number} workItemCount - Number of work items
- * @returns {Object} Comparison results
+ * @returns {Object} Comparison results with baseline, scenario, and improvements
  */
 const runSimulationForScenario = (vsmState, scenario, workItemCount) => {
   const engine = createComparisonEngine(workItemCount)
