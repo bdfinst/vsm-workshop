@@ -1,0 +1,143 @@
+rules:
+  # Svelte-specific code smells
+  - id: svelte-missing-key-in-each
+    message: Missing key in {#each} block - can cause rendering issues
+    severity: WARNING
+    languages: [generic]
+    paths:
+      include:
+        - "*.svelte"
+    pattern-regex: '\{#each\s+\w+\s+as\s+\w+\}'
+
+  - id: svelte-unused-reactive-declaration
+    message: Reactive declaration ($:) appears unused
+    severity: INFO
+    languages: [javascript]
+    paths:
+      include:
+        - "*.svelte"
+    pattern: |
+      $: $VAR = ...
+
+  - id: console-log-in-svelte
+    message: console.log() should be wrapped in DEV check
+    severity: INFO
+    languages: [javascript]
+    paths:
+      include:
+        - "*.svelte"
+    patterns:
+      - pattern-either:
+          - pattern: console.log(...)
+          - pattern: console.debug(...)
+      - pattern-not-inside: |
+          if (import.meta.env.DEV) {
+            ...
+          }
+
+  - id: magic-number-svelte
+    message: Magic number detected - extract to named constant
+    severity: INFO
+    languages: [javascript]
+    paths:
+      include:
+        - "*.svelte"
+    pattern-regex: '\b[0-9]{3,}\b'
+
+  - id: empty-catch-block
+    message: Empty catch block swallows errors - at least log the error
+    severity: WARNING
+    languages: [javascript]
+    paths:
+      include:
+        - "*.svelte"
+        - "*.js"
+    pattern: |
+      try {
+        ...
+      } catch ($E) {
+      }
+
+  - id: throwing-string
+    message: Throw Error objects instead of strings for better stack traces
+    severity: WARNING
+    languages: [javascript]
+    paths:
+      include:
+        - "*.svelte"
+        - "*.js"
+    pattern: throw "..."
+
+  - id: unused-variable-js
+    message: Variable appears to be unused
+    severity: INFO
+    languages: [javascript]
+    paths:
+      exclude:
+        - "*.test.js"
+        - "*.spec.js"
+    pattern: |
+      const $VAR = ...
+
+  - id: nested-ternary
+    message: Nested ternary operators reduce readability - use if-else
+    severity: WARNING
+    languages: [javascript]
+    paths:
+      include:
+        - "*.svelte"
+        - "*.js"
+    pattern-regex: '\?[^:]+\?[^:]+:'
+
+  - id: single-letter-variable
+    message: Avoid single-letter variable names except in short loops
+    severity: INFO
+    languages: [javascript]
+    patterns:
+      - pattern: |
+          const $VAR = ...
+      - metavariable-regex:
+          metavariable: $VAR
+          regex: '^[a-z]$'
+      - pattern-not-inside: |
+          for (...) { ... }
+
+  - id: inefficient-array-concat-in-loop
+    message: Using array concat in loop is inefficient - use push or spread
+    severity: INFO
+    languages: [javascript]
+    patterns:
+      - pattern: |
+          for (...) {
+            $ARR = $ARR.concat(...)
+          }
+
+  - id: repeated-dom-query-in-loop
+    message: DOM query in loop - cache the result outside loop
+    severity: WARNING
+    languages: [javascript]
+    patterns:
+      - pattern-either:
+          - pattern: |
+              for (...) {
+                ...
+                document.querySelector(...)
+                ...
+              }
+          - pattern: |
+              while (...) {
+                ...
+                document.querySelector(...)
+                ...
+              }
+
+paths:
+  exclude:
+    - node_modules
+    - dist
+    - build
+    - coverage
+    - "*.test.js"
+    - "*.spec.js"
+    - ".git"
+    - ".husky"

@@ -1,0 +1,306 @@
+rules:
+  # Code Complexity
+  - id: complex-function
+    message: Function has too many parameters (>5) - consider using options object
+    severity: INFO
+    languages: [javascript, typescript]
+    pattern-regex: 'function\s+\w+\s*\([^)]*,[^)]*,[^)]*,[^)]*,[^)]*,[^)]*\)'
+
+  - id: long-function-body
+    message: Function body appears very long - consider breaking into smaller functions
+    severity: INFO
+    languages: [javascript, typescript]
+    patterns:
+      - pattern: |
+          function $FUNC(...) {
+            ...
+          }
+      - metavariable-regex:
+          metavariable: $FUNC
+          regex: .{1000,}
+
+  # Dead Code
+  - id: unused-variable
+    message: Variable declared but never used
+    severity: INFO
+    languages: [javascript, typescript]
+    pattern: |
+      const $VAR = ...
+
+  - id: commented-out-code
+    message: Commented-out code should be removed
+    severity: INFO
+    languages: [javascript, typescript]
+    pattern-regex: '//\s*(const|let|var|function|if|for|while|return)'
+
+  # Code Duplication
+  - id: duplicate-string-literal
+    message: String literal appears multiple times - consider extracting to constant
+    severity: INFO
+    languages: [javascript, typescript]
+    pattern-regex: '["''][^"'']{20,}["'']'
+
+  # Poor Naming
+  - id: single-letter-variable
+    message: Avoid single-letter variable names except in short loops
+    severity: INFO
+    languages: [javascript, typescript]
+    patterns:
+      - pattern: |
+          const $VAR = ...
+      - metavariable-regex:
+          metavariable: $VAR
+          regex: '^[a-z]$'
+      - pattern-not-inside: |
+          for (...) { ... }
+
+  - id: unclear-boolean-name
+    message: Boolean variables should be named with is/has/should prefix
+    severity: INFO
+    languages: [javascript, typescript]
+    patterns:
+      - pattern-either:
+          - pattern: const $VAR = true
+          - pattern: const $VAR = false
+          - pattern: let $VAR = true
+          - pattern: let $VAR = false
+      - metavariable-regex:
+          metavariable: $VAR
+          regex: '^(?!(is|has|should|can|will|was|were)[A-Z]).*'
+
+  # Magic Numbers
+  - id: magic-number
+    message: Magic number detected - extract to named constant
+    severity: INFO
+    languages: [javascript, typescript]
+    patterns:
+      - pattern-regex: '\b[0-9]{3,}\b'
+      - pattern-not-inside: |
+          const $CONST = $NUM
+
+  # Anti-patterns
+  - id: nested-ternary
+    message: Nested ternary operators reduce readability - use if-else
+    severity: WARNING
+    languages: [javascript, typescript]
+    pattern-regex: '\?[^:]+\?[^:]+:'
+
+  - id: callback-hell
+    message: Deep callback nesting detected - consider using async/await
+    severity: WARNING
+    languages: [javascript, typescript]
+    pattern: |
+      $FUNC1(..., (...) => {
+        $FUNC2(..., (...) => {
+          $FUNC3(..., (...) => {
+            ...
+          })
+        })
+      })
+
+  - id: promise-constructor-antipattern
+    message: Unnecessary Promise constructor - function already returns Promise
+    severity: INFO
+    languages: [javascript, typescript]
+    pattern: |
+      new Promise((resolve, reject) => {
+        return $ASYNC_FUNC(...)
+      })
+
+  - id: async-without-await
+    message: async function contains no await - remove async keyword
+    severity: INFO
+    languages: [javascript, typescript]
+    patterns:
+      - pattern: |
+          async function $FUNC(...) {
+            ...
+          }
+      - pattern-not-inside: |
+          async function $FUNC(...) {
+            ...
+            await ...
+            ...
+          }
+
+  # Error Handling
+  - id: empty-catch-block
+    message: Empty catch block swallows errors - at least log the error
+    severity: WARNING
+    languages: [javascript, typescript]
+    pattern: |
+      try {
+        ...
+      } catch ($E) {
+      }
+
+  - id: catch-without-error-param
+    message: Catch block should have error parameter
+    severity: INFO
+    languages: [javascript, typescript]
+    pattern: |
+      try {
+        ...
+      } catch {
+        ...
+      }
+
+  - id: throwing-string
+    message: Throw Error objects instead of strings for better stack traces
+    severity: WARNING
+    languages: [javascript, typescript]
+    pattern: throw "..."
+
+  # Performance
+  - id: inefficient-array-concat
+    message: Using array concat in loop is inefficient - use push or spread
+    severity: INFO
+    languages: [javascript, typescript]
+    patterns:
+      - pattern: |
+          for (...) {
+            $ARR = $ARR.concat(...)
+          }
+
+  - id: unnecessary-array-from
+    message: Array.from() not needed here - use spread operator
+    severity: INFO
+    languages: [javascript, typescript]
+    pattern: Array.from([...])
+
+  - id: repeated-dom-query
+    message: DOM query in loop - cache the result outside loop
+    severity: WARNING
+    languages: [javascript, typescript]
+    patterns:
+      - pattern-either:
+          - pattern: |
+              for (...) {
+                ...
+                document.querySelector(...)
+                ...
+              }
+          - pattern: |
+              while (...) {
+                ...
+                document.querySelector(...)
+                ...
+              }
+
+  # React/Svelte Specific
+  - id: missing-key-prop
+    message: Missing key prop in list rendering
+    severity: WARNING
+    languages: [javascript, typescript]
+    patterns:
+      - pattern: |
+          $ITEMS.map(($ITEM) => <$COMPONENT .../>)
+      - pattern-not: |
+          $ITEMS.map(($ITEM) => <$COMPONENT key={...} .../>)
+
+  - id: direct-state-mutation
+    message: Direct state mutation detected - use immutable update
+    severity: ERROR
+    languages: [javascript, typescript]
+    patterns:
+      - pattern-either:
+          - pattern: $STATE.push(...)
+          - pattern: $STATE.pop()
+          - pattern: $STATE.splice(...)
+          - pattern: $STATE[$INDEX] = ...
+      - metavariable-regex:
+          metavariable: $STATE
+          regex: .*(state|State|store|Store).*
+
+  - id: useeffect-missing-deps
+    message: useEffect may be missing dependencies
+    severity: WARNING
+    languages: [javascript, typescript]
+    pattern: |
+      useEffect(() => {
+        ...
+        $VAR
+        ...
+      }, [])
+
+  # Code Organization
+  - id: mixed-concerns-in-component
+    message: Component mixing presentation and business logic - extract logic
+    severity: INFO
+    languages: [javascript, typescript]
+    patterns:
+      - pattern: |
+          function $COMPONENT(...) {
+            ...
+            const $CALC = ... // complex calculation
+            ...
+            return <.../>
+          }
+
+  - id: inline-style-object
+    message: Inline style objects in render cause re-creation - extract outside
+    severity: INFO
+    languages: [javascript, typescript]
+    pattern: |
+      <$TAG style={{ ... }} />
+
+  - id: function-in-jsx
+    message: Creating function in JSX causes re-creation - extract outside
+    severity: INFO
+    languages: [javascript, typescript]
+    patterns:
+      - pattern: |
+          <$TAG onClick={() => ...} />
+      - pattern: |
+          <$TAG onChange={() => ...} />
+
+  # Type Safety (PropTypes)
+  - id: missing-proptypes
+    message: Component missing PropTypes definition
+    severity: WARNING
+    languages: [javascript, typescript]
+    patterns:
+      - pattern: |
+          function $COMPONENT({ ...$PROPS }) {
+            ...
+            return <.../>
+          }
+      - pattern-not-inside: |
+          $COMPONENT.propTypes = { ... }
+
+  # Testing
+  - id: hardcoded-test-data
+    message: Test data hardcoded in test - use factory or fixture
+    severity: INFO
+    languages: [javascript, typescript]
+    pattern: |
+      it('...', () => {
+        const $DATA = { ... }
+        ...
+      })
+
+  - id: missing-assertion
+    message: Test has no assertions
+    severity: WARNING
+    languages: [javascript, typescript]
+    patterns:
+      - pattern: |
+          it('...', () => {
+            ...
+          })
+      - pattern-not-inside: |
+          it('...', () => {
+            ...
+            expect(...)
+            ...
+          })
+
+paths:
+  exclude:
+    - node_modules
+    - dist
+    - build
+    - coverage
+    - ".git"
+    - ".husky"
+    - "*.json"
