@@ -57,6 +57,13 @@
     }))
   )
 
+  // Helper function to get edge stroke color
+  function getEdgeStrokeColor(isSelected, connectionType) {
+    if (isSelected) return '#3b82f6'
+    if (connectionType === 'rework') return '#ef4444'
+    return '#6b7280'
+  }
+
   // Derive edges from store
   let edges = $derived(
     vsmDataStore.connections.map((conn) => {
@@ -69,7 +76,7 @@
         animated: conn.type === 'rework',
         selected: isSelected,
         style: {
-          stroke: isSelected ? '#3b82f6' : conn.type === 'rework' ? '#ef4444' : '#6b7280',
+          stroke: getEdgeStrokeColor(isSelected, conn.type),
           strokeWidth: isSelected ? 3 : 2,
           strokeDasharray: conn.type === 'rework' ? '5,5' : 'none',
         },

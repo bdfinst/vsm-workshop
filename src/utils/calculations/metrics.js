@@ -95,14 +95,14 @@ export function formatDuration(minutes) {
   if (minutes === 0) return '0m'
   if (minutes < 60) return `${minutes}m`
   if (minutes < MINUTES_PER_WORK_DAY) {
-    const h = Math.floor(minutes / 60)
-    const m = minutes % 60
-    return m > 0 ? `${h}h ${m}m` : `${h}h`
+    const hours = Math.floor(minutes / 60)
+    const mins = minutes % 60
+    return mins > 0 ? `${hours}h ${mins}m` : `${hours}h`
   }
-  const d = Math.floor(minutes / MINUTES_PER_WORK_DAY)
+  const days = Math.floor(minutes / MINUTES_PER_WORK_DAY)
   const remainingMinutes = minutes % MINUTES_PER_WORK_DAY
-  const h = Math.floor(remainingMinutes / 60)
-  return h > 0 ? `${d}d ${h}h` : `${d}d`
+  const hours = Math.floor(remainingMinutes / 60)
+  return hours > 0 ? `${days}d ${hours}h` : `${days}d`
 }
 
 // ==============================================================================

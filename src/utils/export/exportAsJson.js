@@ -6,9 +6,9 @@
 export function exportAsJson(jsonData, filename = 'vsm.json') {
   const blob = new Blob([jsonData], { type: 'application/json' })
   const url = URL.createObjectURL(blob)
-  const a = document.createElement('a')
-  a.href = url
-  a.download = filename
-  a.click()
+  const link = document.createElement('a')
+  link.href = url
+  link.download = filename
+  link.click()
   URL.revokeObjectURL(url)
 }

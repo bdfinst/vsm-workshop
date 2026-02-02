@@ -50,10 +50,10 @@ export async function exportAsPng(
 
   try {
     const dataUrl = await toPng(element, defaultOptions)
-    const a = document.createElement('a')
-    a.href = dataUrl
-    a.download = safeFilename
-    a.click()
+    const link = document.createElement('a')
+    link.href = dataUrl
+    link.download = safeFilename
+    link.click()
   } catch (err) {
     if (import.meta.env.DEV) {
       console.error('Failed to export PNG:', err)
