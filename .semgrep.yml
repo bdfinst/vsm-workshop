@@ -1,0 +1,220 @@
+rules:
+  - id: dangerous-eval-usage
+    message: Dangerous use of eval() function - can lead to code injection
+    severity: ERROR
+    languages: [javascript, typescript]
+    pattern: eval(...)
+
+  - id: dangerous-function-constructor
+    message: Dangerous use of Function() constructor - can lead to code injection
+    severity: ERROR
+    languages: [javascript, typescript]
+    pattern: new Function(...)
+
+  - id: dangerous-innerhtml
+    message: Direct use of innerHTML can lead to XSS vulnerabilities
+    severity: WARNING
+    languages: [javascript, typescript]
+    patterns:
+      - pattern: $EL.innerHTML = $VAR
+      - pattern-not: $EL.innerHTML = "..."
+
+  - id: insecure-random
+    message: Math.random() is not cryptographically secure - use crypto.randomUUID() or crypto.getRandomValues()
+    severity: WARNING
+    languages: [javascript, typescript]
+    patterns:
+      - pattern: Math.random()
+      - pattern-not-inside: |
+          function $FUNC(..., randomFn = Math.random, ...) {
+            ...
+          }
+      - pattern-not-inside: |
+          function $FUNC(...) {
+            ...
+            randomFn()
+            ...
+          }
+
+  - id: console-log-production
+    message: console.log() should not be used in production code
+    severity: INFO
+    languages: [javascript, typescript]
+    patterns:
+      - pattern-either:
+          - pattern: console.log(...)
+          - pattern: console.debug(...)
+          - pattern: console.info(...)
+      - pattern-not-inside: |
+          if (import.meta.env.DEV) {
+            ...
+          }
+      - pattern-not-inside: |
+          if (process.env.NODE_ENV === 'development') {
+            ...
+          }
+
+  - id: localstorage-without-try-catch
+    message: localStorage access should be wrapped in try-catch for error handling
+    severity: WARNING
+    languages: [javascript, typescript]
+    patterns:
+      - pattern-either:
+          - pattern: localStorage.getItem(...)
+          - pattern: localStorage.setItem(...)
+          - pattern: localStorage.removeItem(...)
+      - pattern-not-inside: |
+          try {
+            ...
+          } catch (...) {
+            ...
+          }
+
+  - id: json-parse-without-validation
+    message: JSON.parse() should validate data structure before use
+    severity: INFO
+    languages: [javascript, typescript]
+    pattern: JSON.parse($VAR)
+
+  - id: unsafe-dynamic-import
+    message: Dynamic imports with user input can be dangerous
+    severity: WARNING
+    languages: [javascript, typescript]
+    pattern: import($USER_INPUT)
+
+  - id: prototype-pollution
+    message: Direct assignment to __proto__ can cause prototype pollution
+    severity: ERROR
+    languages: [javascript, typescript]
+    patterns:
+      - pattern-either:
+          - pattern: $OBJ.__proto__ = ...
+          - pattern: $OBJ["__proto__"] = ...
+          - pattern: $OBJ.constructor.prototype = ...
+
+  - id: regex-dos
+    message: Complex regex patterns can cause ReDoS attacks
+    severity: WARNING
+    languages: [javascript, typescript]
+    patterns:
+      - pattern-regex: /\([^)]*\)\+/
+      - pattern-regex: /\([^)]*\)\*/
+
+  - id: unescaped-user-input-in-url
+    message: User input in URLs should be properly encoded
+    severity: WARNING
+    languages: [javascript, typescript]
+    patterns:
+      - pattern: window.location = $USER_INPUT
+      - pattern: window.location.href = $USER_INPUT
+
+  - id: weak-crypto-algorithm
+    message: MD5 and SHA1 are weak - use SHA-256 or better
+    severity: WARNING
+    languages: [javascript, typescript]
+    pattern-either:
+      - pattern: crypto.createHash('md5')
+      - pattern: crypto.createHash('sha1')
+
+  - id: hardcoded-secrets
+    message: Potential hardcoded secret or API key detected
+    severity: ERROR
+    languages: [javascript, typescript]
+    patterns:
+      - pattern-regex: (password|secret|api[_-]?key|token|auth)\s*[:=]\s*['"][^'"]{20,}['"]
+      - pattern-not-regex: (test|example|demo|placeholder)
+
+  - id: fetch-without-error-handling
+    message: fetch() calls should have error handling
+    severity: INFO
+    languages: [javascript, typescript]
+    patterns:
+      - pattern: |
+          fetch(...)
+      - pattern-not-inside: |
+          try {
+            ...
+          } catch (...) {
+            ...
+          }
+      - pattern-not-inside: |
+          fetch(...).catch(...)
+
+  - id: unsafe-object-assign
+    message: Object.assign() with user data can cause prototype pollution
+    severity: WARNING
+    languages: [javascript, typescript]
+    pattern: Object.assign($TARGET, $USER_INPUT)
+
+  - id: dangerous-dangerously-set-inner-html
+    message: dangerouslySetInnerHTML can lead to XSS - ensure content is sanitized
+    severity: WARNING
+    languages: [javascript, typescript]
+    pattern: dangerouslySetInnerHTML
+
+  - id: unvalidated-redirect
+    message: Redirects with user input can lead to open redirect vulnerabilities
+    severity: WARNING
+    languages: [javascript, typescript]
+    patterns:
+      - pattern-either:
+          - pattern: window.location = $USER_INPUT
+          - pattern: window.location.href = $USER_INPUT
+          - pattern: window.open($USER_INPUT)
+
+  - id: sql-injection-risk
+    message: Potential SQL injection - use parameterized queries
+    severity: ERROR
+    languages: [javascript, typescript]
+    patterns:
+      - pattern: $DB.query($SQL + $VAR)
+      - pattern: $DB.execute($SQL + $VAR)
+      - metavariable-regex:
+          metavariable: $VAR
+          regex: .*(SELECT|INSERT|UPDATE|DELETE|DROP|CREATE).*
+
+  - id: path-traversal
+    message: Potential path traversal vulnerability
+    severity: ERROR
+    languages: [javascript, typescript]
+    patterns:
+      - pattern-either:
+          - pattern: fs.readFile($PATH + $USER_INPUT, ...)
+          - pattern: fs.writeFile($PATH + $USER_INPUT, ...)
+          - pattern: path.join($PATH, $USER_INPUT)
+      - metavariable-regex:
+          metavariable: $USER_INPUT
+          regex: .*\.\./.*
+
+  - id: xxe-vulnerability
+    message: XML parsing without disabling external entities can lead to XXE
+    severity: ERROR
+    languages: [javascript, typescript]
+    pattern: |
+      new DOMParser().parseFromString($XML, 'text/xml')
+
+  - id: timing-attack-comparison
+    message: Use crypto.timingSafeEqual() for security-sensitive comparisons
+    severity: WARNING
+    languages: [javascript, typescript]
+    patterns:
+      - pattern-either:
+          - pattern: $SECRET === $INPUT
+          - pattern: $SECRET == $INPUT
+      - metavariable-regex:
+          metavariable: $SECRET
+          regex: .*(secret|password|token|key).*
+
+# Paths to exclude from scanning
+paths:
+  exclude:
+    - node_modules
+    - dist
+    - build
+    - coverage
+    - "*.test.js"
+    - "*.test.jsx"
+    - "*.spec.js"
+    - "*.spec.jsx"
+    - ".git"
+    - ".husky"

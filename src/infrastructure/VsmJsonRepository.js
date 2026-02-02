@@ -34,6 +34,19 @@ export function serializeVsm(vsm) {
 export function deserializeVsm(jsonString) {
   const data = JSON.parse(jsonString)
 
+  // Validate structure
+  if (!data || typeof data !== 'object') {
+    throw new Error('Invalid VSM data: not an object')
+  }
+
+  if (data.steps && !Array.isArray(data.steps)) {
+    throw new Error('Invalid VSM data: steps must be an array')
+  }
+
+  if (data.connections && !Array.isArray(data.connections)) {
+    throw new Error('Invalid VSM data: connections must be an array')
+  }
+
   return {
     id: data.id || crypto.randomUUID(),
     name: data.name || 'Imported Map',

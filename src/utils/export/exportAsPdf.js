@@ -4,6 +4,31 @@ import { jsPDF } from 'jspdf'
 const PDF_ORIENTATION = 'landscape'
 
 /**
+ * Sanitize filename for safe download
+ * @param {string} filename - Original filename
+ * @returns {string} Sanitized filename
+ */
+function sanitizeFilename(filename) {
+  if (!filename || typeof filename !== 'string') {
+    return 'download.pdf'
+  }
+
+  // Remove or replace unsafe characters
+  const sanitized = filename
+    .replace(/[^a-z0-9.-]/gi, '_')
+    .replace(/^\.+/, '') // Remove leading dots
+    .replace(/\.+$/, '') // Remove trailing dots
+    .substring(0, 255) // Limit length
+
+  // Ensure it has .pdf extension
+  if (!sanitized.endsWith('.pdf')) {
+    return sanitized.replace(/\.[^.]*$/, '') + '.pdf'
+  }
+
+  return sanitized || 'download.pdf'
+}
+
+/**
  * Export canvas element as PDF file
  * @param {HTMLElement} element - DOM element to capture
  * @param {string} filename - Name for the downloaded file
@@ -19,6 +44,7 @@ export async function exportAsPdf(
     throw new Error('Element not found')
   }
 
+  const safeFilename = sanitizeFilename(filename)
   const defaultOptions = {
     backgroundColor: '#f3f4f6',
     quality: 1,
@@ -35,9 +61,11 @@ export async function exportAsPdf(
     const pdfWidth = pdf.internal.pageSize.getWidth()
     const pdfHeight = (imgProps.height * pdfWidth) / imgProps.width
     pdf.addImage(dataUrl, 'PNG', 0, 0, pdfWidth, pdfHeight)
-    pdf.save(filename)
+    pdf.save(safeFilename)
   } catch (err) {
-    console.error('Failed to export PDF:', err)
-    throw err
+    if (import.meta.env.DEV) {
+      console.error('Failed to export PDF:', err)
+    }
+    throw new Error('Failed to export PDF')
   }
 }

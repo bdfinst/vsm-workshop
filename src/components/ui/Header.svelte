@@ -39,7 +39,9 @@
     try {
       await exportAsPng(canvas, `${vsmDataStore.name || 'vsm'}.png`)
     } catch (err) {
-      console.error('Failed to export PNG:', err)
+      if (import.meta.env.DEV) {
+        console.error('Failed to export PNG:', err)
+      }
     }
   }
 
@@ -50,7 +52,9 @@
     try {
       await exportAsPdf(canvas, `${vsmDataStore.name || 'vsm'}.pdf`)
     } catch (err) {
-      console.error('Failed to export PDF:', err)
+      if (import.meta.env.DEV) {
+        console.error('Failed to export PDF:', err)
+      }
     }
   }
 

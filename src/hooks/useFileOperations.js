@@ -22,7 +22,9 @@ function useFileOperations() {
     try {
       await exportAsPng(canvas, `${name || 'vsm'}.png`)
     } catch (err) {
-      console.error('Failed to export PNG:', err)
+      if (import.meta.env.DEV) {
+        console.error('Failed to export PNG:', err)
+      }
     }
   }, [name])
 
@@ -33,7 +35,9 @@ function useFileOperations() {
     try {
       await exportAsPdf(canvas, `${name || 'vsm'}.pdf`)
     } catch (err) {
-      console.error('Failed to export PDF:', err)
+      if (import.meta.env.DEV) {
+        console.error('Failed to export PDF:', err)
+      }
     }
   }, [name])
 

@@ -32,16 +32,60 @@ export function getPersistedValue(key, initialValue) {
   try {
     const stored = localStorage.getItem(key)
     if (stored !== null) {
-      return JSON.parse(stored)
+      const parsed = JSON.parse(stored)
+
+      // Validate VSM data structure
+      if (key === 'vsm-data-storage') {
+        // Import validation only when needed
+        if (typeof window !== 'undefined') {
+          return validateAndSanitizeVSMData(parsed)
+        }
+      }
+
+      return parsed
     }
   } catch (e) {
     // Silent fail in test environment
-    if (typeof process === 'undefined' || process.env?.NODE_ENV !== 'test') {
+    if (
+      import.meta.env.DEV &&
+      typeof process === 'undefined' ||
+      process.env?.NODE_ENV !== 'test'
+    ) {
       console.warn(`Failed to read ${key} from localStorage:`, e)
     }
   }
 
   return initialValue
+}
+
+/**
+ * Validate and sanitize VSM data
+ * @param {*} data - Data to validate
+ * @returns {Object} Sanitized data
+ */
+function validateAndSanitizeVSMData(data) {
+  if (!data || typeof data !== 'object') {
+    return {
+      id: null,
+      name: '',
+      description: '',
+      steps: [],
+      connections: [],
+      createdAt: null,
+      updatedAt: null,
+    }
+  }
+
+  // Ensure required structure with safe defaults
+  return {
+    id: data.id || null,
+    name: data.name || '',
+    description: data.description || '',
+    steps: Array.isArray(data.steps) ? data.steps : [],
+    connections: Array.isArray(data.connections) ? data.connections : [],
+    createdAt: data.createdAt || null,
+    updatedAt: data.updatedAt || null,
+  }
 }
 
 /**
@@ -59,7 +103,11 @@ export function persistValue(key, value) {
     localStorage.setItem(key, JSON.stringify(value))
   } catch (e) {
     // Silent fail in test environment
-    if (typeof process === 'undefined' || process.env?.NODE_ENV !== 'test') {
+    if (
+      import.meta.env.DEV &&
+      typeof process === 'undefined' ||
+      process.env?.NODE_ENV !== 'test'
+    ) {
       console.warn(`Failed to write ${key} to localStorage:`, e)
     }
   }
@@ -79,7 +127,11 @@ export function clearPersistedValue(key) {
     localStorage.removeItem(key)
   } catch (e) {
     // Silent fail in test environment
-    if (typeof process === 'undefined' || process.env?.NODE_ENV !== 'test') {
+    if (
+      import.meta.env.DEV &&
+      typeof process === 'undefined' ||
+      process.env?.NODE_ENV !== 'test'
+    ) {
       console.warn(`Failed to remove ${key} from localStorage:`, e)
     }
   }
