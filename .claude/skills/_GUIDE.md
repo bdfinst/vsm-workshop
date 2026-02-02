@@ -24,8 +24,11 @@ What do you want to do?
 ├─ Add a new VSM step type
 │  └─> Use: /new-process-step or skills/new-process-step.md
 │
-└─ Run or debug simulation
-   └─> Use: /run-simulation or skills/run-simulation.md
+├─ Run or debug simulation
+│  └─> Use: /run-simulation or skills/run-simulation.md
+│
+└─ Analyze code for security/quality issues
+   └─> Use: /semgrep-analyze or skills/semgrep-analyze.md
 ```
 
 ---
@@ -183,6 +186,32 @@ What do you want to do?
 
 ---
 
+### 7. semgrep-analyze
+
+**When to use:**
+- Analyzing code for security vulnerabilities
+- Finding code quality issues
+- Auditing codebase before release
+- Planning fixes for identified problems
+
+**What it does:**
+1. Checks/installs Semgrep
+2. Runs analysis with appropriate rules
+3. Documents all findings
+4. Creates prioritized fix plan
+5. Provides code fixes for each issue
+
+**Prerequisites:**
+- Python/pip available for installation
+- Understanding of security concepts (helpful)
+
+**Example tasks:**
+- "Analyze code for security issues"
+- "Run OWASP Top 10 audit"
+- "Find and fix code quality problems"
+
+---
+
 ## 🗺️ Task-Based Selection
 
 ### "I want to add..."
@@ -203,6 +232,7 @@ What do you want to do?
 | Build a form | **new-component** |
 | Show a new metric | **add-metric** |
 | Test work flow | **run-simulation** |
+| Analyze code security | **semgrep-analyze** |
 
 ### "How do I..."
 
@@ -213,6 +243,7 @@ What do you want to do?
 | Build UI | **new-component** |
 | Visualize a metric | **add-metric** + **new-component** |
 | Test scenarios | **run-simulation** |
+| Find security issues | **semgrep-analyze** |
 
 ---
 
@@ -248,6 +279,7 @@ All skill files are in `.claude/skills/`:
 - `add-metric.md` - Metric addition workflow
 - `new-process-step.md` - Process step addition workflow
 - `run-simulation.md` - Simulation running workflow
+- `semgrep-analyze.md` - Security and code quality analysis
 
 ---
 
