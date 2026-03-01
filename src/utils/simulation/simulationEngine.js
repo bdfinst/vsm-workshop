@@ -364,7 +364,7 @@ export function shouldRework(step, connections, randomFn = Math.random) {
  */
 export function detectBottlenecks(steps, queueSizesByStepId, threshold = BOTTLENECK_QUEUE_THRESHOLD) {
   return steps
-    .filter((step) => (queueSizesByStepId[step.id] || 0) > threshold)
+    .filter((step) => (queueSizesByStepId[step.id] || 0) >= threshold)
     .map((step) => step.id)
 }
 
@@ -408,7 +408,7 @@ export function calculateResults(state, steps) {
   })
 
   const bottlenecks = Object.entries(peakQueues)
-    .filter(([, peak]) => peak > BOTTLENECK_QUEUE_THRESHOLD)
+    .filter(([, peak]) => peak >= BOTTLENECK_QUEUE_THRESHOLD)
     .map(([stepId, peakQueueSize]) => ({
       stepId,
       peakQueueSize,
