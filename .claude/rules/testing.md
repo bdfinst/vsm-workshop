@@ -138,32 +138,46 @@ describe('calculateMetrics', () => {
 
 ## Integration Tests
 
-Integration tests verify component interactions and store behavior.
+Integration tests verify component interactions and store behavior. This project uses Svelte 5 with Playwright for E2E integration testing rather than component-level rendering libraries.
+
+### E2E Integration Pattern (Playwright)
 
 ```javascript
-import { render, screen, fireEvent } from '@testing-library/react';
-import userEvent from '@testing-library/user-event';
-import { describe, it, expect, vi } from 'vitest';
+import { test, expect } from '@playwright/test'
 
-describe('StepEditor integration', () => {
-  it('updates store when user saves step', async () => {
-    const user = userEvent.setup();
-    const mockUpdate = vi.fn();
+test.describe('StepEditor integration', () => {
+  test('updates store when user saves step', async ({ page }) => {
+    await page.goto('/')
+    await page.getByTestId('new-map-name-input').fill('Test Map')
+    await page.getByTestId('create-map-button').click()
 
-    render(<StepEditor step={mockStep} onUpdate={mockUpdate} />);
+    // Add a step
+    await page.getByRole('button', { name: 'Add Step' }).click()
+    await page.getByTestId('step-name-input').fill('Development')
+    await page.getByTestId('process-time-input').fill('60')
+    await page.getByTestId('lead-time-input').fill('240')
+    await page.getByRole('button', { name: 'Save' }).click()
 
-    const input = screen.getByTestId('step-name-input');
-    await user.clear(input);
-    await user.type(input, 'New Name');
+    // Verify step appears in canvas
+    await expect(page.locator('.vsm-node')).toBeVisible()
+  })
+})
+```
 
-    const saveButton = screen.getByRole('button', { name: /save/i });
-    await user.click(saveButton);
+### Unit Testing Store Logic
 
-    expect(mockUpdate).toHaveBeenCalledWith(
-      expect.objectContaining({ name: 'New Name' })
-    );
-  });
-});
+```javascript
+import { describe, it, expect } from 'vitest'
+
+describe('vsmDataStore actions', () => {
+  it('adds step and updates state', () => {
+    const store = createVsmDataStore()
+    store.addStep({ id: '1', name: 'Test', processTime: 60 })
+
+    expect(store.steps).toHaveLength(1)
+    expect(store.steps[0].name).toBe('Test')
+  })
+})
 ```
 
 ## Simulation Testing

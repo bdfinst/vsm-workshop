@@ -11,9 +11,9 @@ This directory contains development rules and guidelines for the VSM Workshop pr
    - Must run: `pnpm test && pnpm build && pnpm lint`
    - Pre-commit checklist
 
-2. **[javascript-react.md](rules/javascript-react.md)** - **CRITICAL**
+2. **[javascript-svelte.md](rules/javascript-svelte.md)** - **CRITICAL**
    - Functional programming style (NO classes)
-   - React component patterns
+   - Svelte 5 component patterns
    - Code formatting standards
    - Factory function patterns
 

@@ -1,8 +1,7 @@
 import {
   initSimulation,
   generateWorkItems,
-  processTick,
-  calculateResults,
+  runSimulationToCompletion,
 } from './simulationEngine'
 
 /**
@@ -22,41 +21,26 @@ const calculatePercentageChange = (baseline, scenario, direction) => {
 }
 
 /**
- * Run a simulation to completion
- * @param {Array} steps - Process steps
- * @param {Array} connections - Step connections
- * @param {number} workItemCount - Number of work items to process
- * @param {number} maxTicks - Maximum number of ticks before timeout
- * @returns {Object} Simulation results
- */
-const runSimulationToCompletion = (
-  steps,
-  connections,
-  workItemCount,
-  maxTicks = 10000
-) => {
-  const initialState = initSimulation(steps, connections, {
-    workItemCount,
-  })
-  initialState.workItems = generateWorkItems(workItemCount, steps[0]?.id)
-  initialState.isRunning = true
-
-  let state = initialState
-  let ticks = 0
-
-  while (state.completedCount < workItemCount && ticks < maxTicks) {
-    state = processTick(state, steps, connections)
-    ticks++
-  }
-
-  return calculateResults(state, steps)
-}
-
-/**
  * ComparisonEngine handles scenario comparison logic
  * Separates concerns: baseline run, scenario run, and comparison calculation
  */
 export const createComparisonEngine = (workItemCount) => {
+  /**
+   * Run a simulation to completion with given parameters
+   * @param {Array} steps - Process steps
+   * @param {Array} connections - Step connections
+   * @returns {Object} Simulation results
+   */
+  const runSimulation = (steps, connections) => {
+    const initialState = initSimulation(steps, connections, { workItemCount })
+    const stateWithItems = {
+      ...initialState,
+      workItems: generateWorkItems(workItemCount, steps[0]?.id),
+    }
+    const finalState = runSimulationToCompletion(stateWithItems, steps, connections)
+    return finalState.results
+  }
+
   /**
    * Run baseline simulation with current VSM configuration
    * @param {Array} steps - Baseline process steps
@@ -64,7 +48,7 @@ export const createComparisonEngine = (workItemCount) => {
    * @returns {Object} Simulation results
    */
   const runBaseline = (steps, connections) => {
-    return runSimulationToCompletion(steps, connections, workItemCount)
+    return runSimulation(steps, connections)
   }
 
   /**
@@ -74,7 +58,7 @@ export const createComparisonEngine = (workItemCount) => {
    * @returns {Object} Simulation results
    */
   const runScenario = (steps, connections) => {
-    return runSimulationToCompletion(steps, connections, workItemCount)
+    return runSimulation(steps, connections)
   }
 
   /**

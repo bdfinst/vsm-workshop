@@ -97,7 +97,8 @@ describe('simulationEngine', () => {
 
       const newState = processTick(state, mockSteps, mockConnections)
 
-      expect(newState.workItems[0].progress).toBeGreaterThan(0)
+      // speed=1.0, tickDuration=1.0, progress = 1.0 * 10 = 10
+      expect(newState.workItems[0].progress).toBe(10)
     })
 
     it('updates queue sizes when work items transition between steps', () => {
@@ -110,7 +111,7 @@ describe('simulationEngine', () => {
 
       const newState = processTick(state, mockSteps, mockConnections)
 
-      expect(newState.queueSizesByStepId[mockSteps[1].id]).toBeGreaterThan(initialQueueSize)
+      expect(newState.queueSizesByStepId[mockSteps[1].id]).toBe(initialQueueSize + 1)
     })
 
     it('does not advance when simulation is paused', () => {
@@ -174,8 +175,9 @@ describe('simulationEngine', () => {
 
       const newState = processTick(state, mockSteps, mockConnections)
 
-      // At 2x speed, progress should advance faster
-      expect(newState.elapsedTime).toBe(0.5) // 1/speed
+      // At 2x speed: tickDuration = 1/2 = 0.5, progress = 0.5 * 10 = 5
+      expect(newState.elapsedTime).toBe(0.5)
+      expect(newState.workItems[0].progress).toBe(5)
     })
 
     it('records queue history each tick', () => {
@@ -232,25 +234,19 @@ describe('simulationEngine', () => {
       expect(reworkCount).toBe(0)
     })
 
-    it('returns true based on %C&A probability', () => {
+    it('returns true when random value is below rework probability', () => {
       const step = { ...mockSteps[0], percentCompleteAccurate: 50 }
       const connectionsWithRework = [
         { id: 'rework-1', source: 'step-1', target: 'step-1', type: 'rework', reworkRate: 100 },
       ]
 
-      // Run shouldRework multiple times and verify the percentage matches expected probability
-      const iterations = 1000
-      let reworkCount = 0
-      for (let i = 0; i < iterations; i++) {
-        if (shouldRework(step, connectionsWithRework)) {
-          reworkCount++
-        }
-      }
-
-      const reworkPercentage = (reworkCount / iterations) * 100
-      // With 50% C&A, expect ~50% rework rate (allow ±5% margin for randomness)
-      expect(reworkPercentage).toBeGreaterThan(45)
-      expect(reworkPercentage).toBeLessThan(55)
+      // With 50% C&A, rework probability is 0.5
+      // Random value 0.49 < 0.5 → should rework
+      expect(shouldRework(step, connectionsWithRework, () => 0.49)).toBe(true)
+      // Random value 0.51 >= 0.5 → should not rework
+      expect(shouldRework(step, connectionsWithRework, () => 0.51)).toBe(false)
+      // Boundary: random value exactly 0.5 → should not rework (< not <=)
+      expect(shouldRework(step, connectionsWithRework, () => 0.5)).toBe(false)
     })
 
     it('returns false when no rework connection exists', () => {
@@ -304,13 +300,13 @@ describe('simulationEngine', () => {
     it('uses default threshold when not provided', () => {
       const queueSizesByStepId = {
         'step-1': 2,
-        'step-2': 4,
+        'step-2': 7,
         'step-3': 1,
       }
 
       const bottlenecks = detectBottlenecks(mockSteps, queueSizesByStepId)
 
-      // Default threshold is 3
+      // Default threshold is BOTTLENECK_QUEUE_THRESHOLD (5)
       expect(bottlenecks).toContain('step-2')
     })
   })
@@ -364,16 +360,16 @@ describe('simulationEngine', () => {
 
       const results = calculateResults(state, mockSteps)
 
-      // Should identify step-2 as bottleneck (peak 10 > threshold 3)
+      // Should identify step-2 as bottleneck (peak 10 > threshold 5)
       expect(results.bottlenecks).toHaveLength(1)
       expect(results.bottlenecks[0].stepId).toBe('step-2')
       expect(results.bottlenecks[0].peakQueueSize).toBe(10)
       expect(results.bottlenecks[0].stepName).toBe('Step 2')
 
-      // Should not identify step-1 (peak 2 < threshold 3)
+      // Should not identify step-1 (peak 2 < threshold 5)
       expect(results.bottlenecks.find(b => b.stepId === 'step-1')).toBeUndefined()
 
-      // Should not identify step-3 (peak 1 < threshold 3)
+      // Should not identify step-3 (peak 1 < threshold 5)
       expect(results.bottlenecks.find(b => b.stepId === 'step-3')).toBeUndefined()
     })
 

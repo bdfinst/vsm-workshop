@@ -2,7 +2,7 @@ import { processTick, calculateResults } from './simulationEngine'
 
 /**
  * Independent animation loop manager for VSM simulation
- * Decoupled from React lifecycle for better testability and control
+ * Decoupled from UI lifecycle for better testability and control
  */
 export const createSimulationRunner = () => {
   let animationFrameId = null
@@ -56,15 +56,21 @@ export const createSimulationRunner = () => {
   /**
    * Start the animation loop
    * @param {Object} initialState - Initial simulation state
-   * @param {Array} stepsParam - VSM steps
-   * @param {Array} connectionsParam - VSM connections
-   * @param {Object} callbacksParam - { onTick, onComplete }
+   * @param {Array} newSteps - VSM steps
+   * @param {Array} newConnections - VSM connections
+   * @param {Object} newCallbacks - { onTick, onComplete }
    */
-  const start = (initialState, stepsParam, connectionsParam, callbacksParam) => {
+  const start = (initialState, newSteps, newConnections, newCallbacks) => {
+    // Cancel any existing animation loop before starting a new one
+    if (animationFrameId) {
+      cancelAnimationFrame(animationFrameId)
+      animationFrameId = null
+    }
+
     stateRef = initialState
-    steps = stepsParam
-    connections = connectionsParam
-    callbacks = callbacksParam
+    steps = newSteps
+    connections = newConnections
+    callbacks = newCallbacks
     isRunning = true
     isPaused = false
 
@@ -82,6 +88,11 @@ export const createSimulationRunner = () => {
    * Resume the animation loop
    */
   const resume = () => {
+    // Cancel any pending frame to prevent duplicate loops
+    if (animationFrameId) {
+      cancelAnimationFrame(animationFrameId)
+      animationFrameId = null
+    }
     isPaused = false
     animate()
   }

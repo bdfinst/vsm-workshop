@@ -111,7 +111,7 @@ src/
 │   ├── metrics/    # Metrics dashboard
 │   └── ui/         # Shared UI components
 ├── hooks/          # Custom React hooks (useX)
-├── stores/         # Zustand stores
+├── stores/         # Svelte 5 rune stores (*.svelte.js)
 ├── utils/          # Utility functions
 │   ├── calculations/ # Metrics calculations
 │   ├── simulation/   # Simulation logic
@@ -132,33 +132,22 @@ features/
 
 ## 🎨 Code Style Cheat Sheet
 
-### React Components
+### Svelte Components
 
-```javascript
-import { useState } from 'react'
-import PropTypes from 'prop-types'
+```svelte
+<script>
+  let { title, onclick } = $props()
+  let count = $state(0)
 
-function MyComponent({ title, onClick }) {
-  const [count, setCount] = useState(0)
-
-  const handleClick = () => {
-    setCount(count + 1)
-    onClick(count)
+  function handleClick() {
+    count++
+    onclick(count)
   }
+</script>
 
-  return (
-    <button onClick={handleClick} data-testid="my-button">
-      {title}: {count}
-    </button>
-  )
-}
-
-MyComponent.propTypes = {
-  title: PropTypes.string.isRequired,
-  onClick: PropTypes.func.isRequired,
-}
-
-export default MyComponent
+<button onclick={handleClick} data-testid="my-button">
+  {title}: {count}
+</button>
 ```
 
 ### Factory Functions
@@ -175,23 +164,20 @@ export const createStep = ({ name, processTime, leadTime }) => ({
 })
 ```
 
-### Zustand Stores
+### Svelte 5 Rune Stores
 
 ```javascript
-import { create } from 'zustand'
+// src/stores/myStore.svelte.js
+function createMyStore() {
+  let items = $state([])
 
-export const useMyStore = create((set, get) => ({
-  // State
-  items: [],
-
-  // Actions
-  addItem: (item) => set((state) => ({
-    items: [...state.items, item]
-  })),
-
-  // Selectors
-  getItemById: (id) => get().items.find(i => i.id === id),
-}))
+  return {
+    get items() { return items },
+    addItem(item) { items = [...items, item] },
+    getItemById(id) { return items.find(i => i.id === id) },
+  }
+}
+export const myStore = createMyStore()
 ```
 
 ---
@@ -225,7 +211,7 @@ export const useMyStore = create((set, get) => ({
 
 Read these before coding:
 
-1. [rules/javascript-react.md](rules/javascript-react.md) - Code style
+1. [rules/javascript-svelte.md](rules/javascript-svelte.md) - Code style
 2. [rules/atdd-workflow.md](rules/atdd-workflow.md) - TDD process
 3. [rules/quality-verification.md](rules/quality-verification.md) - Quality gates
 
@@ -296,14 +282,14 @@ pnpm preview          # Preview production build
 ## 🎓 Next Steps
 
 1. **Read the core rules**
-   - [javascript-react.md](rules/javascript-react.md)
+   - [javascript-svelte.md](rules/javascript-svelte.md)
    - [atdd-workflow.md](rules/atdd-workflow.md)
    - [quality-verification.md](rules/quality-verification.md)
 
 2. **Explore code examples**
    - [examples/factory-functions.md](examples/factory-functions.md)
-   - [examples/react-components.md](examples/react-components.md)
-   - [examples/zustand-stores.md](examples/zustand-stores.md)
+   - [examples/svelte-components.md](examples/svelte-components.md)
+   - [examples/svelte-stores.md](examples/svelte-stores.md)
 
 3. **Pick a task and follow a skill guide**
    - [skills/_GUIDE.md](skills/_GUIDE.md) - Find the right skill

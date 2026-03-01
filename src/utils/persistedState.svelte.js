@@ -22,9 +22,10 @@ function isLocalStorageAvailable() {
  *
  * @param {string} key - localStorage key
  * @param {*} initialValue - Default value if nothing stored
+ * @param {Function} [sanitize] - Optional sanitizer function for loaded data
  * @returns {*} - The reactive state value (read from localStorage or initial)
  */
-export function getPersistedValue(key, initialValue) {
+export function getPersistedValue(key, initialValue, sanitize) {
   if (!isLocalStorageAvailable()) {
     return initialValue
   }
@@ -34,12 +35,8 @@ export function getPersistedValue(key, initialValue) {
     if (stored !== null) {
       const parsed = JSON.parse(stored)
 
-      // Validate VSM data structure
-      if (key === 'vsm-data-storage') {
-        // Import validation only when needed
-        if (typeof window !== 'undefined') {
-          return validateAndSanitizeVSMData(parsed)
-        }
+      if (sanitize) {
+        return sanitize(parsed)
       }
 
       return parsed
@@ -48,44 +45,13 @@ export function getPersistedValue(key, initialValue) {
     // Silent fail in test environment
     if (
       import.meta.env.DEV &&
-      typeof process === 'undefined' ||
-      process.env?.NODE_ENV !== 'test'
+      (typeof process === 'undefined' || process.env?.NODE_ENV !== 'test')
     ) {
       console.warn(`Failed to read ${key} from localStorage:`, e)
     }
   }
 
   return initialValue
-}
-
-/**
- * Validate and sanitize VSM data
- * @param {*} data - Data to validate
- * @returns {Object} Sanitized data
- */
-function validateAndSanitizeVSMData(data) {
-  if (!data || typeof data !== 'object') {
-    return {
-      id: null,
-      name: '',
-      description: '',
-      steps: [],
-      connections: [],
-      createdAt: null,
-      updatedAt: null,
-    }
-  }
-
-  // Ensure required structure with safe defaults
-  return {
-    id: data.id || null,
-    name: data.name || '',
-    description: data.description || '',
-    steps: Array.isArray(data.steps) ? data.steps : [],
-    connections: Array.isArray(data.connections) ? data.connections : [],
-    createdAt: data.createdAt || null,
-    updatedAt: data.updatedAt || null,
-  }
 }
 
 /**
@@ -105,8 +71,7 @@ export function persistValue(key, value) {
     // Silent fail in test environment
     if (
       import.meta.env.DEV &&
-      typeof process === 'undefined' ||
-      process.env?.NODE_ENV !== 'test'
+      (typeof process === 'undefined' || process.env?.NODE_ENV !== 'test')
     ) {
       console.warn(`Failed to write ${key} to localStorage:`, e)
     }
@@ -129,8 +94,7 @@ export function clearPersistedValue(key) {
     // Silent fail in test environment
     if (
       import.meta.env.DEV &&
-      typeof process === 'undefined' ||
-      process.env?.NODE_ENV !== 'test'
+      (typeof process === 'undefined' || process.env?.NODE_ENV !== 'test')
     ) {
       console.warn(`Failed to remove ${key} from localStorage:`, e)
     }

@@ -289,7 +289,7 @@ All skills are in `.claude/skills/<skill-name>/SKILL.md`:
 
 1. **Read first:**
    - [QUICK_START.md](../QUICK_START.md)
-   - [rules/javascript-react.md](../rules/javascript-react.md)
+   - [rules/javascript-svelte.md](../rules/javascript-svelte.md)
    - [rules/atdd-workflow.md](../rules/atdd-workflow.md)
 
 2. **Practice with:**

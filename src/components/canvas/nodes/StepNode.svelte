@@ -2,14 +2,13 @@
   import { Handle, Position } from '@xyflow/svelte'
   import { STEP_TYPE_CONFIG } from '../../../data/stepTypes.js'
   import { formatDuration } from '../../../utils/calculations/metrics.js'
-
-  const QUEUE_HIGH_THRESHOLD = 5
+  import { BOTTLENECK_QUEUE_THRESHOLD } from '../../../data/thresholds.js'
 
   let { data, selected = false } = $props()
 
   let config = $derived(STEP_TYPE_CONFIG[data.type] || STEP_TYPE_CONFIG.custom)
   let hasQueue = $derived(data.queueSize > 0)
-  let isHighQueue = $derived(data.queueSize >= QUEUE_HIGH_THRESHOLD)
+  let isHighQueue = $derived(data.queueSize >= BOTTLENECK_QUEUE_THRESHOLD)
   let hasBatch = $derived(data.batchSize > 1)
   let isBottleneck = $derived(isHighQueue || data.isSimulationBottleneck)
 

@@ -119,15 +119,12 @@ test.describe('Visual Regression Tests', () => {
     })
   })
 
-  test('should match dark theme (if implemented)', async ({ page }) => {
-    // Toggle dark mode if available
+  test.skip('should match dark theme (not yet implemented)', async ({ page }) => {
     const darkModeToggle = page.locator('[data-testid="dark-mode-toggle"]')
-    if (await darkModeToggle.isVisible()) {
-      await darkModeToggle.click()
-      await expect(page).toHaveScreenshot('dark-theme.png', {
-        fullPage: true,
-        animations: 'disabled',
-      })
-    }
+    await darkModeToggle.click()
+    await expect(page).toHaveScreenshot('dark-theme.png', {
+      fullPage: true,
+      animations: 'disabled',
+    })
   })
 })

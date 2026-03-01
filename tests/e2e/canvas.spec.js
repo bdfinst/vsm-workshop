@@ -19,14 +19,14 @@ test.describe('Canvas Interactions', () => {
     // The "Edit Step" panel opens automatically. Close it to ensure a clean state.
     await page.getByRole('button', { name: '✕' }).click();
 
-    const stepNode = page.locator('.react-flow__node').first();
+    const stepNode = page.locator('.vsm-node').first();
     const initialPosition = await stepNode.boundingBox();
 
     // Ensure we have an initial position
     expect(initialPosition).not.toBeNull();
 
     // Simulate dragging the canvas background from a known start point
-    const canvas = page.locator('.react-flow__pane');
+    const canvas = page.locator('.svelte-flow__pane');
     await canvas.dragTo(canvas, {
       sourcePosition: { x: 200, y: 200 },
       targetPosition: { x: 300, y: 250 },
@@ -50,7 +50,7 @@ test.describe('Canvas Interactions', () => {
     await page.getByRole('button', { name: 'Add Step' }).click();
 
     // Verify a step node appears on the canvas
-    const stepNode = page.locator('.react-flow__node').first();
+    const stepNode = page.locator('.vsm-node').first();
     await expect(stepNode).toBeVisible();
 
     // Verify the edit panel opens
@@ -71,7 +71,7 @@ test.describe('Canvas Interactions', () => {
     await page.getByRole('button', { name: 'Save' }).click();
 
     // Verify the step displays the correct name
-    await expect(page.locator('.react-flow__node').first()).toContainText('Development');
+    await expect(page.locator('.vsm-node').first()).toContainText('Development');
   });
 
   test('should connect two steps', async ({ page }) => {
@@ -86,16 +86,16 @@ test.describe('Canvas Interactions', () => {
     await page.getByRole('button', { name: 'Save' }).click();
 
     // Connect the steps by dragging from source handle to target handle
-    const firstNode = page.locator('.react-flow__node').first();
-    const secondNode = page.locator('.react-flow__node').nth(1);
+    const firstNode = page.locator('.vsm-node').first();
+    const secondNode = page.locator('.vsm-node').nth(1);
 
-    const sourceHandle = firstNode.locator('.react-flow__handle-right');
-    const targetHandle = secondNode.locator('.react-flow__handle-left');
+    const sourceHandle = firstNode.locator('.svelte-flow__handle-right');
+    const targetHandle = secondNode.locator('.svelte-flow__handle-left');
 
     await sourceHandle.dragTo(targetHandle);
 
     // Verify connection edge appears
-    const edge = page.locator('.react-flow__edge').first();
+    const edge = page.locator('.svelte-flow__edge').first();
     await expect(edge).toBeVisible();
   });
 
@@ -125,17 +125,17 @@ test.describe('Canvas Interactions', () => {
     await page.getByRole('button', { name: 'Save' }).click();
 
     // Step 4: Connect Development → Code Review
-    const devNode = page.locator('.react-flow__node', { hasText: 'Development' });
-    const reviewNode = page.locator('.react-flow__node', { hasText: 'Code Review' });
-    const testNode = page.locator('.react-flow__node', { hasText: 'Testing' });
+    const devNode = page.locator('.vsm-node', { hasText: 'Development' });
+    const reviewNode = page.locator('.vsm-node', { hasText: 'Code Review' });
+    const testNode = page.locator('.vsm-node', { hasText: 'Testing' });
 
-    await devNode.locator('.react-flow__handle-right').dragTo(reviewNode.locator('.react-flow__handle-left'));
+    await devNode.locator('.svelte-flow__handle-right').dragTo(reviewNode.locator('.svelte-flow__handle-left'));
 
     // Step 5: Connect Code Review → Testing
-    await reviewNode.locator('.react-flow__handle-right').dragTo(testNode.locator('.react-flow__handle-left'));
+    await reviewNode.locator('.svelte-flow__handle-right').dragTo(testNode.locator('.svelte-flow__handle-left'));
 
     // Verify all connections exist
-    const edges = page.locator('.react-flow__edge');
+    const edges = page.locator('.svelte-flow__edge');
     await expect(edges).toHaveCount(2);
 
     // Step 6: View metrics dashboard
@@ -166,9 +166,9 @@ test.describe('Canvas Interactions', () => {
     await page.getByRole('button', { name: 'Save' }).click();
 
     // Connect steps
-    const devNode = page.locator('.react-flow__node').first();
-    const testNode = page.locator('.react-flow__node').nth(1);
-    await devNode.locator('.react-flow__handle-right').dragTo(testNode.locator('.react-flow__handle-left'));
+    const devNode = page.locator('.vsm-node').first();
+    const testNode = page.locator('.vsm-node').nth(1);
+    await devNode.locator('.svelte-flow__handle-right').dragTo(testNode.locator('.svelte-flow__handle-left'));
 
     // Open simulation panel
     await page.getByRole('button', { name: 'Simulate' }).click();
@@ -194,7 +194,7 @@ test.describe('Canvas Interactions', () => {
     await page.getByRole('button', { name: 'Save' }).click();
 
     // Select the step
-    const stepNode = page.locator('.react-flow__node').first();
+    const stepNode = page.locator('.vsm-node').first();
     await stepNode.click();
 
     // Delete the step

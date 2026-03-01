@@ -40,6 +40,9 @@ export const createSimulationService = (runner = createSimulationRunner()) => {
    * Start a new simulation run
    */
   const startSimulation = () => {
+    // Re-entrancy guard: don't start if already running
+    if (simControlStore.isRunning) return
+
     const steps = vsmDataStore.steps
     const connections = vsmDataStore.connections
     const workItemCount = simDataStore.workItemCount
@@ -64,9 +67,7 @@ export const createSimulationService = (runner = createSimulationRunner()) => {
         simDataStore.updateQueueSizes(newState.queueSizesByStepId)
         simDataStore.setDetectedBottlenecks(newState.detectedBottlenecks)
 
-        newState.queueHistory.forEach((entry) => {
-          simDataStore.addQueueHistoryEntry(entry)
-        })
+        simDataStore.addQueueHistoryBatch(newState.queueHistory)
       },
       onComplete: (finalResults) => {
         simControlStore.setRunning(false)
@@ -160,12 +161,9 @@ export const createSimulationService = (runner = createSimulationRunner()) => {
   }
 }
 
-// Singleton instance
-let serviceInstance = null
+// Eager singleton - initialized once at module load
+const serviceInstance = createSimulationService()
 
 export function getSimulationService() {
-  if (!serviceInstance) {
-    serviceInstance = createSimulationService()
-  }
   return serviceInstance
 }

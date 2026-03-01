@@ -83,110 +83,72 @@ describe('createStep', () => {
 
 ## Integration Testing
 
-### Testing Components with Stores
+### E2E Component Testing (Playwright)
+
+Since this is a Svelte 5 project, integration tests are done via Playwright E2E tests:
 
 ```javascript
-import { describe, it, expect, beforeEach } from 'vitest'
-import { render, screen, fireEvent } from '@testing-library/react'
-import userEvent from '@testing-library/user-event'
-import { useVsmStore } from '../../../src/stores/vsmStore'
-import StepEditor from '../../../src/components/builder/StepEditor'
+import { test, expect } from '@playwright/test'
 
-describe('StepEditor integration', () => {
-  beforeEach(() => {
-    // Reset store before each test
-    useVsmStore.setState({
-      steps: [
-        { id: 'step-1', name: 'Original Name', processTime: 60, leadTime: 240 }
-      ]
-    })
+test.describe('StepEditor integration', () => {
+  test.beforeEach(async ({ page }) => {
+    await page.goto('/')
+    await page.evaluate(() => window.localStorage.clear())
+    await page.goto('/')
+    await page.getByTestId('new-map-name-input').fill('Test Map')
+    await page.getByTestId('create-map-button').click()
   })
 
-  it('updates store when user saves step', async () => {
-    const user = userEvent.setup()
-    const onSave = vi.fn()
+  test('updates store when user saves step', async ({ page }) => {
+    await page.getByRole('button', { name: 'Add Step' }).click()
 
-    render(<StepEditor stepId="step-1" onSave={onSave} onCancel={vi.fn()} />)
+    await page.getByTestId('step-name-input').fill('Development')
+    await page.getByTestId('process-time-input').fill('60')
+    await page.getByTestId('lead-time-input').fill('240')
+    await page.getByRole('button', { name: 'Save' }).click()
 
-    // Update name
-    const nameInput = screen.getByTestId('step-name-input')
-    await user.clear(nameInput)
-    await user.type(nameInput, 'New Name')
-
-    // Submit
-    const saveButton = screen.getByTestId('save-button')
-    await user.click(saveButton)
-
-    // Verify store was updated
-    const updatedStep = useVsmStore.getState().getStepById('step-1')
-    expect(updatedStep.name).toBe('New Name')
-
-    // Verify callback
-    expect(onSave).toHaveBeenCalledWith(
-      expect.objectContaining({ name: 'New Name' })
-    )
+    // Verify step appears in canvas
+    await expect(page.locator('.vsm-node')).toBeVisible()
+    await expect(page.locator('.vsm-node')).toContainText('Development')
   })
 
-  it('validates lead time >= process time', async () => {
-    const user = userEvent.setup()
+  test('validates lead time >= process time', async ({ page }) => {
+    await page.getByRole('button', { name: 'Add Step' }).click()
 
-    render(<StepEditor stepId="step-1" onSave={vi.fn()} onCancel={vi.fn()} />)
-
-    // Set invalid values
-    const processTimeInput = screen.getByTestId('process-time-input')
-    const leadTimeInput = screen.getByTestId('lead-time-input')
-
-    await user.clear(processTimeInput)
-    await user.type(processTimeInput, '100')
-
-    await user.clear(leadTimeInput)
-    await user.type(leadTimeInput, '50')
-
-    // Submit
-    const saveButton = screen.getByTestId('save-button')
-    await user.click(saveButton)
+    await page.getByTestId('process-time-input').fill('100')
+    await page.getByTestId('lead-time-input').fill('50')
+    await page.getByRole('button', { name: 'Save' }).click()
 
     // Verify error message
-    expect(screen.getByText(/Lead time must be >= process time/i)).toBeInTheDocument()
-
-    // Verify store was NOT updated
-    const step = useVsmStore.getState().getStepById('step-1')
-    expect(step.processTime).toBe(60) // Original value
+    await expect(page.getByText(/Lead time must be >= process time/i)).toBeVisible()
   })
 })
 ```
 
-### Mocking Zustand Stores
+### Testing Store Logic (Unit)
 
 ```javascript
-import { vi } from 'vitest'
-import { render, screen } from '@testing-library/react'
-import MetricsDashboard from '../../../src/components/metrics/MetricsDashboard'
+import { describe, it, expect } from 'vitest'
 
-// Mock the store
-vi.mock('../../../src/stores/vsmStore', () => ({
-  useVsmStore: vi.fn((selector) => selector({
-    steps: [
-      { id: '1', processTime: 60, leadTime: 240 },
-      { id: '2', processTime: 30, leadTime: 120 }
-    ],
-    getTotalLeadTime: () => 360,
-    getTotalProcessTime: () => 90,
-    getFlowEfficiency: () => 25
-  }))
-}))
+describe('vsmDataStore logic', () => {
+  it('adds step and auto-calculates position', () => {
+    const store = createVsmDataStore()
+    store.addStep({ id: '1', name: 'Development', processTime: 60 })
 
-describe('MetricsDashboard', () => {
-  it('displays flow efficiency', () => {
-    render(<MetricsDashboard />)
-
-    expect(screen.getByText(/25%/)).toBeInTheDocument()
+    expect(store.steps).toHaveLength(1)
+    expect(store.steps[0].name).toBe('Development')
   })
 
-  it('displays total lead time', () => {
-    render(<MetricsDashboard />)
+  it('deletes step and cascades to connections', () => {
+    const store = createVsmDataStore()
+    store.addStep({ id: '1', name: 'Dev' })
+    store.addStep({ id: '2', name: 'Test' })
+    store.addConnection({ id: 'c1', source: '1', target: '2' })
 
-    expect(screen.getByText(/360 minutes/)).toBeInTheDocument()
+    store.deleteStep('1')
+
+    expect(store.steps).toHaveLength(1)
+    expect(store.connections).toHaveLength(0)
   })
 })
 ```
@@ -226,85 +188,48 @@ Feature: Add step to VSM
 ```javascript
 import { Given, When, Then } from '@cucumber/cucumber'
 import { expect } from 'chai'
-import { render, screen, fireEvent } from '@testing-library/react'
-import userEvent from '@testing-library/user-event'
-import { useVsmStore } from '../../src/stores/vsmStore'
-import App from '../../src/App'
 
-Given('I have an empty VSM', function () {
-  useVsmStore.setState({
-    steps: [],
-    connections: []
-  })
+// Acceptance tests use Playwright-based step definitions
+// interacting with the running app via browser automation
 
-  render(<App />)
+Given('I have an empty VSM', async function () {
+  await this.page.goto('/')
+  await this.page.evaluate(() => window.localStorage.clear())
+  await this.page.goto('/')
 })
 
 When('I add a step with the following details:', async function (dataTable) {
   const data = dataTable.rowsHash()
-  const user = userEvent.setup()
 
-  // Click "Add Step" button
-  const addButton = screen.getByTestId('add-step-button')
-  await user.click(addButton)
+  await this.page.getByRole('button', { name: 'Add Step' }).click()
 
-  // Fill form
-  const nameInput = screen.getByTestId('step-name-input')
-  await user.type(nameInput, data.name)
+  await this.page.getByTestId('step-name-input').fill(data.name)
+  await this.page.getByTestId('process-time-input').fill(data.processTime)
+  await this.page.getByTestId('lead-time-input').fill(data.leadTime)
 
-  const typeSelect = screen.getByTestId('step-type-select')
-  await user.selectOptions(typeSelect, data.type)
-
-  const processTimeInput = screen.getByTestId('process-time-input')
-  await user.type(processTimeInput, data.processTime)
-
-  const leadTimeInput = screen.getByTestId('lead-time-input')
-  await user.type(leadTimeInput, data.leadTime)
-
-  // Submit
-  const saveButton = screen.getByTestId('save-step-button')
-  await user.click(saveButton)
+  await this.page.getByRole('button', { name: 'Save' }).click()
 })
 
-Then('the VSM should contain {int} step(s)', function (expectedCount) {
-  const steps = useVsmStore.getState().steps
-  expect(steps.length).to.equal(expectedCount)
+Then('the VSM should contain {int} step(s)', async function (expectedCount) {
+  const nodes = this.page.locator('.vsm-node')
+  await expect(nodes).toHaveCount(expectedCount)
 })
 
-Then('the step should be visible in the canvas', function () {
-  const stepNode = screen.getByTestId('step-node-0')
-  expect(stepNode).to.exist
+Then('the step should be visible in the canvas', async function () {
+  await expect(this.page.locator('.vsm-node').first()).toBeVisible()
 })
 
 When('I try to add a step with process time {int} and lead time {int}',
   async function (processTime, leadTime) {
-    const user = userEvent.setup()
-
-    // Click "Add Step"
-    const addButton = screen.getByTestId('add-step-button')
-    await user.click(addButton)
-
-    // Fill with invalid values
-    const processTimeInput = screen.getByTestId('process-time-input')
-    await user.type(processTimeInput, processTime.toString())
-
-    const leadTimeInput = screen.getByTestId('lead-time-input')
-    await user.type(leadTimeInput, leadTime.toString())
-
-    // Try to submit
-    const saveButton = screen.getByTestId('save-step-button')
-    await user.click(saveButton)
+    await this.page.getByRole('button', { name: 'Add Step' }).click()
+    await this.page.getByTestId('process-time-input').fill(processTime.toString())
+    await this.page.getByTestId('lead-time-input').fill(leadTime.toString())
+    await this.page.getByRole('button', { name: 'Save' }).click()
   }
 )
 
-Then('I should see an error {string}', function (errorMessage) {
-  const error = screen.getByText(new RegExp(errorMessage, 'i'))
-  expect(error).to.exist
-})
-
-Then('the step should not be added', function () {
-  const steps = useVsmStore.getState().steps
-  expect(steps.length).to.equal(0)
+Then('I should see an error {string}', async function (errorMessage) {
+  await expect(this.page.getByText(new RegExp(errorMessage, 'i'))).toBeVisible()
 })
 ```
 
@@ -477,4 +402,4 @@ it('test calculation', () => {})
 - [Testing Rules](../rules/testing.md) - Complete testing guidelines
 - [ATDD Workflow](../rules/atdd-workflow.md) - Test-first process
 - [Quality Verification](../rules/quality-verification.md) - Running tests
-- [React Component Examples](react-components.md) - Component patterns to test
+- [Svelte Component Examples](svelte-components.md) - Component patterns to test

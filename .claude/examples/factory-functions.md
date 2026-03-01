@@ -514,9 +514,9 @@ export const createConnection = ({
 
 ## Related Documentation
 
-- [JavaScript/React Rules](../rules/javascript-react.md) - Code style guidelines
-- [React Component Examples](react-components.md) - Component patterns
-- [Zustand Store Examples](zustand-stores.md) - State management with factories
+- [JavaScript/Svelte Rules](../rules/javascript-svelte.md) - Code style guidelines
+- [Svelte Component Examples](svelte-components.md) - Component patterns
+- [Svelte Store Examples](svelte-stores.md) - State management with factories
 - [Testing Patterns](testing-patterns.md) - Testing factory functions
 
 ---

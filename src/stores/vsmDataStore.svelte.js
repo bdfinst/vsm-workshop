@@ -12,8 +12,38 @@ import {
   getPersistedValue,
   persistValue,
 } from '../utils/persistedState.svelte.js'
+import { CANVAS_START_X, CANVAS_STEP_SPACING, CANVAS_Y } from '../data/thresholds.js'
 
 const STORAGE_KEY = 'vsm-data-storage'
+
+/**
+ * Validate and sanitize VSM data loaded from storage
+ * @param {*} data - Data to validate
+ * @returns {Object} Sanitized data
+ */
+function validateAndSanitizeVSMData(data) {
+  if (!data || typeof data !== 'object') {
+    return {
+      id: null,
+      name: '',
+      description: '',
+      steps: [],
+      connections: [],
+      createdAt: null,
+      updatedAt: null,
+    }
+  }
+
+  return {
+    id: data.id || null,
+    name: data.name || '',
+    description: data.description || '',
+    steps: Array.isArray(data.steps) ? data.steps : [],
+    connections: Array.isArray(data.connections) ? data.connections : [],
+    createdAt: data.createdAt || null,
+    updatedAt: data.updatedAt || null,
+  }
+}
 
 /**
  * @typedef {import('../types/index.js').Step} Step
@@ -37,7 +67,7 @@ function createVsmDataStore() {
   }
 
   // Load persisted state or use initial
-  const persisted = getPersistedValue(STORAGE_KEY, initialState)
+  const persisted = getPersistedValue(STORAGE_KEY, initialState, validateAndSanitizeVSMData)
 
   // Reactive state using Svelte 5 $state rune
   let id = $state(persisted.id)
@@ -63,17 +93,6 @@ function createVsmDataStore() {
 
   return {
     // Reactive getters
-    get data() {
-      return {
-        id,
-        name,
-        description,
-        steps,
-        connections,
-        createdAt,
-        updatedAt,
-      }
-    },
     get id() {
       return id
     },
@@ -152,8 +171,8 @@ function createVsmDataStore() {
     addStep(stepName = 'New Step', overrides = {}) {
       // Auto-position steps horizontally if position not provided
       const position = overrides.position || {
-        x: 50 + steps.length * 250,
-        y: 150,
+        x: CANVAS_START_X + steps.length * CANVAS_STEP_SPACING,
+        y: CANVAS_Y,
       }
       const newStep = createStep(stepName, { ...overrides, position })
       steps = [...steps, newStep]

@@ -59,38 +59,47 @@ Follow Tailwind's spacing scale consistently:
   rounded-md hover:bg-gray-50">
 ```
 
-## React Flow Styling
+## Svelte Flow Styling (@xyflow/svelte)
 
 ### Node Styling
 
-```jsx
-// Base node styles
-const nodeBaseClass = "bg-white border-2 rounded-lg shadow-sm p-3 min-w-[180px]";
+```svelte
+<!-- StepNode.svelte -->
+<script>
+  let { data } = $props()
+</script>
 
-// Node type variations
-const nodeStyles = {
-  development: "border-blue-400",
-  testing: "border-purple-400",
-  deployment: "border-green-400",
-  bottleneck: "border-red-400 ring-2 ring-red-200",
-};
+<div class="bg-white border-2 rounded-lg shadow-sm p-3 min-w-[180px] {nodeTypeClass}">
+  <h3>{data.name}</h3>
+  <p>PT: {data.processTime}m | LT: {data.leadTime}m</p>
+</div>
+```
+
+Node type CSS classes:
+
+```css
+/* Node type variations */
+.vsm-node--development { border-color: theme('colors.blue.400'); }
+.vsm-node--testing { border-color: theme('colors.purple.400'); }
+.vsm-node--deployment { border-color: theme('colors.green.400'); }
+.vsm-node--bottleneck { border-color: theme('colors.red.400'); ring: 2px theme('colors.red.200'); }
 ```
 
 ### Edge Styling
 
-```jsx
+```javascript
 // Forward flow
 const forwardEdgeStyle = {
   stroke: '#6B7280',
   strokeWidth: 2,
-};
+}
 
 // Rework loop
 const reworkEdgeStyle = {
   stroke: '#EF4444',
   strokeWidth: 2,
   strokeDasharray: '5,5',
-};
+}
 ```
 
 ## Responsive Design

@@ -86,6 +86,11 @@ function createSimulationDataStore() {
       queueHistory = [...queueHistory, entry]
     },
 
+    addQueueHistoryBatch(entries) {
+      if (entries.length === 0) return
+      queueHistory = queueHistory.concat(entries)
+    },
+
     setDetectedBottlenecks(bottlenecks) {
       detectedBottlenecks = bottlenecks
     },

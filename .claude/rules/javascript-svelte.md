@@ -1,4 +1,8 @@
-# JavaScript & React Coding Standards
+# JavaScript & Svelte Coding Standards
+
+> **Note:** This project uses Svelte 5 with runes ($state, $derived, $props).
+> All UI components are .svelte files. Business logic is in plain .js files.
+> There are NO React dependencies - ignore any legacy React references below.
 
 ## Code Formatting
 
@@ -85,133 +89,78 @@ function calculateFlowEfficiency(vsm) {
 }
 ```
 
-## React
+## Svelte Components
 
 ### Component Structure
 
-1. Imports (external, then internal)
-2. Component function
-3. Hooks (useState, useEffect, custom hooks)
-4. Event handlers
-5. Render logic
-6. PropTypes definition
-7. Default props
-8. Export
+1. `<script>` block: imports, props, state, derived, handlers
+2. Template markup with Svelte syntax
+3. Optional `<style>` block (prefer Tailwind classes)
 
 ### Example Component
 
-```javascript
-import { useState, useEffect } from 'react'
-import PropTypes from 'prop-types'
+```svelte
+<script>
+  import { vsmDataStore } from '../../stores/vsmDataStore.svelte.js'
 
-function StepEditor({ step, onUpdate }) {
-  const [name, setName] = useState(step?.name || '')
-  const [processTime, setProcessTime] = useState(step?.processTime || 0)
+  let { step = null, onupdate } = $props()
 
-  useEffect(() => {
-    if (step) {
-      setName(step.name)
-      setProcessTime(step.processTime)
-    }
-  }, [step])
+  let name = $state(step?.name || '')
+  let processTime = $state(step?.processTime || 0)
 
-  const handleSubmit = (e) => {
+  function handleSubmit(e) {
     e.preventDefault()
-    onUpdate({ ...step, name, processTime })
+    onupdate({ ...step, name, processTime })
   }
+</script>
 
-  return (
-    <form onSubmit={handleSubmit} data-testid="step-editor">
-      <label>
-        Step Name
-        <input
-          value={name}
-          onChange={(e) => setName(e.target.value)}
-          data-testid="step-name-input"
-        />
-      </label>
-      <button type="submit">Save</button>
-    </form>
-  )
-}
-
-StepEditor.propTypes = {
-  step: PropTypes.shape({
-    id: PropTypes.string,
-    name: PropTypes.string,
-    processTime: PropTypes.number,
-  }),
-  onUpdate: PropTypes.func.isRequired,
-}
-
-StepEditor.defaultProps = {
-  step: null,
-}
-
-export default StepEditor
+<form onsubmit={handleSubmit} data-testid="step-editor">
+  <label>
+    Step Name
+    <input bind:value={name} data-testid="step-name-input" />
+  </label>
+  <button type="submit">Save</button>
+</form>
 ```
 
-### PropTypes
+### Props
 
-Always define PropTypes for components:
+Use Svelte 5 `$props()` rune for component props:
 
-```javascript
-import PropTypes from 'prop-types'
+```svelte
+<script>
+  // Required props (no default)
+  let { title, onclick } = $props()
 
-MyComponent.propTypes = {
-  // Required string
-  title: PropTypes.string.isRequired,
-
-  // Optional number with default
-  count: PropTypes.number,
-
-  // Required function
-  onClick: PropTypes.func.isRequired,
-
-  // Object with specific shape
-  step: PropTypes.shape({
-    id: PropTypes.string.isRequired,
-    name: PropTypes.string.isRequired,
-    processTime: PropTypes.number,
-  }),
-
-  // Array of objects
-  steps: PropTypes.arrayOf(
-    PropTypes.shape({
-      id: PropTypes.string.isRequired,
-    })
-  ),
-
-  // One of specific values
-  status: PropTypes.oneOf(['good', 'warning', 'critical']),
-
-  // Children
-  children: PropTypes.node,
-}
-
-MyComponent.defaultProps = {
-  count: 0,
-  step: null,
-  steps: [],
-  status: 'good',
-}
+  // Optional props with defaults
+  let { count = 0, step = null, steps = [], status = 'good' } = $props()
+</script>
 ```
 
-### Hooks
+### Reactivity
 
-- Always follow Rules of Hooks
-- Extract complex logic into custom hooks in `src/hooks/`
-- Name custom hooks with `use` prefix
+- Use `$state()` for mutable reactive state
+- Use `$derived()` for computed values
+- Use `$effect()` sparingly (prefer derived state)
 
 ### Event Handlers
 
 - Prefix with `handle`: `handleClick`, `handleSubmit`
 
-### Memoization
+### Svelte Stores (*.svelte.js)
 
-- Use `useMemo` for expensive calculations
-- Use `useCallback` for handlers passed to memoized children
-- Don't over-memoize - measure before optimizing
+Stores use `$state()` in module-level factory functions:
+
+```javascript
+function createMyStore() {
+  let value = $state(0)
+  return {
+    get value() { return value },
+    increment() { value++ },
+  }
+}
+export const myStore = createMyStore()
+```
 
 ## Imports
 
@@ -219,13 +168,12 @@ Use relative imports with clear paths:
 
 ```javascript
 // External imports first
-import { useState, useEffect } from 'react'
-import PropTypes from 'prop-types'
+import { SvelteFlow } from '@xyflow/svelte'
 
 // Internal imports
-import { useVsmStore } from '../stores/vsmStore'
+import { vsmDataStore } from '../stores/vsmDataStore.svelte.js'
 import { calculateMetrics } from '../utils/calculations/metrics'
-import StepNode from './canvas/nodes/StepNode'
+import StepNode from './canvas/nodes/StepNode.svelte'
 ```
 
 ## Data Testability

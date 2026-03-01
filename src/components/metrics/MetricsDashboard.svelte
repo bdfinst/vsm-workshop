@@ -1,6 +1,7 @@
 <script>
   import { vsmDataStore } from '../../stores/vsmDataStore.svelte.js'
   import { formatDuration } from '../../utils/calculations/metrics.js'
+  import { QUEUE_WARNING_THRESHOLD } from '../../data/thresholds.js'
 
   // Reactive derived values from store
   let steps = $derived(vsmDataStore.steps)
@@ -90,7 +91,7 @@
         'Total Queue',
         String(metrics.totalQueueSize),
         'Items waiting',
-        metrics.totalQueueSize > 10 ? 'warning' : 'neutral',
+        metrics.totalQueueSize > QUEUE_WARNING_THRESHOLD ? 'warning' : 'neutral',
         'Total number of items waiting across all steps'
       )}
 

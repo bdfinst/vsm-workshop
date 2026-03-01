@@ -7,6 +7,17 @@
  * See: .claude/rules/vsm-domain.md#metric-calculations
  */
 
+import {
+  FLOW_EFFICIENCY_GOOD_THRESHOLD,
+  FLOW_EFFICIENCY_WARNING_THRESHOLD,
+  FIRST_PASS_YIELD_GOOD_THRESHOLD,
+  FIRST_PASS_YIELD_WARNING_THRESHOLD,
+  REWORK_MULTIPLIER_GOOD_THRESHOLD,
+  REWORK_MULTIPLIER_WARNING_THRESHOLD,
+  BOTTLENECK_QUEUE_THRESHOLD,
+  BOTTLENECK_QUEUE_MULTIPLIER,
+} from '../../data/thresholds.js'
+
 // ==============================================================================
 // TYPE DEFINITIONS
 // ==============================================================================
@@ -154,9 +165,9 @@ export function calculateFlowEfficiency(steps) {
   const percentage = value * 100
 
   let status
-  if (percentage >= 25) {
+  if (percentage >= FLOW_EFFICIENCY_GOOD_THRESHOLD) {
     status = 'good'
-  } else if (percentage >= 15) {
+  } else if (percentage >= FLOW_EFFICIENCY_WARNING_THRESHOLD) {
     status = 'warning'
   } else {
     status = 'critical'
@@ -192,9 +203,9 @@ export function calculateFirstPassYield(steps) {
   const percentage = value * 100
 
   let status
-  if (percentage >= 80) {
+  if (percentage >= FIRST_PASS_YIELD_GOOD_THRESHOLD) {
     status = 'good'
-  } else if (percentage >= 60) {
+  } else if (percentage >= FIRST_PASS_YIELD_WARNING_THRESHOLD) {
     status = 'warning'
   } else {
     status = 'critical'
@@ -280,9 +291,9 @@ export function calculateReworkImpact(steps, connections) {
   const effectiveLeadTime = Math.round(baseLeadTime * reworkMultiplier)
 
   let status
-  if (reworkMultiplier <= 1.1) {
+  if (reworkMultiplier <= REWORK_MULTIPLIER_GOOD_THRESHOLD) {
     status = 'good'
-  } else if (reworkMultiplier <= 1.3) {
+  } else if (reworkMultiplier <= REWORK_MULTIPLIER_WARNING_THRESHOLD) {
     status = 'warning'
   } else {
     status = 'critical'
@@ -309,7 +320,7 @@ export function identifyBottlenecks(steps) {
   if (stepsWithQueue.length === 0) return []
 
   const avgQueue = stepsWithQueue.reduce((sum, s) => sum + s.queueSize, 0) / stepsWithQueue.length
-  const threshold = Math.max(avgQueue * 1.5, 5) // At least 5 items to be a bottleneck
+  const threshold = Math.max(avgQueue * BOTTLENECK_QUEUE_MULTIPLIER, BOTTLENECK_QUEUE_THRESHOLD)
 
   return steps.filter((s) => (s.queueSize || 0) > threshold).map((s) => s.id)
 }

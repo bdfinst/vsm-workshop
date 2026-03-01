@@ -26,8 +26,7 @@ vsm-workshop/
 │   │   ├── metrics/         # Metrics dashboard components
 │   │   ├── simulation/      # Work flow simulation components
 │   │   └── ui/              # Shared UI components (buttons, inputs, etc.)
-│   ├── hooks/               # Custom React hooks (useSimulation, useVsmMetrics)
-│   ├── stores/              # Zustand stores (vsmStore, simulationStore)
+│   ├── stores/              # Svelte 5 rune stores (*.svelte.js)
 │   ├── utils/               # Utility functions
 │   │   ├── calculations/    # Metrics calculations (flowEfficiency, etc.)
 │   │   ├── simulation/      # Simulation logic (simulationEngine.js)
@@ -37,7 +36,7 @@ vsm-workshop/
 │   ├── infrastructure/      # Infrastructure concerns (repositories)
 │   ├── services/            # Service layer (business logic)
 │   ├── data/                # Static data (templates, examples, step types)
-│   └── App.jsx              # Root component
+│   └── App.svelte           # Root component
 │
 ├── features/                # Gherkin feature files (BDD/ATDD)
 │   ├── builder/             # VSM builder features
@@ -103,25 +102,24 @@ Custom React hooks for shared logic:
 | `useStepValidation.js` | Validates step data |
 | `useLocalStorage.js` | localStorage persistence wrapper |
 
-**Hook naming convention:**
-- Always prefix with `use` (e.g., `useSimulation`)
-- camelCase naming
-
 ### Stores (`src/stores/`)
 
-Zustand state management stores:
+Svelte 5 rune stores (*.svelte.js files):
 
 | Store | Purpose | Persisted? |
 |-------|---------|------------|
-| `vsmStore.js` | VSM data (steps, connections) | Yes (localStorage) |
-| `simulationStore.js` | Simulation runtime state | No (ephemeral) |
-| `uiStore.js` | UI state (selected step, panels) | No |
+| `vsmDataStore.svelte.js` | Steps, connections, metadata | Yes (localStorage) |
+| `vsmUIStore.svelte.js` | Selection state, editing mode | No (ephemeral) |
+| `vsmIOStore.svelte.js` | Import/export, template loading | No |
+| `simulationControlStore.svelte.js` | Running/paused state | No (ephemeral) |
+| `simulationDataStore.svelte.js` | Work items, queue history | No (ephemeral) |
+| `scenarioStore.svelte.js` | What-if scenario comparison | No (ephemeral) |
 
 **Store naming convention:**
 - camelCase + `Store` suffix
-- Named export: `export const useVsmStore = create(...)`
+- Named export: `export const vsmDataStore = createVsmDataStore()`
 
-See [../examples/zustand-stores.md](../examples/zustand-stores.md) for patterns.
+See [../examples/svelte-stores.md](../examples/svelte-stores.md) for patterns.
 
 ### Utils (`src/utils/`)
 
@@ -286,34 +284,34 @@ import { ValidationSummary } from './ValidationSummary'
 
 Import from other modules using relative path from `src/`:
 
-```javascript
-// From src/components/builder/StepForm.jsx
-import { useVsmStore } from '../../stores/vsmStore'
-import { calculateMetrics } from '../../utils/calculations/metrics'
-import { Button } from '../ui/Button'
+```svelte
+<!-- From src/components/builder/StepForm.svelte -->
+<script>
+  import { vsmDataStore } from '../../stores/vsmDataStore.svelte.js'
+  import { calculateMetrics } from '../../utils/calculations/metrics'
+  import Button from '../ui/Button.svelte'
+</script>
 ```
 
 ### Import Order
 
-1. External dependencies (React, libraries)
-2. Internal modules (stores, utils, hooks)
+1. External dependencies (libraries)
+2. Internal modules (stores, utils)
 3. Components
 4. Assets (CSS, images)
 
-```javascript
-// 1. External
-import { useState, useEffect } from 'react'
-import PropTypes from 'prop-types'
+```svelte
+<script>
+  // 1. External
+  import { SvelteFlow } from '@xyflow/svelte'
 
-// 2. Internal
-import { useVsmStore } from '../../stores/vsmStore'
-import { calculateMetrics } from '../../utils/calculations/metrics'
+  // 2. Internal
+  import { vsmDataStore } from '../../stores/vsmDataStore.svelte.js'
+  import { calculateMetrics } from '../../utils/calculations/metrics'
 
-// 3. Components
-import { Button } from '../ui/Button'
-
-// 4. Assets
-import './StepForm.css'
+  // 3. Components
+  import StepNode from '../canvas/nodes/StepNode.svelte'
+</script>
 ```
 
 ---
@@ -360,7 +358,7 @@ Example:
 
 - [Architecture Guide](architecture.md) - System design and patterns
 - [Workflows Guide](workflows.md) - Common development procedures
-- [JavaScript/React Rules](../rules/javascript-react.md) - Code style guidelines
+- [JavaScript/Svelte Rules](../rules/javascript-svelte.md) - Code style guidelines
 - [Skills Directory](../skills/) - Task-specific workflows
 
 ---

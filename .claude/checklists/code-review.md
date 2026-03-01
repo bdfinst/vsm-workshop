@@ -69,8 +69,8 @@
 
 ### State Management
 
-- [ ] Zustand stores used for global state
-- [ ] React state used for local component state
+- [ ] Svelte rune stores used for global state
+- [ ] $state() used for local component state
 - [ ] No prop drilling (use stores directly)
 - [ ] Store actions are pure (no side effects)
 
@@ -260,7 +260,7 @@ Watch for these issues:
 ✅ **Specific:** "Line 42: This function should be extracted to a utility"
 ✅ **Constructive:** "Consider using useMemo here to prevent recalculation"
 ✅ **Actionable:** "Add PropTypes validation for the `step` prop"
-✅ **Contextual:** "This violates the no-classes rule (see rules/javascript-react.md)"
+✅ **Contextual:** "This violates the no-classes rule (see rules/javascript-svelte.md)"
 
 ### Poor Feedback
 
@@ -334,7 +334,7 @@ grep -r "console.log" src/ --include="*.js" --include="*.jsx"
 
 ## Related Documentation
 
-- [JavaScript/React Rules](../rules/javascript-react.md) - Code standards
+- [JavaScript/Svelte Rules](../rules/javascript-svelte.md) - Code standards
 - [Quality Verification](../rules/quality-verification.md) - Quality gates
 - [Testing Rules](../rules/testing.md) - Testing standards
 - [Pre-Commit Checklist](pre-commit.md) - What author should have done

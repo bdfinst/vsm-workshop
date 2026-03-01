@@ -73,6 +73,9 @@
         alert('Failed to import file. Please check the format.')
       }
     }
+    reader.onerror = () => {
+      alert('Failed to read file.')
+    }
     reader.readAsText(file)
     e.target.value = ''
   }
