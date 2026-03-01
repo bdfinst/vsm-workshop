@@ -10,6 +10,11 @@
  * 5. Results Calculator - Final metrics and statistics
  */
 
+import {
+  BOTTLENECK_QUEUE_THRESHOLD,
+  PROGRESS_MULTIPLIER,
+} from '../../data/thresholds.js'
+
 // ============================================================================
 // WORK ITEM FACTORY
 // ============================================================================
@@ -20,10 +25,9 @@
 export function initSimulation(steps, connections, config = {}) {
   const { workItemCount = 10 } = config
 
-  const queueSizesByStepId = {}
-  steps.forEach((step) => {
-    queueSizesByStepId[step.id] = 0
-  })
+  const queueSizesByStepId = Object.fromEntries(
+    steps.map((step) => [step.id, 0])
+  )
 
   return {
     isRunning: false,
@@ -44,18 +48,14 @@ export function initSimulation(steps, connections, config = {}) {
  * Generate work items at the first step
  */
 export function generateWorkItems(count, firstStepId) {
-  const items = []
-  for (let i = 0; i < count; i++) {
-    items.push({
-      id: crypto.randomUUID(),
-      currentStepId: firstStepId,
-      progress: 0,
-      enteredAt: 0,
-      history: [],
-      isRework: false,
-    })
-  }
-  return items
+  return Array.from({ length: count }, () => ({
+    id: crypto.randomUUID(),
+    currentStepId: firstStepId,
+    progress: 0,
+    enteredAt: 0,
+    history: [],
+    isRework: false,
+  }))
 }
 
 // ============================================================================
@@ -66,13 +66,13 @@ export function generateWorkItems(count, firstStepId) {
  * Process a single work item for one tick
  */
 function processWorkItem(item, step, tickDuration, newElapsedTime, connections) {
-  const newProgress = item.progress + tickDuration * 10
+  const newProgress = item.progress + tickDuration * PROGRESS_MULTIPLIER
 
   // Check if step is complete
   if (newProgress >= step.processTime) {
     const newHistory = recordStepCompletion(item, step, newElapsedTime)
     const triggerRework = shouldRework(step, connections)
-    const nextStepId = routeToNextStep(step, connections, triggerRework)
+    const nextStepId = routeWorkItem(step, connections, triggerRework)
 
     if (nextStepId) {
       return {
@@ -126,18 +126,11 @@ function recordStepCompletion(item, step, newElapsedTime) {
 }
 
 /**
- * Route work item to next step
- */
-function routeToNextStep(step, connections, triggerRework) {
-  return routeWorkItem(step, connections, triggerRework)
-}
-
-/**
  * Process a single item in the work items map
  */
 function processItemInTick(
   item,
-  steps,
+  stepMap,
   connections,
   tickDuration,
   newElapsedTime
@@ -146,7 +139,7 @@ function processItemInTick(
     return { updatedItem: item, isCompleted: false, nextStepId: null }
   }
 
-  const step = steps.find((s) => s.id === item.currentStepId)
+  const step = stepMap.get(item.currentStepId)
   if (!step) {
     return { updatedItem: item, isCompleted: false, nextStepId: null }
   }
@@ -159,7 +152,7 @@ function processItemInTick(
  */
 function advanceItemProgress(
   workItems,
-  steps,
+  stepMap,
   connections,
   tickDuration,
   newElapsedTime
@@ -170,7 +163,7 @@ function advanceItemProgress(
   const updatedItems = workItems.map((item) => {
     const result = processItemInTick(
       item,
-      steps,
+      stepMap,
       connections,
       tickDuration,
       newElapsedTime
@@ -208,17 +201,24 @@ function updateQueues(currentQueueSizes, queueUpdates) {
  * Record queue state for current tick
  */
 function recordHistory(queueHistory, steps, queueSizesByStepId, currentTime) {
-  const newHistory = [...queueHistory]
+  const newEntries = steps.map((step) => ({
+    tick: currentTime,
+    stepId: step.id,
+    queueSize: queueSizesByStepId[step.id] || 0,
+  }))
 
-  steps.forEach((step) => {
-    newHistory.push({
-      tick: currentTime,
-      stepId: step.id,
-      queueSize: queueSizesByStepId[step.id] || 0,
-    })
-  })
-
+  // Push new entries instead of spreading entire history
+  const newHistory = queueHistory.concat(newEntries)
   return newHistory
+}
+
+/**
+ * Build a Map from steps array for O(1) lookups
+ * @param {Array} steps - Array of step objects
+ * @returns {Map} Map of stepId -> step
+ */
+function buildStepMap(steps) {
+  return new Map(steps.map((s) => [s.id, s]))
 }
 
 /**
@@ -233,9 +233,11 @@ export function processTick(state, steps, connections) {
   const tickDuration = 1 / state.speed
   const newElapsedTime = state.elapsedTime + tickDuration
 
+  const stepMap = buildStepMap(steps)
+
   const { updatedItems, completedCount, queueUpdates } = advanceItemProgress(
     state.workItems,
-    steps,
+    stepMap,
     connections,
     tickDuration,
     newElapsedTime
@@ -279,10 +281,11 @@ export function runSimulationToCompletion(
     ticks++
   }
 
-  state.isRunning = false
-  state.results = calculateResults(state, steps)
-
-  return state
+  return {
+    ...state,
+    isRunning: false,
+    results: calculateResults(state, steps),
+  }
 }
 
 // ============================================================================
@@ -359,7 +362,7 @@ export function shouldRework(step, connections, randomFn = Math.random) {
  * Detect bottleneck steps based on queue sizes
  * Identifies steps with queues exceeding the threshold
  */
-export function detectBottlenecks(steps, queueSizesByStepId, threshold = 3) {
+export function detectBottlenecks(steps, queueSizesByStepId, threshold = BOTTLENECK_QUEUE_THRESHOLD) {
   return steps
     .filter((step) => (queueSizesByStepId[step.id] || 0) > threshold)
     .map((step) => step.id)
@@ -376,6 +379,8 @@ export function detectBottlenecks(steps, queueSizesByStepId, threshold = 3) {
 export function calculateResults(state, steps) {
   const { workItems, workItemCount, completedCount, elapsedTime, queueHistory } =
     state
+
+  const stepNameMap = new Map(steps.map((s) => [s.id, s.name]))
 
   // Calculate average lead time
   let totalLeadTime = 0
@@ -403,11 +408,11 @@ export function calculateResults(state, steps) {
   })
 
   const bottlenecks = Object.entries(peakQueues)
-    .filter(([, peak]) => peak > 3)
+    .filter(([, peak]) => peak > BOTTLENECK_QUEUE_THRESHOLD)
     .map(([stepId, peakQueueSize]) => ({
       stepId,
       peakQueueSize,
-      stepName: steps.find((s) => s.id === stepId)?.name,
+      stepName: stepNameMap.get(stepId),
     }))
     .sort((a, b) => b.peakQueueSize - a.peakQueueSize)
 

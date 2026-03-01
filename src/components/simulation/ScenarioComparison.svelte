@@ -2,18 +2,9 @@
   import { ArrowUp, ArrowDown, Minus, Play, Trash2 } from 'lucide-svelte'
   import { scenarioStore } from '../../stores/scenarioStore.svelte.js'
   import { getSimulationService } from '../../services/SimulationService.svelte.js'
+  import { formatDuration } from '../../utils/calculations/metrics.js'
 
   const service = getSimulationService()
-
-  function formatDuration(minutes) {
-    if (!minutes || minutes === 0) return '0m'
-    if (minutes < 60) {
-      return `${Math.round(minutes)}m`
-    }
-    const hours = Math.floor(minutes / 60)
-    const mins = Math.round(minutes % 60)
-    return mins > 0 ? `${hours}h ${mins}m` : `${hours}h`
-  }
 
   let scenarios = $derived(scenarioStore.scenarios)
   let activeScenarioId = $derived(scenarioStore.activeScenarioId)

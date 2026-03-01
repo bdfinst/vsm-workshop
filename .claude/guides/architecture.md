@@ -7,49 +7,31 @@
 ## System Architecture
 
 ```
-┌─────────────────────────────────────────────────────────────┐
-│                         App.jsx                              │
-│                    (Root Component)                          │
-└────────────────────┬────────────────────────────────────────┘
-                     │
-        ┌────────────┼────────────┐
-        │            │            │
-        ▼            ▼            ▼
-  ┌─────────┐  ┌─────────┐  ┌──────────┐
-  │ Builder │  │ Canvas  │  │ Metrics  │
-  │ Wizard  │  │ View    │  │Dashboard │
-  └────┬────┘  └────┬────┘  └────┬─────┘
-       │            │            │
-       └────────────┼────────────┘
-                    │
-                    ▼
-           ┌────────────────┐
-           │  Zustand Store │
-           │   (vsmStore)   │
-           └────────────────┘
-                    │
-        ┌───────────┼───────────┐
-        │           │           │
-        ▼           ▼           ▼
-   ┌────────┐  ┌────────┐  ┌──────────┐
-   │ Steps  │  │Connect │  │Simulation│
-   │        │  │ions    │  │ State    │
-   └────────┘  └────────┘  └──────────┘
+App.svelte (Root Component)
+├── Header.svelte (Map name, import/export)
+├── Sidebar.svelte (Step list, add step)
+├── Canvas.svelte (Svelte Flow diagram)
+├── EditorPanel.svelte (Step/connection editing)
+├── MetricsDashboard.svelte (VSM metrics)
+└── SimulationPanel.svelte (Simulation controls/results)
 ```
+
+All components access Svelte 5 rune stores directly (no prop drilling).
 
 ---
 
-## React + Zustand Architecture
+## Svelte 5 Runes Store Architecture
 
-### Zustand Store (`vsmStore.js`)
+### Store Layer (*.svelte.js files)
 
-- **Single source of truth** for VSM data
-- Contains steps, connections, and simulation state
-- Actions for CRUD operations on steps and connections
-- Computed selectors for derived metrics
-- **No prop drilling required** - components access store directly
+- **vsmDataStore.svelte.js** - Steps, connections, metadata (persisted to localStorage)
+- **vsmUIStore.svelte.js** - Selection state, editing mode (ephemeral)
+- **vsmIOStore.svelte.js** - Import/export, template loading
+- **simulationControlStore.svelte.js** - Running/paused state
+- **simulationDataStore.svelte.js** - Work items, queue history, results
+- **scenarioStore.svelte.js** - What-if scenario comparison
 
-See [../examples/zustand-stores.md](../examples/zustand-stores.md) for complete store patterns and examples.
+Stores use `$state()` for reactive state and expose getters + action methods.
 
 ### Component Hierarchy
 
@@ -84,33 +66,38 @@ App
 
 ---
 
-## ReactFlow Canvas Integration
+## Svelte Flow Canvas Integration
 
-### Data Flow: Zustand → ReactFlow
+### Data Flow: Store → Svelte Flow
 
-```javascript
-// vsmStore provides nodes and edges
-const nodes = useVsmStore((state) => state.steps.map(step => ({
-  id: step.id,
-  type: 'stepNode',
-  data: step,
-  position: step.position
-})))
+```svelte
+<script>
+  import { SvelteFlow } from '@xyflow/svelte'
+  import { vsmDataStore } from '../stores/vsmDataStore.svelte.js'
 
-const edges = useVsmStore((state) => state.connections.map(conn => ({
-  id: conn.id,
-  source: conn.source,
-  target: conn.target,
-  type: conn.type === 'rework' ? 'reworkEdge' : 'forwardEdge'
-})))
+  // Derive nodes and edges from store
+  let nodes = $derived(vsmDataStore.steps.map(step => ({
+    id: step.id,
+    type: 'stepNode',
+    data: step,
+    position: step.position,
+  })))
 
-// ReactFlow renders nodes/edges and handles interactions
-<ReactFlow
-  nodes={nodes}
-  edges={edges}
-  onNodesChange={handleNodesChange}
-  onEdgesChange={handleEdgesChange}
-  onConnect={handleConnect}
+  let edges = $derived(vsmDataStore.connections.map(conn => ({
+    id: conn.id,
+    source: conn.source,
+    target: conn.target,
+    type: conn.type === 'rework' ? 'reworkEdge' : 'forwardEdge',
+  })))
+</script>
+
+<!-- Svelte Flow renders nodes/edges and handles interactions -->
+<SvelteFlow
+  {nodes}
+  {edges}
+  on:nodeschange={handleNodesChange}
+  on:edgeschange={handleEdgesChange}
+  on:connect={handleConnect}
 />
 ```
 
@@ -139,10 +126,10 @@ const edges = useVsmStore((state) => state.connections.map(conn => ({
 User triggers simulation
         │
         ▼
-┌────────────────────┐
-│ useSimulation hook │
-│ (orchestrator)     │
-└─────────┬──────────┘
+┌──────────────────────────┐
+│ SimulationService.svelte │
+│ (orchestrator)           │
+└─────────┬────────────────┘
           │
           ▼
 ┌──────────────────────┐
@@ -161,10 +148,10 @@ User triggers simulation
     └─────┬─────┘
           │
           ▼
-    ┌──────────┐
-    │ vsmStore │
-    │ updates  │
-    └──────────┘
+    ┌───────────────────┐
+    │ simulationData    │
+    │ Store updates     │
+    └───────────────────┘
           │
           ▼
     UI rerenders
@@ -215,7 +202,7 @@ Process each step in order:
 
 User clicks "Add Step"
   → StepForm component captures input
-  → Calls vsmStore.addStep(stepData)
+  → Calls vsmDataStore.addStep(stepData)
   → Store updates steps array
   → All subscribed components rerender
   → Canvas shows new node
@@ -227,124 +214,121 @@ This unidirectional flow ensures:
 - Easy debugging (single source of truth)
 - Automatic UI synchronization
 
-### Store → Computed Values → Display
+### Store → Derived Values → Display
 
-```javascript
-// Metrics are derived from store state
-const totalLeadTime = useVsmStore((state) =>
-  state.steps.reduce((sum, step) => sum + step.leadTime, 0)
-)
+```svelte
+<script>
+  import { vsmDataStore } from '../stores/vsmDataStore.svelte.js'
 
-const flowEfficiency = useVsmStore((state) => {
-  const processTime = state.steps.reduce((sum, s) => sum + s.processTime, 0)
-  const leadTime = state.steps.reduce((sum, s) => sum + s.leadTime, 0)
-  return leadTime > 0 ? (processTime / leadTime) * 100 : 0
-})
+  // Metrics are derived from store state
+  let totalLeadTime = $derived(
+    vsmDataStore.steps.reduce((sum, step) => sum + step.leadTime, 0)
+  )
+
+  let flowEfficiency = $derived(() => {
+    const processTime = vsmDataStore.steps.reduce((sum, s) => sum + s.processTime, 0)
+    const leadTime = vsmDataStore.steps.reduce((sum, s) => sum + s.leadTime, 0)
+    return leadTime > 0 ? (processTime / leadTime) * 100 : 0
+  })
+</script>
 ```
 
 **Benefits:**
 - No need to manually sync derived state
 - Computed values always consistent with source data
-- Components subscribe only to needed state slices
+- Fine-grained reactivity (only affected components update)
 
 ### Simulation Updates
 
 ```javascript
-// Animation loop updates store at regular intervals
-const runSimulation = () => {
-  const intervalId = setInterval(() => {
-    const newState = simulationEngine.tick(currentState)
-    vsmStore.updateSimulationState(newState)
+// SimulationRunner uses requestAnimationFrame for updates
+const animate = () => {
+  const newState = simulationEngine.tick(currentState)
+  callbacks.onTick(newState)
 
-    if (newState.completed) {
-      clearInterval(intervalId)
-      vsmStore.setSimulationResults(newState.metrics)
-    }
-  }, 100) // 10 ticks per second
+  if (!newState.isRunning) {
+    callbacks.onComplete(newState.results)
+    return
+  }
+
+  animationFrameId = requestAnimationFrame(animate)
 }
 ```
 
 **Pattern:**
-- Tick-based time simulation
+- Tick-based time simulation with requestAnimationFrame
 - State snapshots for replay/visualization
-- Interval-based updates for real-time display
+- SimulationService orchestrates stores and runner
 
 ---
 
-## Custom Hooks
+## Services
 
-Application provides specialized hooks for common operations:
+Application provides service modules for complex orchestration:
 
-### useSimulation
+### SimulationService
 
-Manages simulation lifecycle:
+Manages simulation lifecycle (src/services/SimulationService.svelte.js):
 
 ```javascript
-const {
-  isRunning,
-  progress,
-  results,
-  start,
-  pause,
-  reset
-} = useSimulation()
+import { simControlStore } from '../stores/simulationControlStore.svelte.js'
+import { simDataStore } from '../stores/simulationDataStore.svelte.js'
+
+// Start simulation
+simulationService.startSimulation(steps, connections)
+
+// Control via stores
+simControlStore.pause()
+simControlStore.resume()
+simControlStore.stop()
 ```
 
 **Use for:** Starting, controlling, and monitoring simulations
 
-### useVsmMetrics
+### Metrics Calculation
 
-Computes all metrics from current VSM:
+Compute metrics from current VSM data (src/utils/calculations/metrics.js):
 
 ```javascript
-const metrics = useVsmMetrics()
-// { flowEfficiency, leadTime, throughput, ... }
+import { calculateAllMetrics } from '../utils/calculations/metrics'
+
+const metrics = calculateAllMetrics(steps, connections)
+// { flowEfficiency, totalLeadTime, bottlenecks, ... }
 ```
 
 **Use for:** Displaying metrics in dashboard components
-
-### useStepValidation
-
-Validates step data:
-
-```javascript
-const { errors, isValid } = useStepValidation(stepData)
-```
-
-**Use for:** Form validation before saving steps
 
 ---
 
 ## Architecture Decisions
 
-### Why React Flow?
+### Why Svelte Flow (@xyflow/svelte)?
 
 **Reasons:**
 - Purpose-built for node-based editors
 - Handles pan, zoom, and connections natively
 - Extensible custom node types
 - Good performance with many nodes
-- Strong community and documentation
+- Native Svelte integration
 
 **Alternatives considered:**
 - D3.js (too low-level for our needs)
 - Cytoscape.js (primarily for graph algorithms)
 - Custom canvas (too much work)
 
-### Why Zustand?
+### Why Svelte 5 Rune Stores?
 
 **Reasons:**
-- Simple API, minimal boilerplate
-- Easy to create multiple stores
-- Built-in devtools support
+- Native to Svelte 5 (no external dependency)
+- Fine-grained reactivity with $state/$derived
+- Simple factory function pattern
 - No provider wrapper needed
-- TypeScript-friendly (if we add it later)
-- Small bundle size
+- Small bundle size (built-in)
 
 **Alternatives considered:**
+- Zustand (React-centric, not needed with Svelte runes)
+- Svelte writable stores (legacy API, runes are more ergonomic)
 - Redux (too much boilerplate)
-- Context API (performance concerns with frequent updates)
-- MobX (opinionated, larger learning curve)
 
 ### Why Vite?
 
@@ -356,9 +340,9 @@ const { errors, isValid } = useStepValidation(stepData)
 - Plugin ecosystem
 
 **Alternatives considered:**
-- Create React App (slower, less flexible)
 - Webpack (more complex configuration)
 - Parcel (less ecosystem support)
+- SvelteKit (overkill for SPA)
 
 ### Why ATDD?
 
@@ -378,23 +362,22 @@ const { errors, isValid } = useStepValidation(stepData)
 
 ## Performance Considerations
 
-### React Optimization Patterns
+### Svelte Optimization Patterns
 
-See [../rules/javascript-react.md](../rules/javascript-react.md) for details on:
+See [../rules/javascript-svelte.md](../rules/javascript-svelte.md) for details on:
 
-- `React.memo()` for expensive renders
-- `useCallback()` for event handlers
-- `useMemo()` for derived state
-- Controlled forms in editors
+- `$derived()` for computed values (automatically memoized)
+- Fine-grained reactivity (only affected DOM nodes update)
+- `bind:value` for form inputs
 
-### Zustand Optimization
+### Store Optimization
 
-- **Selective subscriptions** - Only subscribe to needed state slices
-- **Computed selectors** - Define getters in store for derived values
-- **Partialize persistence** - Only persist data, not UI state
-- **getState() for one-time reads** - Avoid unnecessary subscriptions
+- **Getters for reactive access** - Use `get prop()` in stores
+- **$derived for computed values** - Cached automatically
+- **Separate stores** - Only persist data stores, not UI state
+- **Immutable updates** - Reassign arrays/objects to trigger reactivity
 
-### ReactFlow Optimization
+### Svelte Flow Optimization
 
 - **Node memoization** - Use `React.memo()` on custom node components
 - **Edge batching** - Update multiple edges at once
@@ -419,34 +402,32 @@ See [../rules/javascript-react.md](../rules/javascript-react.md) for details on:
 ### Persistence Implementation
 
 ```javascript
-// vsmStore.js
-export const useVsmStore = create(
-  persist(
-    (set, get) => ({
-      // store definition
-    }),
-    {
-      name: 'vsm-storage', // localStorage key
-      partialize: (state) => ({
-        steps: state.steps,
-        connections: state.connections
-        // Exclude ephemeral UI state
-      })
-    }
-  )
-)
+// src/utils/persistedState.svelte.js
+import { getPersistedValue, persistState } from '../utils/persistedState.svelte.js'
+
+const STORAGE_KEY = 'vsm-data-storage'
+const persisted = getPersistedValue(STORAGE_KEY, initialState, sanitize)
+
+// In store factory:
+let steps = $state(persisted.steps)
+
+// Auto-persist via $effect
+$effect(() => {
+  persistState(STORAGE_KEY, { steps, connections, name })
+})
 ```
 
 ---
 
 ## Error Handling Strategy
 
-### Error Boundaries
+### Error Handling
 
-Wrap major sections in error boundaries:
-- Canvas view (React Flow errors)
+Key error handling points:
+- Canvas view (Svelte Flow errors)
 - Simulation panel (runtime errors)
 - Metrics dashboard (calculation errors)
+- File import (FileReader onerror)
 
 ### Validation Layers
 
@@ -468,9 +449,9 @@ See [../rules/testing.md](../rules/testing.md) for complete testing guidelines.
 
 | Layer | Test Type | What to Test |
 |-------|-----------|--------------|
-| **Stores** | Unit | Actions, selectors, state updates |
-| **Hooks** | Integration | Hook behavior with mocked stores |
-| **Components** | Integration | Component + store interactions |
+| **Stores** | Unit | Actions, getters, state updates |
+| **Services** | Integration | Service behavior with stores |
+| **Components** | E2E | Component + store interactions (Playwright) |
 | **Simulation** | Unit + Integration | Tick logic, state progression |
 | **End-to-end** | E2E (Playwright) | Complete user flows |
 
@@ -480,8 +461,8 @@ See [../rules/testing.md](../rules/testing.md) for complete testing guidelines.
 
 - [Project Structure](project-structure.md) - Directory layout
 - [Workflows](workflows.md) - Common development workflows
-- [Zustand Store Examples](../examples/zustand-stores.md) - State management patterns
-- [React Component Examples](../examples/react-components.md) - Component patterns
+- [Svelte Store Examples](../examples/svelte-stores.md) - State management patterns
+- [Svelte Component Examples](../examples/svelte-components.md) - Component patterns
 - [VSM Domain Rules](../rules/vsm-domain.md) - Business logic and validation
 
 ---

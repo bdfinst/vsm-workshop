@@ -106,16 +106,14 @@ function createVsmIOStore() {
      * @returns {string} JSON string
      */
     exportToJson() {
-      const { id, name, description, steps, connections, createdAt, updatedAt } =
-        vsmDataStore.data
       return serializeVsm({
-        id,
-        name,
-        description,
-        steps,
-        connections,
-        createdAt,
-        updatedAt,
+        id: vsmDataStore.id,
+        name: vsmDataStore.name,
+        description: vsmDataStore.description,
+        steps: vsmDataStore.steps,
+        connections: vsmDataStore.connections,
+        createdAt: vsmDataStore.createdAt,
+        updatedAt: vsmDataStore.updatedAt,
       })
     },
 

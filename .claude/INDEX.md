@@ -16,12 +16,11 @@
 
 ### Technology Stack
 
-- **Framework**: React 18+ (JavaScript, no TypeScript)
+- **Framework**: Svelte 5 (JavaScript, no TypeScript)
 - **Build Tool**: Vite
 - **Styling**: Tailwind CSS
-- **Diagramming**: React Flow
-- **State**: Zustand
-- **Charts**: Recharts
+- **Diagramming**: @xyflow/svelte (Svelte Flow)
+- **State**: Svelte 5 runes ($state, $derived) in .svelte.js stores
 - **Testing**: Vitest + Playwright + Cucumber.js
 - **Code Style**: Prettier (single quotes, no semicolons)
 - **Package Manager**: pnpm
@@ -41,7 +40,7 @@ These are **mandatory** development standards:
 | Rule | Purpose | When to Read |
 |------|---------|--------------|
 | [quality-verification.md](rules/quality-verification.md) | Test/build/lint gates | **Every code change** |
-| [javascript-react.md](rules/javascript-react.md) | Code style & patterns | **Before writing code** |
+| [javascript-svelte.md](rules/javascript-svelte.md) | Code style & patterns | **Before writing code** |
 | [atdd-workflow.md](rules/atdd-workflow.md) | Test-first development | **Before new features** |
 | [testing.md](rules/testing.md) | Testing strategy | **Writing tests** |
 | [vsm-domain.md](rules/vsm-domain.md) | Business domain model | **Working with VSM data** |
@@ -53,7 +52,7 @@ Deep-dive guides for understanding system design:
 
 | Guide | Contents |
 |-------|----------|
-| [guides/architecture.md](guides/architecture.md) | System architecture, data flow, React/Zustand patterns |
+| [guides/architecture.md](guides/architecture.md) | System architecture, data flow, Svelte store patterns |
 | [guides/workflows.md](guides/workflows.md) | Common development workflows (commits, tests, builds) |
 | [guides/project-structure.md](guides/project-structure.md) | Directory layout and file organization |
 
@@ -64,8 +63,8 @@ Reference implementations for common patterns:
 | Example | What You'll Find |
 |---------|------------------|
 | [examples/factory-functions.md](examples/factory-functions.md) | Factory pattern (no classes allowed!) |
-| [examples/zustand-stores.md](examples/zustand-stores.md) | State management patterns |
-| [examples/react-components.md](examples/react-components.md) | Component structure, PropTypes, hooks |
+| [examples/svelte-stores.md](examples/svelte-stores.md) | State management patterns |
+| [examples/svelte-components.md](examples/svelte-components.md) | Component structure, $props, reactivity |
 | [examples/testing-patterns.md](examples/testing-patterns.md) | Unit, integration, and acceptance test examples |
 
 ### Quick Reference Checklists
@@ -166,7 +165,7 @@ MyComponent.propTypes = {
 
 - **Understand the project** → Read this file (INDEX.md)
 - **Get started quickly** → [QUICK_START.md](QUICK_START.md)
-- **Know code standards** → [rules/javascript-react.md](rules/javascript-react.md)
+- **Know code standards** → [rules/javascript-svelte.md](rules/javascript-svelte.md)
 - **Learn TDD workflow** → [rules/atdd-workflow.md](rules/atdd-workflow.md)
 - **Understand architecture** → [guides/architecture.md](guides/architecture.md)
 - **See code examples** → [examples/](examples/)

@@ -42,7 +42,7 @@ The original CLAUDE.md was 1,148 lines long with:
 ├── rules/
 │   ├── _INDEX.md         # Searchable rule index
 │   ├── quality-verification.md
-│   ├── javascript-react.md
+│   ├── javascript-svelte.md
 │   ├── atdd-workflow.md
 │   ├── testing.md
 │   ├── vsm-domain.md

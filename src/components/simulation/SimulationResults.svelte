@@ -11,15 +11,7 @@
   import { AlertTriangle, Clock, TrendingUp, CheckCircle } from 'lucide-svelte'
   import { simDataStore } from '../../stores/simulationDataStore.svelte.js'
   import { vsmDataStore } from '../../stores/vsmDataStore.svelte.js'
-
-  function formatDuration(minutes) {
-    if (minutes < 60) {
-      return `${Math.round(minutes)}m`
-    }
-    const hours = Math.floor(minutes / 60)
-    const mins = Math.round(minutes % 60)
-    return mins > 0 ? `${hours}h ${mins}m` : `${hours}h`
-  }
+  import { formatDuration } from '../../utils/calculations/metrics.js'
 
   let results = $derived(simDataStore.results)
   let queueSizesByStepId = $derived(simDataStore.queueSizesByStepId)

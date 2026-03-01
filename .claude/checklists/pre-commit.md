@@ -157,7 +157,7 @@ git push origin <branch-name>
 ## Related Documentation
 
 - [Quality Verification Rules](../rules/quality-verification.md) - Detailed quality gate info
-- [JavaScript/React Rules](../rules/javascript-react.md) - Code style standards
+- [JavaScript/Svelte Rules](../rules/javascript-svelte.md) - Code style standards
 - [ATDD Workflow](../rules/atdd-workflow.md) - Test-first process
 
 ---
