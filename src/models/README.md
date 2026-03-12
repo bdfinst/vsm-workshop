@@ -105,7 +105,7 @@ const step = createStep({ name: 'Dev', processTime: 60, leadTime: 240 })
 const { valid, errors } = validateStep(step)
 
 if (valid) {
-  vsmStore.getState().addStep(step)
+  vsmDataStore.addStep(step)
 } else {
   console.error('Invalid step:', errors)
 }

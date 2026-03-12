@@ -12,7 +12,7 @@ Services encapsulate business logic that:
 
 ## Files
 
-- **SimulationService.js** - Simulation orchestration and lifecycle management
+- **SimulationService.svelte.js** - Simulation orchestration and lifecycle management
 
 ## Service vs. Utility
 
@@ -65,11 +65,11 @@ export const createSimulationService = () => {
 ```javascript
 import { createSimulationService } from './services/SimulationService'
 
-// In a component or hook
-const simulationService = createSimulationService()
+// Import the singleton (created at module load)
+import { getSimulationService } from './services/SimulationService.svelte.js'
 
 function handleStartSimulation() {
-  simulationService.startSimulation(vsm, {
+  getSimulationService().startSimulation(vsm, {
     workItemCount: 10,
     maxTicks: 1000
   })
@@ -92,8 +92,8 @@ const startSimulation = (vsm, config) => {
   const engine = createSimulationEngine(vsm, config)
 
   // 3. Update stores
-  simulationStore.getState().reset()
-  simulationStore.getState().start(config)
+  simControlStore.reset()
+  simControlStore.start(config)
 
   // 4. Execute
   return engine
@@ -135,16 +135,12 @@ Services can have side effects, so use appropriate mocking:
 import { vi, describe, it, expect } from 'vitest'
 import { createSimulationService } from './SimulationService'
 
-// Mock stores
-vi.mock('../stores/simulationStore')
-
 describe('SimulationService', () => {
   it('starts simulation with valid config', () => {
     const service = createSimulationService()
     const result = service.startSimulation(mockVSM, mockConfig)
 
     expect(result).toBeDefined()
-    expect(simulationStore.getState).toHaveBeenCalled()
   })
 })
 ```

@@ -1,96 +1,73 @@
 # Canvas Components
 
-React Flow integration for VSM visualization.
+@xyflow/svelte integration for VSM visualization.
 
 ## Structure
 
 ```
 canvas/
-├── Canvas.jsx            # Main React Flow container
+├── Canvas.svelte         # Main SvelteFlow container
 └── nodes/                # Custom node components
-    └── StepNode.jsx      # Process step visualization
+    └── StepNode.svelte   # Process step visualization
 ```
 
 ## Custom Nodes
 
-Each node type displays different VSM elements:
-
-- **StepNode:** Step name, timing metrics, %C&A, position controls
+- **StepNode:** Step name, timing metrics, %C&A, bottleneck highlight, selection ring
 
 ## Data Flow
 
 ```
-vsmStore (steps, connections)
+vsmDataStore (steps, connections)
     ↓
-Canvas transforms to nodes/edges
+Canvas derives nodes/edges via $derived
     ↓
-React Flow renders and handles interactions
+SvelteFlow renders and handles interactions
     ↓
-User actions update vsmStore
+User actions update vsmDataStore
 ```
 
 ## How It Works
 
 ### Node Rendering
 
-1. **vsmStore** provides steps array
-2. **Canvas** component maps steps to React Flow nodes:
+1. **vsmDataStore** provides reactive `steps` array
+2. **Canvas.svelte** maps steps to SvelteFlow nodes via `$derived`:
    ```javascript
-   const nodes = steps.map(step => ({
-     id: step.id,
-     type: 'stepNode',
-     data: step,
-     position: step.position
-   }))
+   let nodes = $derived(
+     vsmDataStore.steps.map(step => ({
+       id: step.id,
+       type: 'stepNode',
+       data: step,
+       position: step.position
+     }))
+   )
    ```
-3. **React Flow** renders nodes and handles:
-   - Dragging (updates position in store)
-   - Selection (updates UI state)
-   - Pan/zoom controls
+3. **SvelteFlow** renders nodes and handles dragging, selection, pan/zoom
 
 ### Edge Rendering
 
-1. **vsmStore** provides connections array
-2. **Canvas** transforms to React Flow edges
-3. Edges styled based on type:
-   - Forward: Solid lines
-   - Rework: Dashed lines (not yet implemented)
-
-## Integration with React Flow
-
-React Flow provides:
-- Node positioning and dragging
-- Pan and zoom controls
-- Connection handles
-- Mini-map (optional)
-- Controls (zoom in/out/fit)
-
-## Styling
-
-Node styling follows Tailwind classes:
-- Step types have different border colors
-- Selected steps have enhanced borders
-- Hover states for interactivity
-
-See: [UI Patterns](../../.claude/rules/ui-patterns.md#react-flow-styling)
+1. **vsmDataStore** provides `connections` array
+2. **Canvas.svelte** derives SvelteFlow edges from connections
+3. Edge style based on type:
+   - Forward: Solid grey lines
+   - Rework: Dashed red lines
 
 ## Adding Custom Nodes
 
-To add a new node type:
-
-1. Create component in `nodes/`
-2. Register in Canvas.jsx:
+1. Create `nodes/MyNode.svelte`
+2. Register in `Canvas.svelte`:
    ```javascript
    const nodeTypes = {
      stepNode: StepNode,
-     newType: NewTypeNode  // Add here
+     myNode: MyNode
    }
    ```
-3. Add styling in new component
-4. Update step type in vsmStore
+3. Add Tailwind styling inside the component
+4. Update step type in `src/data/stepTypes.js`
 
 ## See Also
 
-- [Architecture Guide](../../.claude/guides/architecture.md#reactflow-canvas-integration)
-- [UI Patterns](../../.claude/rules/ui-patterns.md#react-flow-styling)
-- [React Component Examples](../../.claude/examples/react-components.md)
+- [Architecture Guide](../../.claude/guides/architecture.md)
+- [UI Patterns](../../.claude/rules/ui-patterns.md)
+- [Svelte Component Examples](../../.claude/examples/svelte-components.md)
