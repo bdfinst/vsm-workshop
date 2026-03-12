@@ -169,3 +169,8 @@ const serviceInstance = createSimulationService()
 export function getSimulationService() {
   return serviceInstance
 }
+
+// HMR cleanup: stop animation loop when module is hot-replaced
+if (import.meta.hot) {
+  import.meta.hot.dispose(() => serviceInstance.cleanup())
+}
