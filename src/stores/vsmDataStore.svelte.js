@@ -75,10 +75,10 @@ function createVsmDataStore() {
       return description
     },
     get steps() {
-      return steps
+      return [...steps]
     },
     get connections() {
-      return connections
+      return [...connections]
     },
     get createdAt() {
       return createdAt
@@ -206,14 +206,16 @@ function createVsmDataStore() {
       persist()
     },
 
-    // Get step by ID helper
+    // Get step by ID helper — returns shallow copy to prevent untracked mutations
     getStepById(stepId) {
-      return steps.find((step) => step.id === stepId) || null
+      const step = steps.find((s) => s.id === stepId)
+      return step ? { ...step } : null
     },
 
-    // Get connection by ID helper
+    // Get connection by ID helper — returns shallow copy to prevent untracked mutations
     getConnectionById(connectionId) {
-      return connections.find((conn) => conn.id === connectionId) || null
+      const conn = connections.find((c) => c.id === connectionId)
+      return conn ? { ...conn } : null
     },
   }
 }

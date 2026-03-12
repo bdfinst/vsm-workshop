@@ -25,7 +25,7 @@ function createScenarioStore() {
   return {
     // Reactive getters
     get scenarios() {
-      return scenarios
+      return [...scenarios]
     },
     get activeScenarioId() {
       return activeScenarioId
