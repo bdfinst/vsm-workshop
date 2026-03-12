@@ -56,6 +56,8 @@
         <div class="border border-gray-200 rounded-lg overflow-hidden">
           <button
             onclick={() => toggleCategory(category)}
+            aria-expanded={expandedCategory === category}
+            aria-controls="category-{category}"
             class="w-full px-3 py-2 text-left text-sm font-medium text-gray-700 hover:bg-gray-50 flex items-center justify-between"
           >
             <span>{CATEGORY_LABELS[category]}</span>
@@ -64,7 +66,7 @@
             </span>
           </button>
           {#if expandedCategory === category}
-            <div class="border-t border-gray-200 bg-gray-50">
+            <div id="category-{category}" class="border-t border-gray-200 bg-gray-50">
               {#each templates as template (template.id)}
                 {@const config = STEP_TYPE_CONFIG[template.type]}
                 <button
