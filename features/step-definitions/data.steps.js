@@ -59,6 +59,7 @@ When('I refresh the page', function () {
 
 When('I select {string}', function (option) {
   this.selectedExportOption = option
+  this.exportClicked = true
 })
 
 When('I select the JSON file', function () {
