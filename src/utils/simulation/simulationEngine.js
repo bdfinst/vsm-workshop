@@ -160,29 +160,16 @@ function advanceItemProgress(
   tickDuration,
   newElapsedTime
 ) {
-  let completedCount = 0
-  const queueUpdates = {}
+  const results = workItems.map((item) =>
+    processItemInTick(item, stepMap, connections, tickDuration, newElapsedTime)
+  )
 
-  const updatedItems = workItems.map((item) => {
-    const result = processItemInTick(
-      item,
-      stepMap,
-      connections,
-      tickDuration,
-      newElapsedTime
-    )
-
-    if (result.isCompleted) {
-      completedCount++
-    }
-
-    if (result.nextStepId) {
-      queueUpdates[result.nextStepId] =
-        (queueUpdates[result.nextStepId] || 0) + 1
-    }
-
-    return result.updatedItem
-  })
+  const updatedItems = results.map((r) => r.updatedItem)
+  const completedCount = results.filter((r) => r.isCompleted).length
+  const queueUpdates = results.reduce((acc, r) => {
+    if (!r.nextStepId) return acc
+    return { ...acc, [r.nextStepId]: (acc[r.nextStepId] || 0) + 1 }
+  }, {})
 
   return { updatedItems, completedCount, queueUpdates }
 }
@@ -191,13 +178,13 @@ function advanceItemProgress(
  * Update queue sizes with new items
  */
 function updateQueues(currentQueueSizes, queueUpdates) {
-  const newQueueSizes = { ...currentQueueSizes }
-
-  Object.entries(queueUpdates).forEach(([stepId, increment]) => {
-    newQueueSizes[stepId] = (newQueueSizes[stepId] || 0) + increment
-  })
-
-  return newQueueSizes
+  return Object.entries(queueUpdates).reduce(
+    (acc, [stepId, increment]) => ({
+      ...acc,
+      [stepId]: (acc[stepId] || 0) + increment,
+    }),
+    { ...currentQueueSizes }
+  )
 }
 
 /**
@@ -389,29 +376,25 @@ export function calculateResults(state, steps) {
   const stepNameMap = new Map(steps.map((s) => [s.id, s.name]))
 
   // Calculate average lead time
-  let totalLeadTime = 0
-  workItems.forEach((item) => {
+  const totalLeadTime = workItems.reduce((sum, item) => {
     const itemLeadTime = item.history.reduce(
-      (sum, h) => sum + (h.exitedAt - h.enteredAt),
+      (h, entry) => h + (entry.exitedAt - entry.enteredAt),
       0
     )
-    totalLeadTime += itemLeadTime
-  })
+    return sum + itemLeadTime
+  }, 0)
   const avgLeadTime = workItemCount > 0 ? totalLeadTime / workItemCount : 0
 
   // Calculate throughput
   const throughput = elapsedTime > 0 ? completedCount / elapsedTime : 0
 
   // Calculate peak queues for bottleneck reporting
-  const peakQueues = {}
-  queueHistory.forEach((record) => {
-    if (
-      !peakQueues[record.stepId] ||
-      record.queueSize > peakQueues[record.stepId]
-    ) {
-      peakQueues[record.stepId] = record.queueSize
+  const peakQueues = queueHistory.reduce((acc, record) => {
+    if (!acc[record.stepId] || record.queueSize > acc[record.stepId]) {
+      return { ...acc, [record.stepId]: record.queueSize }
     }
-  })
+    return acc
+  }, {})
 
   const bottlenecks = Object.entries(peakQueues)
     .filter(([, peak]) => peak >= BOTTLENECK_QUEUE_THRESHOLD)
