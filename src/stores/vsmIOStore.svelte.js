@@ -11,16 +11,17 @@ import { vsmDataStore } from './vsmDataStore.svelte.js'
 import { vsmUIStore } from './vsmUIStore.svelte.js'
 
 /**
- * Remaps template connections to use new step IDs
- * @param {Array} templateConnections - Original connections with numeric indices
- * @param {Array} newSteps - Steps with newly generated UUIDs
- * @returns {Array} Connections with remapped IDs
+ * Remaps connections using an ID map { oldId -> newId }
+ * @param {Array} connections - Connections to remap
+ * @param {Object} idMap - Map of old IDs to new IDs
+ * @returns {Array} Connections with remapped source/target IDs
  */
-function remapTemplateConnections(templateConnections, newSteps) {
-  return templateConnections.map((conn) => ({
-    id: `${newSteps[conn.source].id}-${newSteps[conn.target].id}`,
-    source: newSteps[conn.source].id,
-    target: newSteps[conn.target].id,
+function remapConnectionIds(connections, idMap) {
+  return connections.map((conn) => ({
+    ...conn,
+    id: `${idMap[conn.source]}-${idMap[conn.target]}`,
+    source: idMap[conn.source],
+    target: idMap[conn.target],
     type: conn.type || 'forward',
     reworkRate: conn.reworkRate || 0,
   }))
@@ -42,18 +43,13 @@ function createVsmIOStore() {
         id: crypto.randomUUID(),
       }))
 
-      // Create step ID mapping for connections
-      const stepIdMap = {}
-      EXAMPLE_MAP.steps.forEach((oldStep, index) => {
-        stepIdMap[oldStep.id] = newSteps[index].id
-      })
+      // Build old->new step ID map for connection remapping
+      const stepIdMap = EXAMPLE_MAP.steps.reduce((acc, oldStep, index) => ({
+        ...acc,
+        [oldStep.id]: newSteps[index].id,
+      }), {})
 
-      const newConnections = EXAMPLE_MAP.connections.map((conn) => ({
-        ...conn,
-        id: `${stepIdMap[conn.source]}-${stepIdMap[conn.target]}`,
-        source: stepIdMap[conn.source],
-        target: stepIdMap[conn.target],
-      }))
+      const newConnections = remapConnectionIds(EXAMPLE_MAP.connections, stepIdMap)
 
       vsmDataStore.loadMap({
         id: crypto.randomUUID(),
@@ -83,9 +79,10 @@ function createVsmIOStore() {
         }
       })
 
+      const indexIdMap = newSteps.reduce((acc, step, i) => ({ ...acc, [i]: step.id }), {})
       const newConnections =
         template.connections && template.connections.length > 0
-          ? remapTemplateConnections(template.connections, newSteps)
+          ? remapConnectionIds(template.connections, indexIdMap)
           : []
 
       vsmDataStore.loadMap({
