@@ -49,6 +49,9 @@ export const createSimulationService = (runner = createSimulationRunner()) => {
 
     if (steps.length === 0) return
 
+    // Set running before yielding control to prevent re-entrancy
+    simControlStore.setRunning(true)
+
     const initialState = initSimulation(steps, connections, { workItemCount })
     const firstStepId = steps[0]?.id
     const items = generateWorkItems(workItemCount, firstStepId)
@@ -58,7 +61,6 @@ export const createSimulationService = (runner = createSimulationRunner()) => {
     simDataStore.updateElapsedTime(0)
     simDataStore.setDetectedBottlenecks([])
     simDataStore.setResults(null)
-    simControlStore.setRunning(true)
 
     runner.start(initialState, steps, connections, {
       onTick: (newState) => {
