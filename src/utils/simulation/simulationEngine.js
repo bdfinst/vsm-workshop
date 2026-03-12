@@ -15,6 +15,9 @@ import {
   PROGRESS_MULTIPLIER,
 } from '../../data/thresholds.js'
 
+// Maximum number of queue history entries to retain (sliding window)
+const MAX_QUEUE_HISTORY = 1000
+
 // ============================================================================
 // WORK ITEM FACTORY
 // ============================================================================
@@ -207,8 +210,11 @@ function recordHistory(queueHistory, steps, queueSizesByStepId, currentTime) {
     queueSize: queueSizesByStepId[step.id] || 0,
   }))
 
-  // Push new entries instead of spreading entire history
   const newHistory = queueHistory.concat(newEntries)
+  // Cap history to a sliding window to prevent unbounded memory growth
+  if (newHistory.length > MAX_QUEUE_HISTORY) {
+    return newHistory.slice(newHistory.length - MAX_QUEUE_HISTORY)
+  }
   return newHistory
 }
 
