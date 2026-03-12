@@ -37,7 +37,7 @@
   }
 </script>
 
-<aside class="w-64 bg-white border-r border-gray-200 p-4 overflow-y-auto">
+<aside class="w-64 bg-white border-r border-gray-200 p-4 overflow-y-auto" aria-label="Step templates and instructions">
   <button
     onclick={handleAddStep}
     class="w-full flex items-center justify-center gap-2 px-4 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium"
