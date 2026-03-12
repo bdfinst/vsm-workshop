@@ -5,6 +5,8 @@ import {
   generateWorkItems,
   routeWorkItem,
   shouldRework,
+  hasReworkPath,
+  calculateReworkProbability,
   detectBottlenecks,
   calculateResults,
 } from '../../../src/utils/simulation/simulationEngine'
@@ -385,6 +387,55 @@ describe('simulationEngine', () => {
       const results = calculateResults(state, mockSteps)
 
       expect(results.throughput).toBe(0)
+    })
+  })
+
+  describe('hasReworkPath', () => {
+    it('returns true when a rework connection exists from the step', () => {
+      const step = { id: 'step-2' }
+      const connections = [
+        { source: 'step-2', target: 'step-1', type: 'rework', reworkRate: 20 },
+      ]
+      expect(hasReworkPath(step, connections)).toBe(true)
+    })
+
+    it('returns false when no rework connection exists from the step', () => {
+      const step = { id: 'step-2' }
+      const connections = [
+        { source: 'step-1', target: 'step-2', type: 'forward', reworkRate: 0 },
+      ]
+      expect(hasReworkPath(step, connections)).toBe(false)
+    })
+
+    it('returns false when connections array is empty', () => {
+      const step = { id: 'step-2' }
+      expect(hasReworkPath(step, [])).toBe(false)
+    })
+
+    it('returns false when a forward connection exists but not rework', () => {
+      const step = { id: 'step-2' }
+      const connections = [
+        { source: 'step-2', target: 'step-3', type: 'forward', reworkRate: 0 },
+      ]
+      expect(hasReworkPath(step, connections)).toBe(false)
+    })
+  })
+
+  describe('calculateReworkProbability', () => {
+    it('returns 0 for 100% complete and accurate', () => {
+      expect(calculateReworkProbability({ percentCompleteAccurate: 100 })).toBe(0)
+    })
+
+    it('returns 1 for 0% complete and accurate', () => {
+      expect(calculateReworkProbability({ percentCompleteAccurate: 0 })).toBe(1)
+    })
+
+    it('returns 0.05 for 95% complete and accurate', () => {
+      expect(calculateReworkProbability({ percentCompleteAccurate: 95 })).toBeCloseTo(0.05, 5)
+    })
+
+    it('returns 0.2 for 80% complete and accurate', () => {
+      expect(calculateReworkProbability({ percentCompleteAccurate: 80 })).toBeCloseTo(0.2, 5)
     })
   })
 })
