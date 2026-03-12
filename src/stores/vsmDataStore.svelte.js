@@ -11,7 +11,7 @@ import { calculateMetrics } from '../utils/calculations/metrics.js'
 import {
   getPersistedValue,
   persistValue,
-} from '../utils/persistedState.svelte.js'
+} from '../utils/persistedState.js'
 import { CANVAS_START_X, CANVAS_STEP_SPACING, CANVAS_Y } from '../data/thresholds.js'
 import { sanitizeVSMData } from '../utils/validation/vsmValidator.js'
 
