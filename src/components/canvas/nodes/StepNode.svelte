@@ -12,12 +12,14 @@
   let hasBatch = $derived(data.batchSize > 1)
   let isBottleneck = $derived(isHighQueue || data.isSimulationBottleneck)
 
-  let nodeClasses = $derived(() => {
-    const classes = ['vsm-node', `vsm-node--${data.type}`]
-    if (selected) classes.push('ring-2 ring-blue-500')
-    if (isBottleneck) classes.push('vsm-node--bottleneck')
-    return classes.join(' ')
-  })
+  let nodeClasses = $derived(
+    (() => {
+      const classes = ['vsm-node', `vsm-node--${data.type}`]
+      if (selected) classes.push('ring-2 ring-blue-500')
+      if (isBottleneck) classes.push('vsm-node--bottleneck')
+      return classes.join(' ')
+    })()
+  )
 </script>
 
 <div
