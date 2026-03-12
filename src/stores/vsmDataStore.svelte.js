@@ -118,13 +118,14 @@ function createVsmDataStore() {
     },
 
     loadMap(mapData) {
-      id = mapData.id
-      name = mapData.name
-      description = mapData.description || ''
-      steps = mapData.steps || []
-      connections = mapData.connections || []
-      createdAt = mapData.createdAt
-      updatedAt = mapData.updatedAt
+      const safe = sanitizeVSMData(mapData)
+      id = safe.id
+      name = safe.name
+      description = safe.description
+      steps = safe.steps
+      connections = safe.connections
+      createdAt = safe.createdAt
+      updatedAt = safe.updatedAt
       persist()
     },
 
