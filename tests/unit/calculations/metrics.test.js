@@ -292,6 +292,19 @@ describe('identifyBottlenecks', () => {
     expect(bottlenecks).not.toContain('1')
     expect(bottlenecks).not.toContain('3')
   })
+
+  it('does not flag queueSize exactly at BOTTLENECK_QUEUE_THRESHOLD as bottleneck (strict >)', () => {
+    // threshold = max(avgQueue * 1.5, BOTTLENECK_QUEUE_THRESHOLD)
+    // With all queues <= threshold, none qualify as bottlenecks
+    const steps = [
+      { id: '1', queueSize: 3 },
+      { id: '2', queueSize: 5 },
+    ]
+    const bottlenecks = identifyBottlenecks(steps)
+    // avgQueue = 4, threshold = max(4*1.5, 5) = 6; queueSize 5 is NOT > 6
+    expect(bottlenecks).not.toContain('2')
+    expect(bottlenecks).not.toContain('1')
+  })
 })
 
 describe('calculateAllMetrics', () => {

@@ -136,5 +136,17 @@ describe('validateConnection', () => {
 
       expect(result.valid).toBe(true)
     })
+
+    it('rejects rework connection with undefined reworkRate', () => {
+      const result = validateConnection({
+        type: 'rework',
+        source: 'step-2',
+        target: 'step-1',
+        reworkRate: undefined,
+      })
+
+      expect(result.valid).toBe(false)
+      expect(result.errors.reworkRate).toBeDefined()
+    })
   })
 })
