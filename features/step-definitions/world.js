@@ -6,8 +6,8 @@ import {
   simDataStore,
   scenarioStore,
 } from './helpers/testStores.js'
-import { VSMTestHelper } from './helpers/VSMTestHelper.js'
-import { SimulationTestHelper } from './helpers/SimulationTestHelper.js'
+import { createVSMTestHelper } from './helpers/VSMTestHelper.js'
+import { createSimulationTestHelper } from './helpers/SimulationTestHelper.js'
 
 class VSMWorld extends World {
   constructor(options) {
@@ -40,8 +40,8 @@ class VSMWorld extends World {
     }
 
     // Initialize concern-based operations objects
-    this.vsm = new VSMTestHelper()
-    this.simulation = new SimulationTestHelper(this.vsm)
+    this.vsm = createVSMTestHelper()
+    this.simulation = createSimulationTestHelper(this.vsm)
 
     // Error state
     this.error = null

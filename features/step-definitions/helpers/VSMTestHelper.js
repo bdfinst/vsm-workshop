@@ -1,73 +1,29 @@
 import { vsmDataStore, vsmUIStore } from './testStores.js'
 
-export class VSMTestHelper {
-  constructor() {
-    this.dataStore = vsmDataStore
-    this.uiStore = vsmUIStore
-  }
+export const createVSMTestHelper = () => {
+  const dataStore = vsmDataStore
+  const uiStore = vsmUIStore
 
-  get state() {
-    // Return a state-like object for compatibility
-    return {
-      steps: this.dataStore.steps,
-      connections: this.dataStore.connections,
-      name: this.dataStore.name,
-      id: this.dataStore.id,
-      createNewMap: (name) => this.dataStore.createNewMap(name),
-      addStep: (name, overrides) => this.dataStore.addStep(name, overrides),
-      updateStep: (id, updates) => this.dataStore.updateStep(id, updates),
-      deleteStep: (id) => this.dataStore.deleteStep(id),
-      addConnection: (source, target, type, reworkRate) =>
-        this.dataStore.addConnection(source, target, type, reworkRate),
-      deleteConnection: (id) => this.dataStore.deleteConnection(id),
-    }
-  }
+  const findStepByName = (name) => dataStore.steps.find((s) => s.name === name)
+  const findStepById = (id) => dataStore.steps.find((s) => s.id === id)
 
-  createVSM(name) {
-    this.dataStore.createNewMap(name || 'My Value Stream')
-  }
-
-  addStep(name, overrides = {}) {
-    return this.dataStore.addStep(name, overrides)
-  }
-
-  findStepByName(name) {
-    return this.dataStore.steps.find((s) => s.name === name)
-  }
-
-  findStepById(id) {
-    return this.dataStore.steps.find((s) => s.id === id)
-  }
-
-  updateStep(stepId, updates) {
-    this.dataStore.updateStep(stepId, updates)
-  }
-
-  deleteStep(stepId) {
-    this.dataStore.deleteStep(stepId)
-  }
-
-  addConnection(sourceName, targetName, type = 'forward', reworkRate = 0) {
-    const source = this.findStepByName(sourceName)
-    const target = this.findStepByName(targetName)
+  const addConnection = (sourceName, targetName, type = 'forward', reworkRate = 0) => {
+    const source = findStepByName(sourceName)
+    const target = findStepByName(targetName)
     if (!source) {
       throw new Error(
-        `addConnection failed: source step "${sourceName}" not found. Available steps: ${this.dataStore.steps.map((s) => s.name).join(', ') || 'none'}`
+        `addConnection failed: source step "${sourceName}" not found. Available steps: ${dataStore.steps.map((s) => s.name).join(', ') || 'none'}`
       )
     }
     if (!target) {
       throw new Error(
-        `addConnection failed: target step "${targetName}" not found. Available steps: ${this.dataStore.steps.map((s) => s.name).join(', ') || 'none'}`
+        `addConnection failed: target step "${targetName}" not found. Available steps: ${dataStore.steps.map((s) => s.name).join(', ') || 'none'}`
       )
     }
-    return this.dataStore.addConnection(source.id, target.id, type, reworkRate)
+    return dataStore.addConnection(source.id, target.id, type, reworkRate)
   }
 
-  deleteConnection(connectionId) {
-    this.dataStore.deleteConnection(connectionId)
-  }
-
-  validateStep(step) {
+  const validateStep = (step) => {
     const errors = []
     if (step.leadTime < step.processTime) {
       errors.push('Lead time must be >= process time')
@@ -78,8 +34,49 @@ export class VSMTestHelper {
     return errors
   }
 
-  clearAll() {
-    this.dataStore.clearMap()
-    this.uiStore.clearUIState()
+  return {
+    get dataStore() {
+      return dataStore
+    },
+    get uiStore() {
+      return uiStore
+    },
+    get state() {
+      return {
+        steps: dataStore.steps,
+        connections: dataStore.connections,
+        name: dataStore.name,
+        id: dataStore.id,
+        createNewMap: (name) => dataStore.createNewMap(name),
+        addStep: (name, overrides) => dataStore.addStep(name, overrides),
+        updateStep: (id, updates) => dataStore.updateStep(id, updates),
+        deleteStep: (id) => dataStore.deleteStep(id),
+        addConnection,
+        deleteConnection: (id) => dataStore.deleteConnection(id),
+      }
+    },
+    createVSM(name) {
+      dataStore.createNewMap(name || 'My Value Stream')
+    },
+    addStep(name, overrides = {}) {
+      return dataStore.addStep(name, overrides)
+    },
+    findStepByName,
+    findStepById,
+    updateStep(stepId, updates) {
+      dataStore.updateStep(stepId, updates)
+    },
+    deleteStep(stepId) {
+      dataStore.deleteStep(stepId)
+    },
+    addConnection,
+    deleteConnection(connectionId) {
+      dataStore.deleteConnection(connectionId)
+    },
+    validateStep,
+    clearAll() {
+      dataStore.clearMap()
+      uiStore.clearUIState()
+    },
   }
 }
