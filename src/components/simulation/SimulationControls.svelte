@@ -109,7 +109,7 @@
         {#each SPEED_OPTIONS as option (option.value)}
           <button
             onclick={() => handleSpeedChange(option.value)}
-            class="px-2 py-1 text-xs font-medium transition-colors {speed === option.value
+            class="px-2 py-1 text-xs font-medium transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-inset {speed === option.value
               ? 'bg-blue-600 text-white'
               : 'bg-white text-slate-700 hover:bg-slate-100'}"
           >
@@ -146,7 +146,14 @@
         <span class="text-sm font-semibold text-slate-900">
           {completedCount} / {workItemCount}
         </span>
-        <div class="w-24 h-2 bg-slate-200 rounded-full overflow-hidden">
+        <div
+          class="w-24 h-2 bg-slate-200 rounded-full overflow-hidden"
+          role="progressbar"
+          aria-label="Simulation progress"
+          aria-valuenow={completedCount}
+          aria-valuemin={0}
+          aria-valuemax={workItemCount}
+        >
           <div
             class="h-full bg-emerald-500 transition-all duration-200"
             style="width: {(completedCount / workItemCount) * 100}%"

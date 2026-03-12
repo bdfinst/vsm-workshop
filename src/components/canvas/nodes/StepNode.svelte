@@ -36,13 +36,18 @@
     <div
       class="vsm-node__queue-badge {isHighQueue ? 'vsm-node__queue-badge--high' : ''}"
       title="{data.queueSize} items waiting"
+      aria-label="Queue: {data.queueSize} items waiting"
     >
       {data.queueSize}
     </div>
   {/if}
 
   {#if hasBatch}
-    <div class="vsm-node__batch-badge" title="Batch size: {data.batchSize}">
+    <div
+      class="vsm-node__batch-badge"
+      title="Batch size: {data.batchSize}"
+      aria-label="Batch size: {data.batchSize}"
+    >
       {data.batchSize}x
     </div>
   {/if}
@@ -54,15 +59,15 @@
 
   <div class="vsm-node__metrics">
     <div>
-      <span class="text-gray-500">PT:</span>
+      <span class="text-gray-500" aria-label="Process Time">PT:</span>
       <span class="font-medium">{formatDuration(data.processTime)}</span>
     </div>
     <div>
-      <span class="text-gray-500">LT:</span>
+      <span class="text-gray-500" aria-label="Lead Time">LT:</span>
       <span class="font-medium">{formatDuration(data.leadTime)}</span>
     </div>
     <div>
-      <span class="text-gray-500">%C&A:</span>
+      <span class="text-gray-500" aria-label="Percent Complete and Accurate">%C&A:</span>
       <span class="font-medium">{data.percentCompleteAccurate}%</span>
     </div>
   </div>

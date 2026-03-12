@@ -20,7 +20,7 @@
 {#snippet metricCard(title, value, subtitle, status, tooltip)}
   <div
     class="rounded-lg border p-4 {statusColors[status] || statusColors.neutral}"
-    title={tooltip}
+    aria-label={tooltip}
     data-testid="metric-{title.toLowerCase().replace(/\s+/g, '-')}"
     data-status={status}
   >
