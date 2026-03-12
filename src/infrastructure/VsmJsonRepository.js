@@ -31,8 +31,18 @@ export function serializeVsm(vsm) {
  * @returns {Object} VSM domain object with defaults applied
  * @throws {Error} If JSON parsing fails
  */
+const PROTOTYPE_POLLUTION_KEYS = new Set(['__proto__', 'constructor', 'prototype'])
+
+/**
+ * JSON reviver that strips prototype-pollution keys
+ */
+function safeReviver(key, value) {
+  if (PROTOTYPE_POLLUTION_KEYS.has(key)) return undefined
+  return value
+}
+
 export function deserializeVsm(jsonString) {
-  const data = JSON.parse(jsonString)
+  const data = JSON.parse(jsonString, safeReviver)
 
   // Validate structure
   if (!data || typeof data !== 'object') {
