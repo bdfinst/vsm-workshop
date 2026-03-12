@@ -15,14 +15,17 @@ export const createSimulationRunner = () => {
   }
   let isRunning = false
   let isPaused = false
+  let isAnimating = false
 
   /**
    * Animation loop function
    */
   const animate = () => {
     if (!isRunning || isPaused) {
+      isAnimating = false
       return
     }
+    isAnimating = true
 
     const currentState = {
       ...stateRef,
@@ -39,6 +42,7 @@ export const createSimulationRunner = () => {
     // Check if simulation is complete
     if (newState.completedCount >= newState.workItemCount) {
       isRunning = false
+      isAnimating = false
       const finalResults = calculateResults(newState, steps)
 
       if (callbacks.onComplete) {
@@ -88,6 +92,7 @@ export const createSimulationRunner = () => {
    * Resume the animation loop
    */
   const resume = () => {
+    if (isAnimating) return
     // Cancel any pending frame to prevent duplicate loops
     if (animationFrameId) {
       cancelAnimationFrame(animationFrameId)
@@ -102,6 +107,7 @@ export const createSimulationRunner = () => {
    */
   const stop = () => {
     isRunning = false
+    isAnimating = false
     if (animationFrameId) {
       cancelAnimationFrame(animationFrameId)
       animationFrameId = null
