@@ -240,34 +240,37 @@ function createTestVsmIOStore(dataStore) {
       }
 
       // Create steps from template
-      const stepIdMap = {}
-      template.steps.forEach((stepTemplate, index) => {
-        const step = createStep(stepTemplate.name, {
-          type: stepTemplate.type || 'custom',
-          description: stepTemplate.description || '',
-          processTime: stepTemplate.processTime,
-          leadTime: stepTemplate.leadTime,
-          percentCompleteAccurate: stepTemplate.percentCompleteAccurate,
-          queueSize: stepTemplate.queueSize,
-          batchSize: stepTemplate.batchSize,
-          position: { x: 50 + index * 250, y: 150 },
-        })
-        mapData.steps.push(step)
-        stepIdMap[index] = step.id
-      })
+      const { steps: builtSteps, stepIdMap } = template.steps.reduce(
+        (acc, stepTemplate, index) => {
+          const step = createStep(stepTemplate.name, {
+            type: stepTemplate.type || 'custom',
+            description: stepTemplate.description || '',
+            processTime: stepTemplate.processTime,
+            leadTime: stepTemplate.leadTime,
+            percentCompleteAccurate: stepTemplate.percentCompleteAccurate,
+            queueSize: stepTemplate.queueSize,
+            batchSize: stepTemplate.batchSize,
+            position: { x: 50 + index * 250, y: 150 },
+          })
+          return {
+            steps: [...acc.steps, step],
+            stepIdMap: { ...acc.stepIdMap, [index]: step.id },
+          }
+        },
+        { steps: [], stepIdMap: {} }
+      )
+      mapData.steps = builtSteps
 
       // Create connections from template
-      if (template.connections) {
-        template.connections.forEach((connTemplate) => {
-          const conn = createConnection(
-            stepIdMap[connTemplate.source],
-            stepIdMap[connTemplate.target],
-            connTemplate.type || 'forward',
-            connTemplate.reworkRate || 0
-          )
-          mapData.connections.push(conn)
-        })
-      }
+      const builtConnections = (template.connections || []).map((connTemplate) =>
+        createConnection(
+          stepIdMap[connTemplate.source],
+          stepIdMap[connTemplate.target],
+          connTemplate.type || 'forward',
+          connTemplate.reworkRate || 0
+        )
+      )
+      mapData.connections = builtConnections
 
       dataStore.loadMap(mapData)
     },
