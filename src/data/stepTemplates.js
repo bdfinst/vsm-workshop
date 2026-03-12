@@ -214,14 +214,10 @@ export const CATEGORY_LABELS = {
 }
 
 export function getTemplatesByCategory() {
-  const grouped = {}
-  for (const template of STEP_TEMPLATES) {
-    if (!grouped[template.category]) {
-      grouped[template.category] = []
-    }
-    grouped[template.category].push(template)
-  }
-  return grouped
+  return STEP_TEMPLATES.reduce((acc, template) => {
+    const existing = acc[template.category] || []
+    return { ...acc, [template.category]: [...existing, template] }
+  }, {})
 }
 
 // Map templates - complete value stream configurations
