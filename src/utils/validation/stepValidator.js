@@ -64,30 +64,33 @@ export function validateStep(stepData) {
     errors.name = 'Name is required'
   }
 
-  if (stepData.processTime < 0) {
+  const processTime = stepData.processTime ?? 0
+  const leadTime = stepData.leadTime ?? 0
+  const pca = stepData.percentCompleteAccurate ?? 100
+  const queueSize = stepData.queueSize ?? 0
+
+  if (processTime < 0) {
     errors.processTime = 'Process time must be >= 0'
   }
 
-  if (stepData.leadTime < 0) {
+  if (leadTime < 0) {
     errors.leadTime = 'Lead time must be >= 0'
   }
 
-  if (stepData.leadTime < stepData.processTime) {
+  if (leadTime < processTime) {
     errors.leadTime = 'Lead time must be >= process time'
   }
 
-  if (
-    stepData.percentCompleteAccurate < 0 ||
-    stepData.percentCompleteAccurate > 100
-  ) {
+  if (pca < 0 || pca > 100) {
     errors.percentCompleteAccurate = '%C&A must be between 0 and 100'
   }
 
-  if (stepData.queueSize < 0) {
+  if (queueSize < 0) {
     errors.queueSize = 'Queue size must be >= 0'
   }
 
-  if (stepData.batchSize < 1) {
+  const batchSize = stepData.batchSize ?? 1
+  if (batchSize < 1) {
     errors.batchSize = 'Batch size must be >= 1'
   }
 

@@ -297,3 +297,17 @@ describe('sanitizeVSMData', () => {
     expect(sanitizeVSMData({ id: '' }).id).toBeNull()
   })
 })
+
+describe('validateVSMData - primitive in steps array', () => {
+  it('reports error when steps array contains a primitive', () => {
+    const data = {
+      id: 'test-id',
+      name: 'Test',
+      steps: [42],
+      connections: [],
+    }
+    const result = validateVSMData(data)
+    expect(result.valid).toBe(false)
+    expect(result.errors.some((e) => e.includes('Step 0') && e.includes('object'))).toBe(true)
+  })
+})
