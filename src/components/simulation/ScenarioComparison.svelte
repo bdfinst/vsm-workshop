@@ -92,16 +92,16 @@
         <table class="w-full text-sm">
           <thead class="bg-slate-100">
             <tr>
-              <th class="px-4 py-2 text-left font-medium text-slate-700">
+              <th scope="col" class="px-4 py-2 text-left font-medium text-slate-700">
                 Metric
               </th>
-              <th class="px-4 py-2 text-right font-medium text-slate-700">
+              <th scope="col" class="px-4 py-2 text-right font-medium text-slate-700">
                 Baseline
               </th>
-              <th class="px-4 py-2 text-right font-medium text-slate-700">
+              <th scope="col" class="px-4 py-2 text-right font-medium text-slate-700">
                 Scenario
               </th>
-              <th class="px-4 py-2 text-right font-medium text-slate-700">
+              <th scope="col" class="px-4 py-2 text-right font-medium text-slate-700">
                 Change
               </th>
             </tr>

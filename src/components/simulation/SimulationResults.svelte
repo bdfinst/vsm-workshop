@@ -107,7 +107,14 @@
               <span class="w-24 text-xs text-slate-600 truncate" title={item.fullName}>
                 {item.name}
               </span>
-              <div class="flex-1 h-4 bg-slate-100 rounded overflow-hidden">
+              <div
+                class="flex-1 h-4 bg-slate-100 rounded overflow-hidden"
+                role="progressbar"
+                aria-label="Peak queue for {item.fullName}"
+                aria-valuenow={item.peakQueue}
+                aria-valuemin={0}
+                aria-valuemax={10}
+              >
                 <div
                   class="h-full bg-red-400 transition-all"
                   style="width: {Math.min(100, (item.peakQueue / 10) * 100)}%"

@@ -28,6 +28,20 @@
     const file = e.target.files?.[0]
     if (!file) return
 
+    if (file.size > 10000000) {
+      alert('File is too large. Please select a file under 10 MB.')
+      e.target.value = ''
+      return
+    }
+
+    const isJson =
+      file.type === 'application/json' || file.name.toLowerCase().endsWith('.json')
+    if (!isJson) {
+      alert('Invalid file type. Please select a JSON file.')
+      e.target.value = ''
+      return
+    }
+
     const reader = new FileReader()
     reader.onload = (event) => {
       const result = vsmIOStore.importFromJson(event.target.result)
@@ -42,7 +56,7 @@
 <div class="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center p-8">
   <div class="max-w-lg w-full">
     <div class="text-center mb-8">
-      <span class="text-6xl mb-4 block">🗺️</span>
+      <span class="text-6xl mb-4 block" aria-hidden="true">🗺️</span>
       <h1 class="text-3xl font-bold text-gray-800 mb-2">VSM Workshop</h1>
       <p class="text-gray-600">
         Create value stream maps to visualize and improve your delivery
@@ -89,7 +103,7 @@
           class="w-full py-3 px-4 bg-green-600 text-white font-medium rounded-lg hover:bg-green-700 transition-colors text-left flex items-center gap-3"
           data-testid="start-with-example-button"
         >
-          <span class="text-xl">📊</span>
+          <span class="text-xl" aria-hidden="true">📊</span>
           <div>
             <div>Software Delivery Example</div>
             <div class="text-xs text-green-200">
@@ -103,7 +117,7 @@
             class="w-full py-3 px-4 bg-emerald-600 text-white font-medium rounded-lg hover:bg-emerald-700 transition-colors text-left flex items-center gap-3"
             data-testid="template-{template.id}-button"
           >
-            <span class="text-xl">
+            <span class="text-xl" aria-hidden="true">
               {template.id === 'software-delivery' ? '🚀' : '🎫'}
             </span>
             <div>
