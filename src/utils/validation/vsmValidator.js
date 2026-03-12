@@ -4,6 +4,43 @@
  */
 
 /**
+ * Validate a single step structure
+ * @param {*} step - Step to validate
+ * @param {number} index - Step index for error messages
+ * @param {Array} errors - Errors array to push into
+ */
+function validateStepStructure(step, index, errors) {
+  if (!step || typeof step !== 'object') {
+    errors.push(`Step ${index}: must be an object`)
+    return
+  }
+  if (!step.id) errors.push(`Step ${index}: missing id`)
+  if (!step.name) errors.push(`Step ${index}: missing name`)
+  if (step.processTime !== undefined && typeof step.processTime !== 'number') {
+    errors.push(`Step ${index}: processTime must be a number`)
+  }
+  if (step.leadTime !== undefined && typeof step.leadTime !== 'number') {
+    errors.push(`Step ${index}: leadTime must be a number`)
+  }
+}
+
+/**
+ * Validate a single connection structure
+ * @param {*} conn - Connection to validate
+ * @param {number} index - Connection index for error messages
+ * @param {Array} errors - Errors array to push into
+ */
+function validateConnectionStructure(conn, index, errors) {
+  if (!conn || typeof conn !== 'object') {
+    errors.push(`Connection ${index}: must be an object`)
+    return
+  }
+  if (!conn.id) errors.push(`Connection ${index}: missing id`)
+  if (!conn.source) errors.push(`Connection ${index}: missing source`)
+  if (!conn.target) errors.push(`Connection ${index}: missing target`)
+}
+
+/**
  * Validate VSM data structure
  * @param {*} data - Data to validate
  * @returns {Object} Validation result with { valid, errors, data }
@@ -42,44 +79,14 @@ export function validateVSMData(data) {
   // Validate steps structure
   if (Array.isArray(data.steps)) {
     data.steps.forEach((step, index) => {
-      if (!step || typeof step !== 'object') {
-        errors.push(`Step ${index}: must be an object`)
-        return
-      }
-      if (!step.id) {
-        errors.push(`Step ${index}: missing id`)
-      }
-      if (!step.name) {
-        errors.push(`Step ${index}: missing name`)
-      }
-      if (
-        step.processTime !== undefined &&
-        typeof step.processTime !== 'number'
-      ) {
-        errors.push(`Step ${index}: processTime must be a number`)
-      }
-      if (step.leadTime !== undefined && typeof step.leadTime !== 'number') {
-        errors.push(`Step ${index}: leadTime must be a number`)
-      }
+      validateStepStructure(step, index, errors)
     })
   }
 
   // Validate connections structure
   if (Array.isArray(data.connections)) {
     data.connections.forEach((conn, index) => {
-      if (!conn || typeof conn !== 'object') {
-        errors.push(`Connection ${index}: must be an object`)
-        return
-      }
-      if (!conn.id) {
-        errors.push(`Connection ${index}: missing id`)
-      }
-      if (!conn.source) {
-        errors.push(`Connection ${index}: missing source`)
-      }
-      if (!conn.target) {
-        errors.push(`Connection ${index}: missing target`)
-      }
+      validateConnectionStructure(conn, index, errors)
     })
   }
 
