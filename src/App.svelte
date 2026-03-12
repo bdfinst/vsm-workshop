@@ -24,6 +24,12 @@
     vsmUIStore.clearConnectionSelection()
   }
 
+  function handleCanvasKeyDown(e) {
+    if (e.key === 'Escape') {
+      handleCanvasClick()
+    }
+  }
+
   function handleCloseEditor() {
     vsmUIStore.setEditing(false)
     vsmUIStore.clearSelection()
@@ -42,8 +48,7 @@
       <Header />
       <div class="flex-1 flex overflow-hidden">
         <Sidebar />
-        <!-- svelte-ignore a11y_click_events_have_key_events a11y_no_noninteractive_element_interactions -->
-        <main class="flex-1 flex flex-col" onclick={handleCanvasClick}>
+        <main class="flex-1 flex flex-col" onclick={handleCanvasClick} onkeydown={handleCanvasKeyDown}>
           <SimulationControls />
           <div class="flex-1 relative">
             <Canvas />
