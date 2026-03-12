@@ -6,6 +6,8 @@
   let isEditingName = $state(false)
   let tempName = $state(vsmDataStore.name)
   let fileInputRef = $state(null)
+  let isExportOpen = $state(false)
+  let exportMenuRef = $state(null)
 
   function handleNameClick() {
     tempName = vsmDataStore.name
@@ -66,6 +68,20 @@
     const file = e.target.files?.[0]
     if (!file) return
 
+    if (file.size > 10000000) {
+      alert('File is too large. Please select a file under 10 MB.')
+      e.target.value = ''
+      return
+    }
+
+    const isJson =
+      file.type === 'application/json' || file.name.toLowerCase().endsWith('.json')
+    if (!isJson) {
+      alert('Invalid file type. Please select a JSON file.')
+      e.target.value = ''
+      return
+    }
+
     const reader = new FileReader()
     reader.onload = (event) => {
       const result = vsmIOStore.importFromJson(event.target.result)
@@ -84,6 +100,43 @@
     if (confirm('Create a new map? This will clear the current map.')) {
       vsmDataStore.clearMap()
     }
+  }
+
+  function toggleExportMenu() {
+    isExportOpen = !isExportOpen
+  }
+
+  function closeExportMenu() {
+    isExportOpen = false
+  }
+
+  function handleExportMenuKeyDown(e) {
+    if (e.key === 'Escape') {
+      isExportOpen = false
+    } else if (e.key === 'ArrowDown') {
+      e.preventDefault()
+      const items = exportMenuRef?.querySelectorAll('[role="menuitem"]')
+      if (items?.length) items[0].focus()
+    }
+  }
+
+  function handleMenuItemKeyDown(e, items, index) {
+    if (e.key === 'ArrowDown') {
+      e.preventDefault()
+      items[(index + 1) % items.length].focus()
+    } else if (e.key === 'ArrowUp') {
+      e.preventDefault()
+      items[(index - 1 + items.length) % items.length].focus()
+    } else if (e.key === 'Escape') {
+      isExportOpen = false
+    }
+  }
+
+  function handleMenuContainerKeyDown(e) {
+    const items = exportMenuRef?.querySelectorAll('[role="menuitem"]')
+    if (!items?.length) return
+    const index = Array.from(items).indexOf(document.activeElement)
+    if (index !== -1) handleMenuItemKeyDown(e, items, index)
   }
 </script>
 
@@ -106,6 +159,7 @@
     {:else}
       <button
         onclick={handleNameClick}
+        aria-label="Edit map name"
         class="text-lg font-medium text-gray-800 hover:text-blue-600 transition-colors"
         data-testid="map-name"
       >
@@ -129,36 +183,54 @@
     >
       Import
     </button>
-    <div class="relative group">
+    <div class="relative">
       <button
-        class="px-3 py-1.5 text-sm bg-blue-600 text-white rounded hover:bg-blue-700 transition-colors"
+        onclick={toggleExportMenu}
+        onkeydown={handleExportMenuKeyDown}
+        aria-haspopup="true"
+        aria-expanded={isExportOpen}
+        aria-label="Export options"
+        class="px-3 py-1.5 text-sm bg-blue-600 text-white rounded hover:bg-blue-700 transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
         data-testid="export-button"
       >
-        Export ▾
+        Export
+        <svg class="inline-block w-3 h-3 ml-1" fill="currentColor" viewBox="0 0 20 20" aria-hidden="true">
+          <path fill-rule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clip-rule="evenodd" />
+        </svg>
       </button>
-      <div class="absolute right-0 mt-1 w-40 bg-white border border-gray-200 rounded shadow-lg opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all z-50">
-        <button
-          onclick={handleExportJson}
-          class="w-full px-4 py-2 text-left text-sm hover:bg-gray-100"
-          data-testid="export-json"
+      {#if isExportOpen}
+        <div
+          bind:this={exportMenuRef}
+          role="menu"
+          onkeydown={handleMenuContainerKeyDown}
+          class="absolute right-0 mt-1 w-40 bg-white border border-gray-200 rounded shadow-lg z-50"
         >
-          Export as JSON
-        </button>
-        <button
-          onclick={handleExportPng}
-          class="w-full px-4 py-2 text-left text-sm hover:bg-gray-100"
-          data-testid="export-png"
-        >
-          Export as PNG
-        </button>
-        <button
-          onclick={handleExportPdf}
-          class="w-full px-4 py-2 text-left text-sm hover:bg-gray-100"
-          data-testid="export-pdf"
-        >
-          Export as PDF
-        </button>
-      </div>
+          <button
+            onclick={() => { handleExportJson(); closeExportMenu() }}
+            role="menuitem"
+            class="w-full px-4 py-2 text-left text-sm hover:bg-gray-100 focus:outline-none focus:bg-gray-100"
+            data-testid="export-json"
+          >
+            Export as JSON
+          </button>
+          <button
+            onclick={() => { handleExportPng(); closeExportMenu() }}
+            role="menuitem"
+            class="w-full px-4 py-2 text-left text-sm hover:bg-gray-100 focus:outline-none focus:bg-gray-100"
+            data-testid="export-png"
+          >
+            Export as PNG
+          </button>
+          <button
+            onclick={() => { handleExportPdf(); closeExportMenu() }}
+            role="menuitem"
+            class="w-full px-4 py-2 text-left text-sm hover:bg-gray-100 focus:outline-none focus:bg-gray-100"
+            data-testid="export-pdf"
+          >
+            Export as PDF
+          </button>
+        </div>
+      {/if}
     </div>
     <input
       bind:this={fileInputRef}
