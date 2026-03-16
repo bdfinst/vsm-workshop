@@ -4,6 +4,8 @@ This application is a digital workshop for creating, analyzing, and simulating V
 
 This tool allows you to visually build your value stream, input key metrics for each step, and run simulations to identify bottlenecks and calculate overall flow efficiency.
 
+![](value-stream-workshop.png)
+
 ## Getting Started
 
 Follow these instructions to get a copy of the project up and running on your local machine for development and testing purposes.
