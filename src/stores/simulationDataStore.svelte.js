@@ -82,10 +82,6 @@ function createSimulationDataStore() {
       queueSizesByStepId = sizes
     },
 
-    addQueueHistoryEntry(entry) {
-      queueHistory = [...queueHistory, entry]
-    },
-
     addQueueHistoryBatch(entries) {
       if (entries.length === 0) return
       queueHistory = queueHistory.concat(entries)

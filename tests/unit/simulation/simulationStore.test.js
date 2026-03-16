@@ -123,11 +123,11 @@ describe('simulationStore (Svelte)', () => {
     })
   })
 
-  describe('addQueueHistoryEntry', () => {
+  describe('addQueueHistoryBatch (single entry)', () => {
     it('adds entry to queue history', () => {
       const entry = { tick: 1, stepId: 'step-1', queueSize: 5 }
 
-      simDataStore.addQueueHistoryEntry(entry)
+      simDataStore.addQueueHistoryBatch([entry])
 
       expect(simDataStore.queueHistory).toContainEqual(entry)
     })
@@ -165,7 +165,7 @@ describe('simulationStore (Svelte)', () => {
       simDataStore.setCompletedCount(10)
       simDataStore.updateWorkItems([{ id: '1' }])
       simDataStore.updateElapsedTime(100)
-      simDataStore.addQueueHistoryEntry({ tick: 1 })
+      simDataStore.addQueueHistoryBatch([{ tick: 1 }])
 
       simControlStore.reset()
       simDataStore.reset()
@@ -257,7 +257,7 @@ describe('simulationStore (Svelte)', () => {
         { id: '2', progress: 25 },
       ])
       simDataStore.updateQueueSizes({ 'step-1': 3, 'step-2': 2 })
-      simDataStore.addQueueHistoryEntry({ tick: 1, stepId: 'step-1', queueSize: 3 })
+      simDataStore.addQueueHistoryBatch([{ tick: 1, stepId: 'step-1', queueSize: 3 }])
       simDataStore.incrementCompletedCount()
 
       expect(simDataStore.workItems).toHaveLength(2)
@@ -330,10 +330,10 @@ describe('simulationStore (Svelte)', () => {
       simControlStore.setRunning(true)
 
       // Simulate multiple ticks with queue changes
-      simDataStore.addQueueHistoryEntry({ tick: 1, stepId: 'step-1', queueSize: 5 })
-      simDataStore.addQueueHistoryEntry({ tick: 2, stepId: 'step-1', queueSize: 7 })
-      simDataStore.addQueueHistoryEntry({ tick: 3, stepId: 'step-1', queueSize: 4 })
-      simDataStore.addQueueHistoryEntry({ tick: 1, stepId: 'step-2', queueSize: 2 })
+      simDataStore.addQueueHistoryBatch([{ tick: 1, stepId: 'step-1', queueSize: 5 }])
+      simDataStore.addQueueHistoryBatch([{ tick: 2, stepId: 'step-1', queueSize: 7 }])
+      simDataStore.addQueueHistoryBatch([{ tick: 3, stepId: 'step-1', queueSize: 4 }])
+      simDataStore.addQueueHistoryBatch([{ tick: 1, stepId: 'step-2', queueSize: 2 }])
 
       expect(simDataStore.queueHistory).toHaveLength(4)
       expect(simDataStore.queueHistory[0]).toEqual({

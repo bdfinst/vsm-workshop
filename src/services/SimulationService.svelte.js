@@ -62,6 +62,12 @@ export const createSimulationService = (runner = createSimulationRunner()) => {
     simDataStore.setDetectedBottlenecks([])
     simDataStore.setResults(null)
 
+    // Throttle queue history writes to every 5 ticks (~12/s at 60fps)
+    // to reduce reactivity churn in the store
+    let tickCount = 0
+    const HISTORY_FLUSH_INTERVAL = 5
+    let pendingHistory = []
+
     runner.start(initialState, steps, connections, {
       onTick: (newState) => {
         simDataStore.updateWorkItems(newState.workItems)
@@ -69,9 +75,19 @@ export const createSimulationService = (runner = createSimulationRunner()) => {
         simDataStore.updateQueueSizes(newState.queueSizesByStepId)
         simDataStore.setDetectedBottlenecks(newState.detectedBottlenecks)
 
-        simDataStore.addQueueHistoryBatch(newState.queueHistory)
+        pendingHistory = pendingHistory.concat(newState.queueHistory)
+        tickCount++
+        if (tickCount % HISTORY_FLUSH_INTERVAL === 0) {
+          simDataStore.addQueueHistoryBatch(pendingHistory)
+          pendingHistory = []
+        }
       },
       onComplete: (finalResults) => {
+        // Flush any remaining buffered history
+        if (pendingHistory.length > 0) {
+          simDataStore.addQueueHistoryBatch(pendingHistory)
+          pendingHistory = []
+        }
         simControlStore.setRunning(false)
         simDataStore.setResults(finalResults)
       },

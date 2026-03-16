@@ -27,12 +27,10 @@ export const createSimulationRunner = () => {
     }
     isAnimating = true
 
-    const currentState = {
-      ...stateRef,
-      queueHistory: [],
-    }
+    // Reset tick-local history in-place to avoid a full state object copy per tick
+    stateRef.queueHistory = []
 
-    const newState = processTick(currentState, steps, connections)
+    const newState = processTick(stateRef, steps, connections)
 
     // Notify tick callback
     if (callbacks.onTick) {
