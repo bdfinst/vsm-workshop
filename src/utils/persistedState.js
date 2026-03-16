@@ -42,11 +42,9 @@ export function getPersistedValue(key, initialValue, sanitize) {
       return parsed
     }
   } catch (e) {
-    // Silent fail in test environment
-    if (
-      import.meta.env.DEV &&
-      (typeof process === 'undefined' || process.env?.NODE_ENV !== 'test')
-    ) {
+    // Log in all environments except test to surface data-loss issues
+    const isTest = typeof process !== 'undefined' && process.env?.NODE_ENV === 'test'
+    if (!isTest) {
       console.warn(`Failed to read ${key} from localStorage:`, e)
     }
   }

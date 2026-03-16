@@ -52,6 +52,9 @@ function createVsmDataStore() {
   let createdAt = $state(persisted.createdAt)
   let updatedAt = $state(persisted.updatedAt)
 
+  // Cached metrics — only recomputed when steps or connections change
+  let cachedMetrics = $derived(calculateMetrics(steps, connections))
+
   // Persist on changes
   function persist() {
     persistValue(STORAGE_KEY, {
@@ -89,9 +92,9 @@ function createVsmDataStore() {
       return updatedAt
     },
 
-    // Derived metrics
+    // Derived metrics — cached via $derived, only recomputed when steps/connections change
     get metrics() {
-      return calculateMetrics(steps, connections)
+      return cachedMetrics
     },
 
     // Map-level Actions
