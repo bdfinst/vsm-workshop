@@ -5,6 +5,10 @@ import { simControlStore } from '../../../src/stores/simulationControlStore.svel
 import { simDataStore } from '../../../src/stores/simulationDataStore.svelte.js'
 import { scenarioStore } from '../../../src/stores/scenarioStore.svelte.js'
 
+// Svelte 5 rune $state in singleton stores persists across test files in the same
+// Vitest worker. We rely on explicit beforeEach resets rather than vi.resetModules()
+// because re-importing .svelte.js modules would re-run rune initializations outside
+// a Svelte component context, which throws. The reset() calls below are sufficient.
 describe('simulationStore (Svelte)', () => {
   beforeEach(() => {
     // Reset all stores before each test
