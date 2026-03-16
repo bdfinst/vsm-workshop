@@ -32,35 +32,68 @@ const runSimulationForScenario = (vsmState, scenario, workItemCount) => {
 }
 
 /**
- * Create a simulation service instance
- * Works with Svelte 5 stores
+ * Build a default storeApi that delegates to the singleton stores.
+ * This keeps backwards compatibility while allowing tests to inject mocks.
+ * @returns {Object} Store API with read and write methods
  */
-export const createSimulationService = (runner = createSimulationRunner()) => {
+const defaultStoreApi = () => ({
+  // Reads
+  getSteps: () => vsmDataStore.steps,
+  getConnections: () => vsmDataStore.connections,
+  getWorkItemCount: () => simDataStore.workItemCount,
+  getIsRunning: () => simControlStore.isRunning,
+  getScenarios: () => scenarioStore.scenarios,
+
+  // Writes
+  setRunning: (v) => simControlStore.setRunning(v),
+  setPaused: (v) => simControlStore.setPaused(v),
+  resetControl: () => simControlStore.reset(),
+  updateWorkItems: (v) => simDataStore.updateWorkItems(v),
+  updateQueueSizes: (v) => simDataStore.updateQueueSizes(v),
+  updateElapsedTime: (v) => simDataStore.updateElapsedTime(v),
+  setDetectedBottlenecks: (v) => simDataStore.setDetectedBottlenecks(v),
+  addQueueHistoryBatch: (v) => simDataStore.addQueueHistoryBatch(v),
+  setResults: (v) => simDataStore.setResults(v),
+  resetData: () => simDataStore.reset(),
+  addScenario: (v) => scenarioStore.addScenario(v),
+  setComparisonResults: (v) => scenarioStore.setComparisonResults(v),
+})
+
+/**
+ * Create a simulation service instance
+ * @param {Object} [runner] - Simulation runner (default: createSimulationRunner())
+ * @param {Object} [storeApi] - Store API for reads/writes (default: delegates to singletons)
+ * @returns {Object} Simulation service methods
+ */
+export const createSimulationService = (
+  runner = createSimulationRunner(),
+  storeApi = defaultStoreApi()
+) => {
   /**
    * Start a new simulation run
    */
   const startSimulation = () => {
     // Re-entrancy guard: don't start if already running
-    if (simControlStore.isRunning) return
+    if (storeApi.getIsRunning()) return
 
-    const steps = vsmDataStore.steps
-    const connections = vsmDataStore.connections
-    const workItemCount = simDataStore.workItemCount
+    const steps = storeApi.getSteps()
+    const connections = storeApi.getConnections()
+    const workItemCount = storeApi.getWorkItemCount()
 
     if (steps.length === 0) return
 
     // Set running before yielding control to prevent re-entrancy
-    simControlStore.setRunning(true)
+    storeApi.setRunning(true)
 
     const initialState = initSimulation(steps, connections, { workItemCount })
     const firstStepId = steps[0]?.id
     const items = generateWorkItems(workItemCount, firstStepId)
 
-    simDataStore.updateWorkItems(items)
-    simDataStore.updateQueueSizes(initialState.queueSizesByStepId)
-    simDataStore.updateElapsedTime(0)
-    simDataStore.setDetectedBottlenecks([])
-    simDataStore.setResults(null)
+    storeApi.updateWorkItems(items)
+    storeApi.updateQueueSizes(initialState.queueSizesByStepId)
+    storeApi.updateElapsedTime(0)
+    storeApi.setDetectedBottlenecks([])
+    storeApi.setResults(null)
 
     // Throttle queue history writes to every 5 ticks (~12/s at 60fps)
     // to reduce reactivity churn in the store
@@ -70,26 +103,26 @@ export const createSimulationService = (runner = createSimulationRunner()) => {
 
     runner.start(initialState, steps, connections, {
       onTick: (newState) => {
-        simDataStore.updateWorkItems(newState.workItems)
-        simDataStore.updateElapsedTime(newState.elapsedTime)
-        simDataStore.updateQueueSizes(newState.queueSizesByStepId)
-        simDataStore.setDetectedBottlenecks(newState.detectedBottlenecks)
+        storeApi.updateWorkItems(newState.workItems)
+        storeApi.updateElapsedTime(newState.elapsedTime)
+        storeApi.updateQueueSizes(newState.queueSizesByStepId)
+        storeApi.setDetectedBottlenecks(newState.detectedBottlenecks)
 
         pendingHistory = pendingHistory.concat(newState.queueHistory)
         tickCount++
         if (tickCount % HISTORY_FLUSH_INTERVAL === 0) {
-          simDataStore.addQueueHistoryBatch(pendingHistory)
+          storeApi.addQueueHistoryBatch(pendingHistory)
           pendingHistory = []
         }
       },
       onComplete: (finalResults) => {
         // Flush any remaining buffered history
         if (pendingHistory.length > 0) {
-          simDataStore.addQueueHistoryBatch(pendingHistory)
+          storeApi.addQueueHistoryBatch(pendingHistory)
           pendingHistory = []
         }
-        simControlStore.setRunning(false)
-        simDataStore.setResults(finalResults)
+        storeApi.setRunning(false)
+        storeApi.setResults(finalResults)
       },
     })
   }
@@ -98,7 +131,7 @@ export const createSimulationService = (runner = createSimulationRunner()) => {
    * Pause the running simulation
    */
   const pauseSimulation = () => {
-    simControlStore.setPaused(true)
+    storeApi.setPaused(true)
     runner.pause()
   }
 
@@ -106,8 +139,8 @@ export const createSimulationService = (runner = createSimulationRunner()) => {
    * Resume a paused simulation
    */
   const resumeSimulation = () => {
-    simControlStore.setPaused(false)
-    simControlStore.setRunning(true)
+    storeApi.setPaused(false)
+    storeApi.setRunning(true)
     runner.resume()
   }
 
@@ -116,17 +149,17 @@ export const createSimulationService = (runner = createSimulationRunner()) => {
    */
   const resetSimulation = () => {
     runner.stop()
-    simControlStore.reset()
-    simDataStore.reset()
+    storeApi.resetControl()
+    storeApi.resetData()
   }
 
   /**
    * Create a new scenario from current VSM state
    */
   const createScenario = () => {
-    const steps = vsmDataStore.steps
-    const connections = vsmDataStore.connections
-    const scenarios = scenarioStore.scenarios
+    const steps = storeApi.getSteps()
+    const connections = storeApi.getConnections()
+    const scenarios = storeApi.getScenarios()
 
     const scenario = {
       id: crypto.randomUUID(),
@@ -136,7 +169,7 @@ export const createSimulationService = (runner = createSimulationRunner()) => {
       results: null,
     }
 
-    scenarioStore.addScenario(scenario)
+    storeApi.addScenario(scenario)
     return scenario
   }
 
@@ -144,10 +177,10 @@ export const createSimulationService = (runner = createSimulationRunner()) => {
    * Run comparison between baseline and scenario
    */
   const runComparison = (scenarioId) => {
-    const steps = vsmDataStore.steps
-    const connections = vsmDataStore.connections
-    const workItemCount = simDataStore.workItemCount
-    const scenarios = scenarioStore.scenarios
+    const steps = storeApi.getSteps()
+    const connections = storeApi.getConnections()
+    const workItemCount = storeApi.getWorkItemCount()
+    const scenarios = storeApi.getScenarios()
 
     const scenario = scenarios.find((s) => s.id === scenarioId)
     if (!scenario) return
@@ -158,7 +191,7 @@ export const createSimulationService = (runner = createSimulationRunner()) => {
       workItemCount
     )
 
-    scenarioStore.setComparisonResults(results)
+    storeApi.setComparisonResults(results)
   }
 
   /**
