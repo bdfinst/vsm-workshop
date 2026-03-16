@@ -23,7 +23,7 @@
 - **State**: Svelte 5 runes ($state, $derived) in .svelte.js stores
 - **Testing**: Vitest + Playwright + Cucumber.js
 - **Code Style**: Prettier (single quotes, no semicolons)
-- **Package Manager**: pnpm
+- **Package Manager**: npm
 
 ### Current Phase
 
@@ -93,17 +93,17 @@ Step-by-step guides for common tasks:
 
 ```bash
 # Development
-pnpm dev                # Start dev server
-pnpm test              # Run unit tests
-pnpm test:acceptance   # Run acceptance tests
-pnpm test:all          # Run all tests
+npm run dev                # Start dev server
+npm test                   # Run unit tests
+npm run test:acceptance    # Run acceptance tests
+npm run test:all           # Run all tests
 
 # Quality Gates (run before every commit)
-pnpm test && pnpm build && pnpm lint
+npm test && npm run build && npm run lint
 
 # Production
-pnpm build             # Build for production
-pnpm preview           # Preview production build
+npm run build              # Build for production
+npm run preview            # Preview production build
 ```
 
 ---
@@ -139,7 +139,7 @@ export class SimulationRunner { }
 After **EVERY** code change:
 
 ```bash
-pnpm test && pnpm build && pnpm lint
+npm test && npm run build && npm run lint
 ```
 
 All three must pass. No exceptions.

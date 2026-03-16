@@ -39,13 +39,13 @@ features/
 
 ```bash
 # Run all acceptance tests
-pnpm test:acceptance
+npm run test:acceptance
 
 # Run specific feature
-pnpm test:acceptance -- features/builder/add-step.feature
+npm run test:acceptance -- features/builder/add-step.feature
 
 # Watch mode
-pnpm test:acceptance --watch
+npm run test:acceptance -- --watch
 ```
 
 ## Unit Tests
@@ -216,19 +216,19 @@ describe('workFlowSimulation', () => {
 
 ```bash
 # Run all unit tests
-pnpm test
+npm test
 
 # Run with coverage
-pnpm test:coverage
+npm run test:coverage
 
 # Watch mode
-pnpm test --watch
+npm test -- --watch
 
 # Run acceptance tests
-pnpm test:acceptance
+npm run test:acceptance
 
 # Run all tests
-pnpm test:all
+npm run test:all
 ```
 
 ## Coverage Goals

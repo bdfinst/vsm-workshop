@@ -10,10 +10,10 @@ Follow these instructions to get a copy of the project up and running on your lo
 
 ### Prerequisites
 
-This project uses `pnpm` as its package manager. Make sure you have Node.js and `pnpm` installed on your system.
+This project uses `npm` as its package manager. Make sure you have Node.js and `npm` installed on your system.
 
 - [Node.js](https://nodejs.org/)
-- [pnpm](https://pnpm.io/installation)
+- [npm](https://docs.npmjs.com/) (included with Node.js)
 
 ### Installation
 
@@ -32,7 +32,7 @@ This project uses `pnpm` as its package manager. Make sure you have Node.js and 
 3. Install the dependencies:
 
    ```sh
-   pnpm install
+   npm install
    ```
 
 ## Usage
@@ -42,7 +42,7 @@ This project uses `pnpm` as its package manager. Make sure you have Node.js and 
 To run the application in development mode with hot-reloading, use the following command. This will start a local server, typically on `http://localhost:5173`.
 
 ```sh
-pnpm dev
+npm run dev
 ```
 
 ### Building for Production
@@ -50,7 +50,7 @@ pnpm dev
 To create a production-ready build of the application, run:
 
 ```sh
-pnpm build
+npm run build
 ```
 
 The optimized and minified files will be placed in the `dist` directory.
@@ -64,13 +64,13 @@ This project includes several types of tests to ensure quality and correctness.
 To run the fast unit and integration tests once, execute:
 
 ```sh
-pnpm test
+npm test
 ```
 
 To run these tests in interactive watch mode, use:
 
 ```sh
-pnpm test:watch
+npm run test:watch
 ```
 
 ### End-to-End Tests (Playwright)
@@ -78,7 +78,7 @@ pnpm test:watch
 To run the end-to-end tests that simulate real user interactions in a browser, use:
 
 ```sh
-pnpm test:e2e
+npm run test:e2e
 ```
 
 ### Acceptance Tests (Cucumber)
@@ -86,5 +86,5 @@ pnpm test:e2e
 To run the behavior-driven development (BDD) acceptance tests, use:
 
 ```sh
-pnpm test:acceptance
+npm run test:acceptance
 ```

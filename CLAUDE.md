@@ -76,15 +76,15 @@ The original CLAUDE.md was 1,148 lines long with:
 
 ```bash
 # Development
-pnpm dev                # Start dev server
+npm run dev            # Start dev server
 
 # Testing
-pnpm test              # Unit tests
-pnpm test:acceptance   # Acceptance tests
-pnpm test:all          # All tests
+npm test              # Unit tests
+npm run test:acceptance   # Acceptance tests
+npm run test:all          # All tests
 
 # Quality Gates (MANDATORY before commit)
-pnpm test && pnpm build && pnpm lint
+npm test && npm run build && npm run lint
 ```
 
 ---
@@ -109,7 +109,7 @@ export class Runner {}
 
 ### 3. Quality Gates Are Mandatory
 ```bash
-pnpm test && pnpm build && pnpm lint
+npm test && npm run build && npm run lint
 ```
 All three must pass before every commit.
 

@@ -29,7 +29,7 @@ export class Runner { }
 ### 3. Quality Gates Before Every Commit
 
 ```bash
-pnpm test && pnpm build && pnpm lint
+npm test && npm run build && npm run lint
 ```
 
 All three must pass. No exceptions.
@@ -68,7 +68,7 @@ Feature: My new feature
 features/step-definitions/my-feature.steps.js
 
 # Run to verify they fail
-pnpm test:acceptance
+npm run test:acceptance
 ```
 
 ### Step 4: Implement (Green Phase)
@@ -82,7 +82,7 @@ Clean up while keeping tests green.
 ### Step 6: Quality Check
 
 ```bash
-pnpm test && pnpm build && pnpm lint
+npm test && npm run build && npm run lint
 ```
 
 ---
@@ -91,9 +91,9 @@ pnpm test && pnpm build && pnpm lint
 
 Use this checklist:
 
-- [ ] `pnpm test` passes (all tests green)
-- [ ] `pnpm build` succeeds
-- [ ] `pnpm lint` passes
+- [ ] `npm test` passes (all tests green)
+- [ ] `npm run build` succeeds
+- [ ] `npm run lint` passes
 - [ ] No debugging code (console.log, debugger)
 - [ ] No commented-out code
 - [ ] PropTypes on all components
@@ -223,20 +223,20 @@ Read these before coding:
 
 ```bash
 # Read error message carefully
-pnpm test
+npm test
 
 # Run specific test
-pnpm test src/utils/calculations/metrics.test.js
+npm test src/utils/calculations/metrics.test.js
 
 # Watch mode for TDD
-pnpm test --watch
+npm test -- --watch
 ```
 
 ### Build Failing
 
 ```bash
 # Check for import errors
-pnpm build
+npm run build
 
 # Common issues:
 # - Typo in import path
@@ -248,10 +248,10 @@ pnpm build
 
 ```bash
 # Show errors
-pnpm lint
+npm run lint
 
 # Auto-fix many errors
-pnpm lint --fix
+npm run lint -- --fix
 ```
 
 ---
@@ -260,21 +260,21 @@ pnpm lint --fix
 
 ```bash
 # Development
-pnpm dev              # Start dev server (http://localhost:5173)
+npm run dev              # Start dev server (http://localhost:5173)
 
 # Testing
-pnpm test             # Unit tests
-pnpm test:watch       # Unit tests in watch mode
-pnpm test:acceptance  # Acceptance tests (Cucumber)
-pnpm test:e2e         # E2E tests (Playwright)
-pnpm test:all         # All tests
+npm test                 # Unit tests
+npm run test:watch       # Unit tests in watch mode
+npm run test:acceptance  # Acceptance tests (Cucumber)
+npm run test:e2e         # E2E tests (Playwright)
+npm run test:all         # All tests
 
 # Quality (before commit)
-pnpm test && pnpm build && pnpm lint
+npm test && npm run build && npm run lint
 
 # Build
-pnpm build            # Build for production
-pnpm preview          # Preview production build
+npm run build            # Build for production
+npm run preview          # Preview production build
 ```
 
 ---

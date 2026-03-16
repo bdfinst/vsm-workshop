@@ -11,7 +11,7 @@ This is NON-NEGOTIABLE. Every change must pass all quality gates before being co
 ### 1. Tests Must Pass
 
 ```bash
-pnpm test
+npm test
 ```
 
 **What this verifies:**
@@ -25,7 +25,7 @@ pnpm test
 ### 2. Build Must Succeed
 
 ```bash
-pnpm build
+npm run build
 ```
 
 **What this verifies:**
@@ -39,7 +39,7 @@ pnpm build
 ### 3. Lint Must Pass
 
 ```bash
-pnpm lint
+npm run lint
 ```
 
 **What this verifies:**
@@ -55,7 +55,7 @@ pnpm lint
 Run all three checks in sequence:
 
 ```bash
-pnpm test && pnpm build && pnpm lint
+npm test && npm run build && npm run lint
 ```
 
 This ensures:
@@ -86,7 +86,7 @@ Run quality verification:
 **Solution:**
 1. Read the test failure message carefully
 2. Fix the code or update the test (if requirements changed)
-3. Re-run `pnpm test` to verify fix
+3. Re-run `npm test` to verify fix
 4. If tests are outdated, update them to match new behavior
 
 ### Build Failures
@@ -105,7 +105,7 @@ Run quality verification:
 
 **Solution:**
 1. Fix lint errors manually
-2. Some errors can be auto-fixed with `pnpm lint --fix`
+2. Some errors can be auto-fixed with `npm run lint -- --fix`
 3. Never ignore lint rules unless absolutely necessary
 4. Update ESLint config only with team agreement
 
@@ -113,9 +113,9 @@ Run quality verification:
 
 Before committing, verify:
 
-- [ ] `pnpm test` - All tests pass
-- [ ] `pnpm build` - Build succeeds
-- [ ] `pnpm lint` - No lint errors
+- [ ] `npm test` - All tests pass
+- [ ] `npm run build` - Build succeeds
+- [ ] `npm run lint` - No lint errors
 - [ ] Changes are minimal and focused
 - [ ] No debugging code left in (console.log, debugger, etc.)
 - [ ] No commented-out code
@@ -126,7 +126,7 @@ Before committing, verify:
 In addition to unit tests, run acceptance tests when working on features:
 
 ```bash
-pnpm test:acceptance
+npm run test:acceptance
 ```
 
 **Run this when:**
@@ -139,7 +139,7 @@ pnpm test:acceptance
 Set up your development environment to run checks automatically:
 
 1. **Pre-commit hook** - Runs lint and tests before each commit
-2. **Watch mode** - Run `pnpm test --watch` during development
+2. **Watch mode** - Run `npm test -- --watch` during development
 3. **IDE integration** - Configure your IDE to show lint errors in real-time
 
 ## Quality Is Non-Negotiable

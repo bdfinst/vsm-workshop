@@ -13,7 +13,7 @@
     "test:watch": "vitest",
     "test:coverage": "vitest run --coverage",
     "test:acceptance": "cucumber-js",
-    "test:all": "pnpm test && pnpm test:acceptance",
+    "test:all": "npm test && npm run test:acceptance",
     "test:e2e": "playwright test",
     "test:e2e:visual": "playwright test visual.spec.js",
     "test:e2e:visual:update": "playwright test visual.spec.js --update-snapshots",

@@ -32,7 +32,7 @@ Visual testing (visual regression testing) captures screenshots of your UI and c
 
 ```bash
 # Generate baseline screenshots
-pnpm test:e2e --update-snapshots
+npm run test:e2e --update-snapshots
 ```
 
 This creates baseline images in `tests/e2e/visual.spec.js-snapshots/`
@@ -41,7 +41,7 @@ This creates baseline images in `tests/e2e/visual.spec.js-snapshots/`
 
 ```bash
 # Run visual regression tests
-pnpm test:e2e visual.spec.js
+npm run test:e2e visual.spec.js
 ```
 
 Playwright compares new screenshots against baselines and reports differences.
@@ -75,10 +75,10 @@ When intentional visual changes are made:
 
 ```bash
 # Update all baselines
-pnpm test:e2e --update-snapshots
+npm run test:e2e --update-snapshots
 
 # Update specific test
-pnpm test:e2e visual.spec.js -g "should match canvas" --update-snapshots
+npm run test:e2e visual.spec.js -g "should match canvas" --update-snapshots
 ```
 
 ⚠️ **IMPORTANT:** Always review diffs before updating baselines!
@@ -202,13 +202,13 @@ jobs:
       - uses: actions/checkout@v3
 
       - name: Install dependencies
-        run: pnpm install
+        run: npm install
 
       - name: Install Playwright browsers
         run: npx playwright install --with-deps chromium
 
       - name: Run visual tests
-        run: pnpm test:e2e visual.spec.js
+        run: npm run test:e2e visual.spec.js
 
       - name: Upload diff artifacts
         if: failure()
@@ -297,7 +297,7 @@ Shows side-by-side comparison with diff highlighting.
 
 ```bash
 # Run with trace
-pnpm test:e2e visual.spec.js --trace on
+npm run test:e2e visual.spec.js --trace on
 
 # View trace
 npx playwright show-trace trace.zip
@@ -314,7 +314,7 @@ test-results/visual-spec-test-name/actual.png
 
 ```bash
 # Run in headed mode with slowMo
-pnpm test:e2e visual.spec.js --headed --slow-mo=1000
+npm run test:e2e visual.spec.js --headed --slow-mo=1000
 ```
 
 ---
@@ -389,29 +389,29 @@ await page.addStyleTag({
 
 ```bash
 # Create baselines (first time)
-pnpm test:e2e visual.spec.js --update-snapshots
+npm run test:e2e visual.spec.js --update-snapshots
 
 # Run visual tests
-pnpm test:e2e visual.spec.js
+npm run test:e2e visual.spec.js
 
 # Update baselines after intentional changes
-pnpm test:e2e visual.spec.js --update-snapshots
+npm run test:e2e visual.spec.js --update-snapshots
 
 # View results
 npx playwright show-report
 
 # Debug specific test
-pnpm test:e2e visual.spec.js -g "should match canvas" --debug
+npm run test:e2e visual.spec.js -g "should match canvas" --debug
 
 # Run on specific browser
-pnpm test:e2e visual.spec.js --project=chromium
+npm run test:e2e visual.spec.js --project=chromium
 ```
 
 ---
 
 ## Next Steps
 
-1. **Generate baselines:** `pnpm test:e2e visual.spec.js --update-snapshots`
+1. **Generate baselines:** `npm run test:e2e visual.spec.js --update-snapshots`
 2. **Review snapshots:** Check `tests/e2e/visual.spec.js-snapshots/`
 3. **Commit baselines:** `git add tests/e2e/**/*-snapshots/`
 4. **Run in CI:** Add to GitHub Actions
@@ -429,4 +429,4 @@ pnpm test:e2e visual.spec.js --project=chromium
 ---
 
 **Created:** 2026-02-02
-**Status:** Ready to use - run `pnpm test:e2e visual.spec.js --update-snapshots` to get started
+**Status:** Ready to use - run `npm run test:e2e visual.spec.js --update-snapshots` to get started
