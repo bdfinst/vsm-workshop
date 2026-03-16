@@ -8,14 +8,9 @@
 import { createStep } from '../models/StepFactory.js'
 import { createConnection } from '../models/ConnectionFactory.js'
 import { calculateMetrics } from '../utils/calculations/metrics.js'
-import {
-  getPersistedValue,
-  persistValue,
-} from '../utils/persistedState.js'
 import { sanitizeVSMData, validateVSMData } from '../utils/validation/vsmValidator.js'
 import { autoPositionStep } from '../utils/ui/autoPositionStep.js'
-
-const STORAGE_KEY = 'vsm-data-storage'
+import { vsmLocalStorageRepo } from '../infrastructure/VsmLocalStorageRepository.js'
 
 /**
  * @typedef {import('../types/index.js').Step} Step
@@ -25,9 +20,10 @@ const STORAGE_KEY = 'vsm-data-storage'
 
 /**
  * Create the VSM data store
+ * @param {Object} [repository] - Persistence repository (default: vsmLocalStorageRepo)
  * @returns {Object} VSM data store with reactive state and actions
  */
-function createVsmDataStore() {
+function createVsmDataStore(repository = vsmLocalStorageRepo) {
   const initialState = {
     id: null,
     name: '',
@@ -39,7 +35,7 @@ function createVsmDataStore() {
   }
 
   // Load persisted state; sanitize on read and validate to catch corrupted localStorage
-  const rawPersisted = getPersistedValue(STORAGE_KEY, initialState, sanitizeVSMData)
+  const rawPersisted = repository.load(initialState, sanitizeVSMData)
   const persistedValidation = validateVSMData(rawPersisted)
   const persisted = persistedValidation.valid ? rawPersisted : initialState
 
@@ -55,9 +51,9 @@ function createVsmDataStore() {
   // Cached metrics — only recomputed when steps or connections change
   let cachedMetrics = $derived(calculateMetrics(steps, connections))
 
-  // Persist on changes
+  // Persist current state via repository
   function persist() {
-    persistValue(STORAGE_KEY, {
+    repository.save({
       id,
       name,
       description,
