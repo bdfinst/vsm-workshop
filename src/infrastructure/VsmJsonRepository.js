@@ -57,13 +57,14 @@ export function deserializeVsm(jsonString) {
     throw new Error('Invalid VSM data: connections must be an array')
   }
 
+  // Return raw parsed data; callers (store/domain layer) apply domain defaults
   return {
-    id: data.id || crypto.randomUUID(),
-    name: data.name || 'Imported Map',
-    description: data.description || '',
-    steps: data.steps || [],
-    connections: data.connections || [],
-    createdAt: data.createdAt || new Date().toISOString(),
-    updatedAt: new Date().toISOString(),
+    id: data.id ?? null,
+    name: data.name ?? null,
+    description: data.description ?? null,
+    steps: data.steps ?? [],
+    connections: data.connections ?? [],
+    createdAt: data.createdAt ?? null,
+    updatedAt: data.updatedAt ?? null,
   }
 }

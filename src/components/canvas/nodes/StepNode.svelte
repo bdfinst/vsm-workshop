@@ -1,6 +1,6 @@
 <script>
   import { Handle, Position } from '@xyflow/svelte'
-  import { STEP_TYPE_CONFIG } from '../../../data/stepTypes.js'
+  import { STEP_TYPE_CONFIG } from '../../../data/stepTypeConfig.js'
   import { formatDuration } from '../../../utils/calculations/metrics.js'
   import { BOTTLENECK_QUEUE_THRESHOLD } from '../../../data/thresholds.js'
 

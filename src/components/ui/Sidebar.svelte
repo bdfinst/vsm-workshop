@@ -5,7 +5,7 @@
     getTemplatesByCategory,
     CATEGORY_LABELS,
   } from '../../data/stepTemplates.js'
-  import { STEP_TYPE_CONFIG } from '../../data/stepTypes.js'
+  import { STEP_TYPE_CONFIG } from '../../data/stepTypeConfig.js'
   import { formatDuration } from '../../utils/calculations/metrics.js'
 
   let expandedCategory = $state(null)

@@ -1,6 +1,7 @@
 <script>
   import { vsmDataStore } from '../../stores/vsmDataStore.svelte.js'
-  import { STEP_TYPES, STEP_TYPE_CONFIG } from '../../data/stepTypes.js'
+  import { STEP_TYPES } from '../../data/stepTypes.js'
+  import { STEP_TYPE_CONFIG } from '../../data/stepTypeConfig.js'
   import { validateStep } from '../../utils/validation/stepValidator.js'
 
   let { stepId, onClose } = $props()

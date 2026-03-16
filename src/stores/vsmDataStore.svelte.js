@@ -12,8 +12,8 @@ import {
   getPersistedValue,
   persistValue,
 } from '../utils/persistedState.js'
-import { CANVAS_START_X, CANVAS_STEP_SPACING, CANVAS_Y } from '../data/thresholds.js'
-import { sanitizeVSMData } from '../utils/validation/vsmValidator.js'
+import { sanitizeVSMData, validateVSMData } from '../utils/validation/vsmValidator.js'
+import { autoPositionStep } from '../utils/ui/autoPositionStep.js'
 
 const STORAGE_KEY = 'vsm-data-storage'
 
@@ -38,8 +38,10 @@ function createVsmDataStore() {
     updatedAt: null,
   }
 
-  // Load persisted state or use initial
-  const persisted = getPersistedValue(STORAGE_KEY, initialState, sanitizeVSMData)
+  // Load persisted state; sanitize on read and validate to catch corrupted localStorage
+  const rawPersisted = getPersistedValue(STORAGE_KEY, initialState, sanitizeVSMData)
+  const persistedValidation = validateVSMData(rawPersisted)
+  const persisted = persistedValidation.valid ? rawPersisted : initialState
 
   // Reactive state using Svelte 5 $state rune
   let id = $state(persisted.id)
@@ -119,6 +121,10 @@ function createVsmDataStore() {
 
     loadMap(mapData) {
       const safe = sanitizeVSMData(mapData)
+      const validation = validateVSMData(safe)
+      if (!validation.valid) {
+        console.warn('loadMap: data failed validation, loading with safe defaults', validation.errors)
+      }
       id = safe.id
       name = safe.name
       description = safe.description
@@ -142,11 +148,7 @@ function createVsmDataStore() {
 
     // Step CRUD
     addStep(stepName = 'New Step', overrides = {}) {
-      // Auto-position steps horizontally if position not provided
-      const position = overrides.position || {
-        x: CANVAS_START_X + steps.length * CANVAS_STEP_SPACING,
-        y: CANVAS_Y,
-      }
+      const position = overrides.position || autoPositionStep(steps.length)
       const newStep = createStep(stepName, { ...overrides, position })
       steps = [...steps, newStep]
       updatedAt = new Date().toISOString()
