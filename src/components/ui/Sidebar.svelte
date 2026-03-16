@@ -96,23 +96,28 @@
     <h2 class="text-sm font-semibold text-gray-500 uppercase tracking-wider mb-4">
       How to Use
     </h2>
-    <div class="text-xs text-gray-600 space-y-3">
-      <p>
-        <strong>Add Step</strong> to create a new process step
-      </p>
-      <p>
-        <strong>Click</strong> a step to select it
-      </p>
-      <p>
-        <strong>Double-click</strong> a step to edit it
-      </p>
-      <p>
-        <strong>Drag</strong> from handles to connect steps
-      </p>
-      <p>
-        <strong>Delete</strong> key removes selected step
-      </p>
-    </div>
+    <dl class="text-xs text-gray-600 space-y-2">
+      <div>
+        <dt class="font-semibold">Add Step button</dt>
+        <dd>Creates a new process step on the canvas</dd>
+      </div>
+      <div>
+        <dt class="font-semibold">Click</dt>
+        <dd>Select a step</dd>
+      </div>
+      <div>
+        <dt class="font-semibold">Double-click</dt>
+        <dd>Edit step properties</dd>
+      </div>
+      <div>
+        <dt class="font-semibold">Drag handles</dt>
+        <dd>Connect steps with a flow arrow</dd>
+      </div>
+      <div>
+        <dt class="font-semibold">Delete key</dt>
+        <dd>Remove the selected step</dd>
+      </div>
+    </dl>
   </div>
 
   <div class="mt-8">

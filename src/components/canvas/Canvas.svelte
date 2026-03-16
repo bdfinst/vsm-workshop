@@ -40,21 +40,46 @@
     },
   }
 
-  // Derive nodes from store
+  // Non-reactive node cache keyed by step ID.
+  // Avoids reconstructing unchanged node objects on every simulation tick.
+  // Plain object intentionally avoids Svelte reactive tracking for this cache.
+  let nodeCache = Object.create(null)
+
+  const buildNode = (step, queueSize, isBottleneck, selected) => ({
+    id: step.id,
+    type: 'stepNode',
+    position: step.position,
+    data: {
+      ...step,
+      simulationQueueSize: queueSize,
+      isSimulationBottleneck: isBottleneck,
+    },
+    selected,
+  })
+
   let nodes = $derived(
-    vsmDataStore.steps.map((step) => ({
-      id: step.id,
-      type: 'stepNode',
-      position: step.position,
-      data: {
-        ...step,
-        simulationQueueSize: simControlStore.isRunning
-          ? simDataStore.queueSizesByStepId[step.id]
-          : undefined,
-        isSimulationBottleneck: simDataStore.detectedBottlenecks.includes(step.id),
-      },
-      selected: step.id === vsmUIStore.selectedStepId,
-    }))
+    vsmDataStore.steps.map((step) => {
+      const queueSize = simControlStore.isRunning
+        ? simDataStore.queueSizesByStepId[step.id]
+        : undefined
+      const isBottleneck = simDataStore.detectedBottlenecks.includes(step.id)
+      const selected = step.id === vsmUIStore.selectedStepId
+
+      const cached = nodeCache[step.id]
+      if (
+        cached &&
+        cached.step === step &&
+        cached.queueSize === queueSize &&
+        cached.isBottleneck === isBottleneck &&
+        cached.selected === selected
+      ) {
+        return cached.node
+      }
+
+      const node = buildNode(step, queueSize, isBottleneck, selected)
+      nodeCache[step.id] = { step, queueSize, isBottleneck, selected, node }
+      return node
+    })
   )
 
   // Helper function to get edge stroke color
