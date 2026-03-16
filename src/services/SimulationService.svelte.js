@@ -180,7 +180,24 @@ export const createSimulationService = (runner = createSimulationRunner()) => {
 }
 
 // Eager singleton - initialized once at module load
-const serviceInstance = createSimulationService()
+// Wrapped in try/catch so initialization failures surface immediately rather
+// than propagating silently to the first call site
+let serviceInstance
+try {
+  serviceInstance = createSimulationService()
+} catch (err) {
+  console.error('SimulationService failed to initialize:', err)
+  // Provide a no-op fallback so callers don't receive undefined
+  serviceInstance = {
+    startSimulation: () => {},
+    pauseSimulation: () => {},
+    resumeSimulation: () => {},
+    resetSimulation: () => {},
+    createScenario: () => null,
+    runComparison: () => {},
+    cleanup: () => {},
+  }
+}
 
 export function getSimulationService() {
   return serviceInstance
