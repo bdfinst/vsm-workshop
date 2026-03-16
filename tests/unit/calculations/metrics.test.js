@@ -68,6 +68,9 @@ describe('calculateFlowEfficiency', () => {
     const steps = [{ processTime: 100, leadTime: 0 }]
     const result = calculateFlowEfficiency(steps)
     expect(result.value).toBe(0)
+    expect(result.percentage).toBe(0)
+    expect(result.status).toBe('neutral')
+    expect(result.displayValue).toBe('N/A')
   })
 
   it('calculates correct flow efficiency', () => {

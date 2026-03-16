@@ -91,6 +91,22 @@ describe('simulationEngine', () => {
     })
   })
 
+  describe('processTick - stopped state', () => {
+    it('still processes ticks when isRunning=false (runner controls loop, not engine)', () => {
+      // processTick is a pure function; it does not check isRunning.
+      // The SimulationRunner is responsible for stopping the animation loop.
+      const state = initSimulation(mockSteps, mockConnections, { workItemCount: 1 })
+      state.workItems = generateWorkItems(1, mockSteps[0].id)
+      state.isRunning = false
+      state.isPaused = false
+
+      const newState = processTick(state, mockSteps, mockConnections)
+
+      // Engine still advances – runner is responsible for not calling processTick when stopped
+      expect(newState.workItems[0].progress).toBeGreaterThan(0)
+    })
+  })
+
   describe('processTick', () => {
     it('advances work item progress', () => {
       const state = initSimulation(mockSteps, mockConnections, { workItemCount: 1 })
