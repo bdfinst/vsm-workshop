@@ -218,7 +218,7 @@ After fixing issues:
 semgrep scan --config auto .
 
 # Run existing quality gates
-pnpm test && pnpm build && pnpm lint
+npm test && npm run build && npm run lint
 ```
 
 ## Troubleshooting

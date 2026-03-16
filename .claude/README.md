@@ -8,7 +8,7 @@ This directory contains development rules and guidelines for the VSM Workshop pr
 
 1. **[quality-verification.md](rules/quality-verification.md)** - **CRITICAL**
    - Mandatory quality checks after every change
-   - Must run: `pnpm test && pnpm build && pnpm lint`
+   - Must run: `npm test && npm run build && npm run lint`
    - Pre-commit checklist
 
 2. **[javascript-svelte.md](rules/javascript-svelte.md)** - **CRITICAL**
@@ -62,7 +62,7 @@ export class Service {
 
 ```bash
 # Run after EVERY change
-pnpm test && pnpm build && pnpm lint
+npm test && npm run build && npm run lint
 ```
 
 ### Test-First Development
@@ -90,9 +90,9 @@ The `.claude/skills/` directory contains reusable workflows:
 These rules are **MANDATORY**. All code must:
 
 ✅ Use functional programming (no classes)
-✅ Pass all tests (`pnpm test`)
-✅ Build successfully (`pnpm build`)
-✅ Pass lint (`pnpm lint`)
+✅ Pass all tests (`npm test`)
+✅ Build successfully (`npm run build`)
+✅ Pass lint (`npm run lint`)
 ✅ Follow test-first development
 ✅ Use PropTypes for type checking
 ✅ Include data-testid for testing
@@ -106,7 +106,7 @@ When updating rules:
 1. Make changes to rule files
 2. Update main `CLAUDE.md` if needed
 3. Update this README if adding new rules
-4. Run quality checks: `pnpm test && pnpm build && pnpm lint`
+4. Run quality checks: `npm test && npm run build && npm run lint`
 5. Get team approval for rule changes
 
 ## Questions?

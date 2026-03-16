@@ -59,7 +59,7 @@ vsm-workshop/
 ├── node_modules/            # Dependencies (generated)
 │
 ├── package.json             # Project metadata and scripts
-├── pnpm-lock.yaml           # Lock file
+├── package-lock.json           # Lock file
 ├── vite.config.js           # Vite configuration
 ├── vitest.config.js         # Vitest configuration
 ├── playwright.config.js     # Playwright configuration
@@ -229,7 +229,7 @@ See [../rules/testing.md](../rules/testing.md) for testing guidelines.
 |------|---------|
 | `vite.config.js` | Vite configuration (build tool) |
 | `package.json` | Project metadata, scripts, dependencies |
-| `pnpm-lock.yaml` | Dependency lock file |
+| `package-lock.json` | Dependency lock file |
 
 ### Testing
 

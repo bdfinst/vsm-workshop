@@ -9,13 +9,13 @@
 Run all three quality gates in sequence:
 
 ```bash
-pnpm test && pnpm build && pnpm lint
+npm test && npm run build && npm run lint
 ```
 
 ### 1. Tests Pass
 
 ```bash
-pnpm test
+npm test
 ```
 
 - [ ] All unit tests pass (green)
@@ -27,7 +27,7 @@ pnpm test
 ### 2. Build Succeeds
 
 ```bash
-pnpm build
+npm run build
 ```
 
 - [ ] Build completes without errors
@@ -40,13 +40,13 @@ pnpm build
 ### 3. Lint Passes
 
 ```bash
-pnpm lint
+npm run lint
 ```
 
 - [ ] No ESLint errors
 - [ ] Warnings minimized (if any)
 
-**If lint fails:** Fix manually or use `pnpm lint --fix` for auto-fixable issues.
+**If lint fails:** Fix manually or use `npm run lint -- --fix` for auto-fixable issues.
 
 ---
 
@@ -143,7 +143,7 @@ git commit -m "test: add unit tests for metrics"
 git add <files>
 
 # 2. Run quality gates
-pnpm test && pnpm build && pnpm lint
+npm test && npm run build && npm run lint
 
 # 3. Commit
 git commit -m "feat: your message here"

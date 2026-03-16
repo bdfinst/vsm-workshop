@@ -146,16 +146,16 @@ Scenario: Metrics work
 
 ```bash
 # Run all acceptance tests
-pnpm test:acceptance
+npm run test:acceptance
 
 # Run specific feature
-pnpm test:acceptance -- features/builder/add-step.feature
+npm run test:acceptance -- features/builder/add-step.feature
 
 # Run with tags
-pnpm test:acceptance -- --tags @wip
+npm run test:acceptance -- --tags @wip
 
 # Watch mode during development
-pnpm test:acceptance --watch
+npm run test:acceptance -- --watch
 ```
 
 ## Tags

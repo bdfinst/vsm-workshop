@@ -31,9 +31,9 @@ git add .
 **MANDATORY**: Run all three quality gates:
 
 ```bash
-pnpm lint
-pnpm test
-pnpm test:acceptance
+npm run lint
+npm test
+npm run test:acceptance
 ```
 
 All must pass before committing. See [../checklists/pre-commit.md](../checklists/pre-commit.md) for complete checklist.
@@ -67,52 +67,52 @@ git push origin <branch-name>
 
 ```bash
 # Run all unit tests
-pnpm test
+npm test
 
 # Watch mode (for TDD)
-pnpm test --watch
+npm test -- --watch
 
 # Run specific test file
-pnpm test src/utils/calculations/metrics.test.js
+npm test src/utils/calculations/metrics.test.js
 
 # With coverage
-pnpm test:coverage
+npm run test:coverage
 ```
 
 ### Acceptance Tests (Cucumber)
 
 ```bash
 # Run all acceptance tests
-pnpm test:acceptance
+npm run test:acceptance
 
 # Run specific feature file
-pnpm test:acceptance -- features/builder/add-step.feature
+npm run test:acceptance -- features/builder/add-step.feature
 
 # Watch mode
-pnpm test:acceptance --watch
+npm run test:acceptance -- --watch
 
 # Run tests with specific tag
-pnpm test:acceptance -- --tags @smoke
+npm run test:acceptance -- --tags @smoke
 ```
 
 ### E2E Tests (Playwright)
 
 ```bash
 # Run all E2E tests
-pnpm test:e2e
+npm run test:e2e
 
 # Run in headed mode (see browser)
-pnpm test:e2e --headed
+npm run test:e2e -- --headed
 
 # Run specific test
-pnpm test:e2e tests/e2e/builder.spec.js
+npm run test:e2e tests/e2e/builder.spec.js
 ```
 
 ### All Tests
 
 ```bash
 # Run everything (unit + acceptance + e2e)
-pnpm test:all
+npm run test:all
 ```
 
 ---
@@ -123,14 +123,14 @@ pnpm test:all
 
 ```bash
 # Start dev server (http://localhost:5173)
-pnpm dev
+npm run dev
 ```
 
 ### Production Build
 
 ```bash
 # Build for production
-pnpm build
+npm run build
 
 # Check build output
 ls -lh dist/
@@ -140,7 +140,7 @@ ls -lh dist/
 
 ```bash
 # Preview production build locally
-pnpm preview
+npm run preview
 ```
 
 **Use preview to:**
@@ -230,7 +230,7 @@ Scenario: Add security review step
 ### 5. Run quality checks
 
 ```bash
-pnpm test && pnpm build && pnpm lint
+npm test && npm run build && npm run lint
 ```
 
 ---
@@ -335,7 +335,7 @@ export function useVsmMetrics() {
 ### 5. Run quality checks
 
 ```bash
-pnpm test && pnpm build && pnpm lint
+npm test && npm run build && npm run lint
 ```
 
 ---
@@ -455,7 +455,7 @@ function SimulationVisualizer() {
 ### 6. Run quality checks
 
 ```bash
-pnpm test && pnpm build && pnpm lint
+npm test && npm run build && npm run lint
 ```
 
 ---
@@ -512,7 +512,7 @@ Then('a PDF file should be downloaded', function () {
 ### 4. Run tests (Red phase)
 
 ```bash
-pnpm test:acceptance
+npm run test:acceptance
 # Should fail with "Step definition not implemented" or similar
 ```
 
@@ -548,7 +548,7 @@ Update relevant documentation:
 ### 8. Run quality checks
 
 ```bash
-pnpm test && pnpm build && pnpm lint
+npm test && npm run build && npm run lint
 ```
 
 ---

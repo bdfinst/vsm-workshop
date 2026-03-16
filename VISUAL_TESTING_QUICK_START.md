@@ -9,7 +9,7 @@
 ### 1. Generate Baseline Screenshots (First Time)
 
 ```bash
-pnpm test:e2e:visual:update
+npm run test:e2e:visual:update
 ```
 
 This creates baseline images in `tests/e2e/visual.spec.js-snapshots/chromium/`
@@ -19,7 +19,7 @@ This creates baseline images in `tests/e2e/visual.spec.js-snapshots/chromium/`
 ### 2. Run Visual Tests
 
 ```bash
-pnpm test:e2e:visual
+npm run test:e2e:visual
 ```
 
 Compares current UI against baselines. Tests pass if screenshots match.
@@ -55,7 +55,7 @@ Update baselines when you **intentionally** change the UI:
 
 ```bash
 # After CSS changes, layout updates, or new features
-pnpm test:e2e:visual:update
+npm run test:e2e:visual:update
 ```
 
 ⚠️ **Always review diffs first!** Run `npx playwright show-report` to see what changed.
@@ -66,19 +66,19 @@ pnpm test:e2e:visual:update
 
 ```bash
 # Create/update baselines
-pnpm test:e2e:visual:update
+npm run test:e2e:visual:update
 
 # Run visual tests
-pnpm test:e2e:visual
+npm run test:e2e:visual
 
 # View results
 npx playwright show-report
 
 # Debug specific test
-pnpm test:e2e:visual -g "canvas"
+npm run test:e2e:visual -g "canvas"
 
 # Run all E2E tests (functional + visual)
-pnpm test:e2e
+npm run test:e2e
 ```
 
 ---
@@ -117,7 +117,7 @@ tests/e2e/
 
 **Action:**
 1. Run `npx playwright show-report` to view diff
-2. If change is intentional: `pnpm test:e2e:visual:update`
+2. If change is intentional: `npm run test:e2e:visual:update`
 3. If change is bug: Fix code and re-run tests
 
 ### Flaky tests (random failures)
@@ -132,7 +132,7 @@ See [VISUAL_TESTING_GUIDE.md](./VISUAL_TESTING_GUIDE.md) for comprehensive guide
 
 ## 📊 Test Results
 
-After running `pnpm test:e2e:visual`:
+After running `npm run test:e2e:visual`:
 
 ```
 ✓ should match empty canvas baseline
@@ -147,4 +147,4 @@ After running `pnpm test:e2e:visual`:
 
 ---
 
-**Next:** Run `pnpm test:e2e:visual:update` to create your first baselines! 🎉
+**Next:** Run `npm run test:e2e:visual:update` to create your first baselines! 🎉

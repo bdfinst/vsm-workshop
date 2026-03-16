@@ -2,6 +2,6 @@
   "*.{js,jsx}": [
     "eslint --fix",
     "prettier --write",
-    "pnpm test -- --findRelatedTests --passWithNoTests"
+    "npx vitest related --passWithNoTests"
   ]
 }

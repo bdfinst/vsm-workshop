@@ -129,13 +129,13 @@ export default StepEditor
 
 ```bash
 # Run acceptance tests for specific feature
-pnpm test:acceptance -- features/builder/add-step.feature
+npm run test:acceptance -- features/builder/add-step.feature
 
 # Run in watch mode during implementation
-pnpm test:acceptance --watch
+npm run test:acceptance --watch
 
 # Run all acceptance tests
-pnpm test:acceptance
+npm run test:acceptance
 ```
 
 ## Done Criteria

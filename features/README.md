@@ -59,16 +59,16 @@ Feature: [Capability name]
 
 ```bash
 # All features
-pnpm test:acceptance
+npm run test:acceptance
 
 # Specific feature
-pnpm test:acceptance -- features/builder/add-step.feature
+npm run test:acceptance -- features/builder/add-step.feature
 
 # With tags
-pnpm test:acceptance -- --tags @smoke
+npm run test:acceptance -- --tags @smoke
 
 # Watch mode
-pnpm test:acceptance --watch
+npm run test:acceptance -- --watch
 ```
 
 ## Step Definitions

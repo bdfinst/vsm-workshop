@@ -19,9 +19,9 @@
 
 ### Tests
 
-- [ ] All tests pass (`pnpm test`)
-- [ ] Build succeeds (`pnpm build`)
-- [ ] Lint passes (`pnpm lint`)
+- [ ] All tests pass (`npm test`)
+- [ ] Build succeeds (`npm run build`)
+- [ ] Lint passes (`npm run lint`)
 - [ ] No tests skipped without reason
 
 ### Coverage
@@ -321,7 +321,7 @@ Watch for these issues:
 ```bash
 # Run locally before approving
 git checkout <pr-branch>
-pnpm test && pnpm build && pnpm lint
+npm test && npm run build && npm run lint
 
 # Check for classes (should return nothing)
 grep -r "class " src/ --include="*.js" --include="*.jsx"
