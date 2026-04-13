@@ -17,6 +17,9 @@ function createVsmUIStore() {
   let selectedConnectionId = $state(null)
   let isEditingConnection = $state(false)
 
+  // Guidance banner for backwards mapping
+  let guidanceDismissed = $state(false)
+
   return {
     // Reactive getters - Step
     get selectedStepId() {
@@ -50,6 +53,19 @@ function createVsmUIStore() {
       isEditing = editing
     },
 
+    // Guidance
+    get guidanceDismissed() {
+      return guidanceDismissed
+    },
+
+    dismissGuidance() {
+      guidanceDismissed = true
+    },
+
+    resetGuidance() {
+      guidanceDismissed = false
+    },
+
     // Connection Actions
     selectConnection(connectionId) {
       selectedConnectionId = connectionId
@@ -74,6 +90,7 @@ function createVsmUIStore() {
       isEditing = false
       selectedConnectionId = null
       isEditingConnection = false
+      guidanceDismissed = false
     },
   }
 }

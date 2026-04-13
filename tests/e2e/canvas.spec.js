@@ -1,5 +1,10 @@
 import { test, expect } from '@playwright/test';
 
+async function fitView(page) {
+  await page.locator('.svelte-flow__controls-fitview').click();
+  await page.waitForTimeout(300);
+}
+
 test.describe('Canvas Interactions', () => {
   test.beforeEach(async ({ page }) => {
     // Navigate to the app and ensure a clean state
@@ -76,24 +81,26 @@ test.describe('Canvas Interactions', () => {
   });
 
   test('should connect two steps', async ({ page }) => {
-    // Add first step
+    // Add first step (positioned right) then second step (positioned left)
     await page.getByRole('button', { name: 'Add Step' }).click();
     await page.getByTestId('step-name-input').fill('Development');
     await page.getByRole('button', { name: 'Save' }).click();
 
-    // Add second step
     await page.getByRole('button', { name: 'Add Step' }).click();
     await page.getByTestId('step-name-input').fill('Testing');
     await page.getByRole('button', { name: 'Save' }).click();
 
-    // Connect the steps by dragging from source handle to target handle
-    const firstNode = page.locator('.vsm-node').first();
-    const secondNode = page.locator('.vsm-node').nth(1);
+    // Fit view to show all nodes after adding steps
+    await fitView(page);
 
-    const sourceHandle = firstNode.locator('.svelte-flow__handle-right');
-    const targetHandle = secondNode.locator('.svelte-flow__handle-left');
+    // With backwards mapping, Testing (2nd) is left of Development (1st)
+    // Connect left→right: Testing's right handle → Development's left handle
+    const devNode = page.locator('.vsm-node', { hasText: 'Development' });
+    const testNode = page.locator('.vsm-node', { hasText: 'Testing' });
 
-    await sourceHandle.dragTo(targetHandle);
+    await testNode.locator('.svelte-flow__handle-right').dragTo(
+      devNode.locator('.svelte-flow__handle-left')
+    );
 
     // Verify connection edge appears
     const edge = page.locator('.svelte-flow__edge').first();
@@ -125,15 +132,18 @@ test.describe('Canvas Interactions', () => {
     await page.getByTestId('percent-ca-input').fill('85');
     await page.getByRole('button', { name: 'Save' }).click();
 
-    // Step 4: Connect Development → Code Review
+    // Fit view to show all nodes
+    await fitView(page);
+
+    // With backwards mapping: Development (right), Code Review (middle), Testing (left)
+    // Connect left→right: Testing → Code Review → Development
     const devNode = page.locator('.vsm-node', { hasText: 'Development' });
     const reviewNode = page.locator('.vsm-node', { hasText: 'Code Review' });
     const testNode = page.locator('.vsm-node', { hasText: 'Testing' });
 
-    await devNode.locator('.svelte-flow__handle-right').dragTo(reviewNode.locator('.svelte-flow__handle-left'));
+    await testNode.locator('.svelte-flow__handle-right').dragTo(reviewNode.locator('.svelte-flow__handle-left'));
 
-    // Step 5: Connect Code Review → Testing
-    await reviewNode.locator('.svelte-flow__handle-right').dragTo(testNode.locator('.svelte-flow__handle-left'));
+    await reviewNode.locator('.svelte-flow__handle-right').dragTo(devNode.locator('.svelte-flow__handle-left'));
 
     // Verify all connections exist
     const edges = page.locator('.svelte-flow__edge');
@@ -166,10 +176,11 @@ test.describe('Canvas Interactions', () => {
     await page.getByTestId('lead-time-input').fill('90');
     await page.getByRole('button', { name: 'Save' }).click();
 
-    // Connect steps
-    const devNode = page.locator('.vsm-node').first();
-    const testNode = page.locator('.vsm-node').nth(1);
-    await devNode.locator('.svelte-flow__handle-right').dragTo(testNode.locator('.svelte-flow__handle-left'));
+    // Fit view, then connect: Testing (left) → Development (right)
+    await fitView(page);
+    const devNode = page.locator('.vsm-node', { hasText: 'Development' });
+    const testNode = page.locator('.vsm-node', { hasText: 'Testing' });
+    await testNode.locator('.svelte-flow__handle-right').dragTo(devNode.locator('.svelte-flow__handle-left'));
 
     // Open simulation panel
     await page.getByRole('button', { name: 'Simulate' }).click();

@@ -11,9 +11,10 @@
  * @param {Object} initializer - SimulationStateInitializer instance
  * @returns {Object} Orchestrator methods
  */
-export const createSimulationOrchestrator = (runner, storeApi, initializer) => {
-  const HISTORY_FLUSH_INTERVAL = 5
+/** Flush queue history to the store every N ticks to balance memory vs reactivity */
+const HISTORY_FLUSH_INTERVAL = 5
 
+export const createSimulationOrchestrator = (runner, storeApi, initializer) => {
   /**
    * Start a new simulation run
    */
@@ -25,6 +26,7 @@ export const createSimulationOrchestrator = (runner, storeApi, initializer) => {
 
     if (steps.length === 0) return
 
+    runner.stop()
     storeApi.setRunning(true)
 
     const initialState = initializer.initialize(steps, connections)
@@ -69,8 +71,7 @@ export const createSimulationOrchestrator = (runner, storeApi, initializer) => {
    * Resume a paused simulation
    */
   const resumeSimulation = () => {
-    storeApi.setPaused(false)
-    storeApi.setRunning(true)
+    storeApi.setResumed()
     runner.resume()
   }
 

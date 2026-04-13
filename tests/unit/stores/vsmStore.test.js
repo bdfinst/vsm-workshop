@@ -73,13 +73,13 @@ describe('vsmStore (Svelte)', () => {
         expect(getState().steps).toHaveLength(1)
       })
 
-      it('positions steps horizontally in sequence', () => {
+      it('positions steps right-to-left for backwards mapping', () => {
         vsmDataStore.addStep('Step 1')
         vsmDataStore.addStep('Step 2')
 
         const steps = getState().steps
-        expect(steps[0].position.x).toBe(50)
-        expect(steps[1].position.x).toBe(300)
+        expect(steps[0].position.x).toBe(650)
+        expect(steps[1].position.x).toBe(400)
         expect(steps[0].position.y).toBe(150)
         expect(steps[1].position.y).toBe(150)
       })

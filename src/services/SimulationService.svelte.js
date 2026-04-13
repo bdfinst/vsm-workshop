@@ -27,18 +27,21 @@ const defaultStoreApi = () => ({
   getScenarios: () => scenarioStore.scenarios,
 
   // Writes
-  setRunning: (v) => simControlStore.setRunning(v),
-  setPaused: (v) => simControlStore.setPaused(v),
+  setRunning: (running) => simControlStore.setRunning(running),
+  setPaused: (paused) => simControlStore.setPaused(paused),
+  setResumed: () => simControlStore.setResumed(),
   resetControl: () => simControlStore.reset(),
-  updateWorkItems: (v) => simDataStore.updateWorkItems(v),
-  updateQueueSizes: (v) => simDataStore.updateQueueSizes(v),
-  updateElapsedTime: (v) => simDataStore.updateElapsedTime(v),
-  setDetectedBottlenecks: (v) => simDataStore.setDetectedBottlenecks(v),
-  addQueueHistoryBatch: (v) => simDataStore.addQueueHistoryBatch(v),
-  setResults: (v) => simDataStore.setResults(v),
+  updateWorkItems: (items) => simDataStore.updateWorkItems(items),
+  updateQueueSizes: (sizes) => simDataStore.updateQueueSizes(sizes),
+  updateElapsedTime: (time) => simDataStore.updateElapsedTime(time),
+  setDetectedBottlenecks: (bottlenecks) =>
+    simDataStore.setDetectedBottlenecks(bottlenecks),
+  addQueueHistoryBatch: (entries) => simDataStore.addQueueHistoryBatch(entries),
+  setResults: (results) => simDataStore.setResults(results),
   resetData: () => simDataStore.reset(),
-  addScenario: (v) => scenarioStore.addScenario(v),
-  setComparisonResults: (v) => scenarioStore.setComparisonResults(v),
+  addScenario: (scenario) => scenarioStore.addScenario(scenario),
+  setComparisonResults: (results) =>
+    scenarioStore.setComparisonResults(results),
 })
 
 /**
@@ -74,14 +77,16 @@ try {
   serviceInstance = createSimulationService()
 } catch (err) {
   console.error('SimulationService failed to initialize:', err)
-  // Provide a no-op fallback so callers don't receive undefined
+  const fail = () => {
+    throw new Error('SimulationService failed to initialize', { cause: err })
+  }
   serviceInstance = {
-    startSimulation: () => {},
-    pauseSimulation: () => {},
-    resumeSimulation: () => {},
-    resetSimulation: () => {},
-    createScenario: () => null,
-    runComparison: () => {},
+    startSimulation: fail,
+    pauseSimulation: fail,
+    resumeSimulation: fail,
+    resetSimulation: fail,
+    createScenario: fail,
+    runComparison: fail,
     cleanup: () => {},
   }
 }

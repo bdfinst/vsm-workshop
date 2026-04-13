@@ -1,9 +1,7 @@
 /**
- * createReactiveStore - Experimental generic store factory
- * Spike to determine if shared store boilerplate can be extracted.
- *
- * Attempts to use $state() dynamically to create reactive getters/setters
- * from a schema definition.
+ * createReactiveStore - Generic store factory
+ * Creates reactive Svelte 5 stores from a schema definition,
+ * generating getters, setters, and a reset function automatically.
  */
 
 /**
@@ -46,7 +44,9 @@ export const createReactiveStore = (schema, options = {}) => {
     }
   }
 
-  // Apply custom actions if provided
+  // Merge custom actions onto the store object.
+  // Object.assign is intentional here — spreading would flatten the
+  // defineProperty getters into static values, breaking reactivity.
   if (options.actions) {
     const actions = options.actions(state)
     Object.assign(store, actions)

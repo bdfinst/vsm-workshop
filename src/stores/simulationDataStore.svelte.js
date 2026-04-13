@@ -9,6 +9,8 @@
  * @typedef {import('../types/index.js').SimulationResults} SimulationResults
  */
 
+const MAX_QUEUE_HISTORY_ENTRIES = 1000
+
 /**
  * Create the simulation data store
  * @returns {Object} Simulation data store with reactive state and actions
@@ -84,7 +86,11 @@ function createSimulationDataStore() {
 
     addQueueHistoryBatch(entries) {
       if (entries.length === 0) return
-      queueHistory = queueHistory.concat(entries)
+      const combined = queueHistory.concat(entries)
+      queueHistory =
+        combined.length > MAX_QUEUE_HISTORY_ENTRIES
+          ? combined.slice(-MAX_QUEUE_HISTORY_ENTRIES)
+          : combined
     },
 
     setDetectedBottlenecks(bottlenecks) {

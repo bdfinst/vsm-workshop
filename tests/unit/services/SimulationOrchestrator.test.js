@@ -8,6 +8,7 @@ const createMockStoreApi = (overrides = {}) => ({
   getIsRunning: () => false,
   setRunning: vi.fn(),
   setPaused: vi.fn(),
+  setResumed: vi.fn(),
   resetControl: vi.fn(),
   updateWorkItems: vi.fn(),
   updateQueueSizes: vi.fn(),
@@ -62,6 +63,16 @@ describe('SimulationOrchestrator', () => {
       expect(runner.start).not.toHaveBeenCalled()
     })
 
+    it('stops any previous run before starting', () => {
+      const steps = [{ id: 's1', name: 'Dev' }]
+      storeApi.getSteps = () => steps
+      orchestrator = createSimulationOrchestrator(runner, storeApi, initializer)
+
+      orchestrator.startSimulation()
+
+      expect(runner.stop).toHaveBeenCalledBefore(runner.start)
+    })
+
     it('delegates initialization and starts runner', () => {
       const steps = [{ id: 's1', name: 'Dev' }]
       storeApi.getSteps = () => steps
@@ -80,7 +91,9 @@ describe('SimulationOrchestrator', () => {
       orchestrator = createSimulationOrchestrator(runner, storeApi, initializer)
       orchestrator.startSimulation()
 
-      const callbacks = runner.start.mock.calls[0][3]
+      // HISTORY_FLUSH_INTERVAL = 5 in SimulationOrchestrator
+      const [, , , callbacks] = runner.start.mock.calls[0]
+      expect(callbacks).toBeDefined()
       const makeTick = (tick) => ({
         workItems: [],
         elapsedTime: tick,
@@ -96,12 +109,12 @@ describe('SimulationOrchestrator', () => {
       expect(storeApi.addQueueHistoryBatch).toHaveBeenCalledTimes(1)
     })
 
-    it('flushes pending history on complete', () => {
+    it('flushes pending history on complete and clears buffer', () => {
       storeApi.getSteps = () => [{ id: 's1' }]
       orchestrator = createSimulationOrchestrator(runner, storeApi, initializer)
       orchestrator.startSimulation()
 
-      const callbacks = runner.start.mock.calls[0][3]
+      const [, , , callbacks] = runner.start.mock.calls[0]
       callbacks.onTick({
         workItems: [],
         elapsedTime: 1,
@@ -113,6 +126,7 @@ describe('SimulationOrchestrator', () => {
       const results = { completedCount: 10 }
       callbacks.onComplete(results)
 
+      expect(storeApi.addQueueHistoryBatch).toHaveBeenCalledTimes(1)
       expect(storeApi.addQueueHistoryBatch).toHaveBeenCalledWith([{ tick: 1 }])
       expect(storeApi.setRunning).toHaveBeenCalledWith(false)
       expect(storeApi.setResults).toHaveBeenCalledWith(results)
@@ -129,11 +143,10 @@ describe('SimulationOrchestrator', () => {
   })
 
   describe('resumeSimulation', () => {
-    it('clears paused, sets running, and resumes runner', () => {
+    it('atomically sets resumed state and resumes runner', () => {
       orchestrator.resumeSimulation()
 
-      expect(storeApi.setPaused).toHaveBeenCalledWith(false)
-      expect(storeApi.setRunning).toHaveBeenCalledWith(true)
+      expect(storeApi.setResumed).toHaveBeenCalled()
       expect(runner.resume).toHaveBeenCalled()
     })
   })

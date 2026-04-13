@@ -5,6 +5,8 @@
 
 import { createComparisonEngine } from '../utils/simulation/ComparisonEngine.js'
 
+const SCENARIO_NAME_PREFIX = 'Scenario'
+
 /**
  * Run simulation for scenario and calculate improvements
  */
@@ -38,7 +40,7 @@ export const createScenarioManager = (storeApi) => {
 
     const scenario = {
       id: crypto.randomUUID(),
-      name: `Scenario ${scenarios.length + 1}`,
+      name: `${SCENARIO_NAME_PREFIX} ${scenarios.length + 1}`,
       steps: steps.map((s) => ({ ...s })),
       connections: connections.map((c) => ({ ...c })),
       results: null,

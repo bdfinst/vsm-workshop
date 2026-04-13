@@ -12,6 +12,7 @@ const createMockStoreApi = (overrides = {}) => ({
   getScenarios: () => [],
   setRunning: vi.fn(),
   setPaused: vi.fn(),
+  setResumed: vi.fn(),
   resetControl: vi.fn(),
   updateWorkItems: vi.fn(),
   updateQueueSizes: vi.fn(),
@@ -222,8 +223,7 @@ describe('SimulationService', () => {
 
       service.resumeSimulation()
 
-      expect(mockStoreApi.setPaused).toHaveBeenCalledWith(false)
-      expect(mockStoreApi.setRunning).toHaveBeenCalledWith(true)
+      expect(mockStoreApi.setResumed).toHaveBeenCalled()
       expect(mockRunner.resume).toHaveBeenCalled()
     })
   })

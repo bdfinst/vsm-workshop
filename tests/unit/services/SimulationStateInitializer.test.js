@@ -1,8 +1,10 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { createSimulationStateInitializer } from '../../../src/services/SimulationStateInitializer.js'
 
+const WORK_ITEM_COUNT = 5
+
 const createMockStoreApi = (overrides = {}) => ({
-  getWorkItemCount: () => 5,
+  getWorkItemCount: () => WORK_ITEM_COUNT,
   updateWorkItems: vi.fn(),
   updateQueueSizes: vi.fn(),
   updateElapsedTime: vi.fn(),
@@ -41,7 +43,7 @@ describe('SimulationStateInitializer', () => {
 
     expect(storeApi.updateWorkItems).toHaveBeenCalledTimes(1)
     const items = storeApi.updateWorkItems.mock.calls[0][0]
-    expect(items).toHaveLength(5) // workItemCount = 5
+    expect(items).toHaveLength(WORK_ITEM_COUNT)
     expect(items[0].currentStepId).toBe('s1')
   })
 
@@ -53,6 +55,10 @@ describe('SimulationStateInitializer', () => {
     expect(storeApi.updateElapsedTime).toHaveBeenCalledWith(0)
     expect(storeApi.setDetectedBottlenecks).toHaveBeenCalledWith([])
     expect(storeApi.setResults).toHaveBeenCalledWith(null)
+  })
+
+  it('initializes with no steps without throwing', () => {
+    expect(() => initializer.initialize([], [])).not.toThrow()
   })
 
   it('seeds queue sizes from engine state', () => {

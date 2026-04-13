@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { createReactiveStore } from '../../../src/stores/createReactiveStore.svelte.js'
+import { createReactiveStore } from '../../../src/utils/createReactiveStore.svelte.js'
 
 describe('createReactiveStore (spike)', () => {
   it('creates a store with reactive getters', () => {
@@ -61,59 +61,20 @@ describe('createReactiveStore (spike)', () => {
     expect(store.count).toBe(1)
   })
 
-  describe('proof: migrate simulationControlStore shape', () => {
-    it('reproduces simulationControlStore behavior', () => {
-      const store = createReactiveStore(
-        {
-          isRunning: false,
-          isPaused: false,
-          speed: 1.0,
-        },
-        {
-          actions: (state) => ({
-            setRunning(running) {
-              state.isRunning = running
-              if (running) state.isPaused = false
-            },
-            setPaused(paused) {
-              state.isPaused = paused
-              if (paused) state.isRunning = false
-            },
-            setSpeed(newSpeed) {
-              state.speed = Math.min(4.0, Math.max(0.25, newSpeed))
-            },
-            reset() {
-              state.isRunning = false
-              state.isPaused = false
-              // Keep speed setting
-            },
-          }),
-        }
-      )
+  it('custom actions override generated setters of the same name', () => {
+    const store = createReactiveStore(
+      { count: 0 },
+      {
+        actions: (state) => ({
+          setCount(value) {
+            state.count = value * 2
+          },
+        }),
+      }
+    )
 
-      // Start
-      store.setRunning(true)
-      expect(store.isRunning).toBe(true)
-      expect(store.isPaused).toBe(false)
+    store.setCount(5)
 
-      // Pause
-      store.setPaused(true)
-      expect(store.isPaused).toBe(true)
-      expect(store.isRunning).toBe(false)
-
-      // Speed clamping
-      store.setSpeed(0.1)
-      expect(store.speed).toBe(0.25)
-      store.setSpeed(10)
-      expect(store.speed).toBe(4.0)
-
-      // Reset keeps speed
-      store.setSpeed(2.0)
-      store.setRunning(true)
-      store.reset()
-      expect(store.isRunning).toBe(false)
-      expect(store.isPaused).toBe(false)
-      expect(store.speed).toBe(2.0)
-    })
+    expect(store.count).toBe(10)
   })
 })

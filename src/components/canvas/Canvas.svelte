@@ -23,9 +23,15 @@
   import { simDataStore } from '../../stores/simulationDataStore.svelte.js'
   import { simControlStore } from '../../stores/simulationControlStore.svelte.js'
   import StepNode from './nodes/StepNode.svelte'
+  import ReworkEdge from './edges/ReworkEdge.svelte'
+  import GuidanceBanner from '../ui/GuidanceBanner.svelte'
 
   const nodeTypes = {
     stepNode: StepNode,
+  }
+
+  const edgeTypes = {
+    rework: ReworkEdge,
   }
 
   const defaultEdgeOptions = {
@@ -93,12 +99,13 @@
   let edges = $derived(
     vsmDataStore.connections.map((conn) => {
       const isSelected = conn.id === vsmUIStore.selectedConnectionId
+      const isRework = conn.type === 'rework'
       return {
         id: conn.id,
         source: conn.source,
         target: conn.target,
-        type: 'smoothstep',
-        animated: conn.type === 'rework',
+        type: isRework ? 'rework' : 'smoothstep',
+        animated: isRework,
         selected: isSelected,
         style: {
           stroke: getEdgeStrokeColor(isSelected, conn.type),
@@ -161,17 +168,19 @@
 </script>
 
 <div
-  class="w-full h-full"
+  class="w-full h-full relative"
   onkeydown={handleKeyDown}
   tabindex="0"
   role="application"
   aria-label="Value stream map canvas"
   data-testid="vsm-canvas"
 >
+  <GuidanceBanner />
   <SvelteFlow
     {nodes}
     {edges}
     {nodeTypes}
+    {edgeTypes}
     {defaultEdgeOptions}
     fitView
     fitViewOptions={{ padding: 0.2 }}
