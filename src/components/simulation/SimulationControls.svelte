@@ -57,8 +57,11 @@
   }
 </script>
 
-<div class="bg-white border-b border-slate-200 px-4 py-2">
+<div class="bg-gray-50 border-b border-slate-200 px-4 py-2">
   <div class="flex items-center justify-between gap-4">
+    <!-- Simulation Label -->
+    <span class="text-xs font-medium text-gray-500 uppercase tracking-wide">Simulation</span>
+
     <!-- Play/Pause/Reset Controls -->
     <div class="flex items-center gap-2">
       {#if canStart}
