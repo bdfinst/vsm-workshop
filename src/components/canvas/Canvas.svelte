@@ -26,6 +26,7 @@
   import ReworkEdge from './edges/ReworkEdge.svelte'
   import GuidanceBanner from '../ui/GuidanceBanner.svelte'
   import ConfirmPopover from '../ui/ConfirmPopover.svelte'
+  import EmptyCanvasPlaceholder from './EmptyCanvasPlaceholder.svelte'
 
   let showDeleteConfirm = $state(false)
 
@@ -187,7 +188,11 @@
   aria-label="Value stream map canvas"
   data-testid="vsm-canvas"
 >
-  <GuidanceBanner />
+  {#if nodes.length === 0}
+    <EmptyCanvasPlaceholder />
+  {:else}
+    <GuidanceBanner />
+  {/if}
   {#if showDeleteConfirm}
     <div class="absolute top-4 left-1/2 -translate-x-1/2 z-[60]">
       <div class="relative">

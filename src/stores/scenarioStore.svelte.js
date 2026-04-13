@@ -51,6 +51,14 @@ function createScenarioStore() {
       }
     },
 
+    renameScenario(scenarioId, name) {
+      const trimmed = typeof name === 'string' ? name.trim() : ''
+      if (!trimmed) return
+      scenarios = scenarios.map((s) =>
+        s.id === scenarioId ? { ...s, name: trimmed } : s
+      )
+    },
+
     updateScenario(scenarioId, updates) {
       scenarios = scenarios.map((s) =>
         s.id === scenarioId ? { ...s, ...updates } : s

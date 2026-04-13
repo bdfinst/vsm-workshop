@@ -11,6 +11,21 @@
   import SimulationPanel from './components/ui/SimulationPanel.svelte'
   import SimulationControls from './components/simulation/SimulationControls.svelte'
   import Toast from './components/ui/Toast.svelte'
+  import KeyboardShortcutsOverlay from './components/ui/KeyboardShortcutsOverlay.svelte'
+
+  // Keyboard shortcuts overlay (local state per D5)
+  let showShortcuts = $state(false)
+
+  function handleGlobalKeydown(e) {
+    const tag = e.target?.tagName?.toLowerCase()
+    if (tag === 'input' || tag === 'textarea' || tag === 'select') return
+    if (e.target?.isContentEditable) return
+
+    if (e.key === '?') {
+      e.preventDefault()
+      showShortcuts = true
+    }
+  }
 
   // Reactive derived values from stores
   let hasVsm = $derived(vsmDataStore.id !== null)
@@ -42,6 +57,9 @@
 </script>
 
 <Toast />
+<svelte:window onkeydown={handleGlobalKeydown} />
+
+<KeyboardShortcutsOverlay visible={showShortcuts} onclose={() => { showShortcuts = false }} />
 {#if !hasVsm}
   <WelcomeScreen />
 {:else}

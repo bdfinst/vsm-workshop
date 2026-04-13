@@ -9,10 +9,12 @@
   let comparisonResults = $derived(scenarioStore.comparisonResults)
 </script>
 
-{#if simulationResults}
-  <SimulationResults />
-{/if}
+<div class="max-h-[40vh] overflow-y-auto" data-testid="simulation-panel">
+  {#if simulationResults}
+    <SimulationResults />
+  {/if}
 
-{#if simulationScenarios.length > 0 || comparisonResults}
-  <ScenarioComparison />
-{/if}
+  {#if simulationScenarios.length > 0 || comparisonResults}
+    <ScenarioComparison />
+  {/if}
+</div>
