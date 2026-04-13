@@ -12,6 +12,7 @@
   import { simDataStore } from '../../stores/simulationDataStore.svelte.js'
   import { vsmDataStore } from '../../stores/vsmDataStore.svelte.js'
   import { formatDuration } from '../../utils/calculations/metrics.js'
+  import { calculateQueueBarWidth } from '../../utils/calculations/queueBarWidth.js'
 
   let results = $derived(simDataStore.results)
   let queueSizesByStepId = $derived(simDataStore.queueSizesByStepId)
@@ -113,11 +114,11 @@
                 aria-label="Peak queue for {item.fullName}"
                 aria-valuenow={item.peakQueue}
                 aria-valuemin={0}
-                aria-valuemax={10}
+                aria-valuemax={Math.max(...queueChartData.map((d) => d.peakQueue), 1)}
               >
                 <div
                   class="h-full bg-red-400 transition-all"
-                  style="width: {Math.min(100, (item.peakQueue / 10) * 100)}%"
+                  style="width: {calculateQueueBarWidth(item.peakQueue, queueChartData)}%"
                 ></div>
               </div>
               <span class="w-8 text-xs text-slate-600 text-right">{item.peakQueue}</span>
