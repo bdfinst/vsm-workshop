@@ -3,7 +3,8 @@
   import { vsmUIStore } from '../../stores/vsmUIStore.svelte.js'
 
   let visible = $derived(
-    vsmDataStore.steps.length === 0 && !vsmUIStore.guidanceDismissed
+    vsmUIStore.guidanceForceShow ||
+      (vsmDataStore.steps.length === 0 && !vsmUIStore.guidanceDismissed)
   )
 
   function handleDismiss() {

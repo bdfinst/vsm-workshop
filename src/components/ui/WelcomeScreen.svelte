@@ -1,6 +1,7 @@
 <script>
   import { vsmDataStore } from '../../stores/vsmDataStore.svelte.js'
   import { vsmIOStore } from '../../stores/vsmIOStore.svelte.js'
+  import { toastStore } from '../../stores/toastStore.svelte.js'
   import { MAP_TEMPLATES } from '../../data/stepTemplates.js'
 
   let mapName = $state('')
@@ -29,7 +30,7 @@
     if (!file) return
 
     if (file.size > 10000000) {
-      alert('File is too large. Please select a file under 10 MB.')
+      toastStore.add('File is too large. Please select a file under 10 MB.', 'error')
       e.target.value = ''
       return
     }
@@ -37,7 +38,7 @@
     const isJson =
       file.type === 'application/json' || file.name.toLowerCase().endsWith('.json')
     if (!isJson) {
-      alert('Invalid file type. Please select a JSON file.')
+      toastStore.add('Invalid file type. Please select a JSON file.', 'error')
       e.target.value = ''
       return
     }
@@ -46,7 +47,7 @@
     reader.onload = (event) => {
       const result = vsmIOStore.importFromJson(event.target.result)
       if (!result) {
-        alert('Failed to import file. Please check the format.')
+        toastStore.add('Failed to import file. Please check the format.', 'error')
       }
     }
     reader.readAsText(file)

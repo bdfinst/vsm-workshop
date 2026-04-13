@@ -35,9 +35,13 @@
   function toggleCategory(category) {
     expandedCategory = expandedCategory === category ? null : category
   }
+
+  function handleShowHelp() {
+    vsmUIStore.forceShowGuidance()
+  }
 </script>
 
-<aside class="w-64 bg-white border-r border-gray-200 p-4 overflow-y-auto" aria-label="Step templates and instructions">
+<aside class="w-64 bg-white border-r border-gray-200 p-4 overflow-y-auto flex flex-col" aria-label="Step templates and instructions">
   <button
     onclick={handleAddStep}
     class="w-full flex items-center justify-center gap-2 px-4 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium"
@@ -142,5 +146,19 @@
         <dd>PT ÷ LT - how much time is actual work vs waiting</dd>
       </div>
     </dl>
+  </div>
+
+  <div class="mt-auto pt-4 border-t border-gray-200">
+    <button
+      onclick={handleShowHelp}
+      class="w-full flex items-center justify-center gap-2 px-3 py-2 text-sm text-gray-500 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
+      aria-label="Show mapping guidance"
+      data-testid="help-button"
+    >
+      <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+      </svg>
+      <span>Help</span>
+    </button>
   </div>
 </aside>
