@@ -23,3 +23,31 @@ export const withUndo = (mutationFn) => {
   })
   return mutationFn()
 }
+
+/**
+ * Perform an undo operation: restore the previous snapshot from the undo stack.
+ * Does nothing if the undo stack is empty.
+ */
+export const performUndo = () => {
+  const snapshot = undoStore.undo({
+    steps: vsmDataStore.steps,
+    connections: vsmDataStore.connections,
+  })
+  if (snapshot) {
+    vsmDataStore.restoreSnapshot(snapshot)
+  }
+}
+
+/**
+ * Perform a redo operation: restore the next snapshot from the redo stack.
+ * Does nothing if the redo stack is empty.
+ */
+export const performRedo = () => {
+  const snapshot = undoStore.redo({
+    steps: vsmDataStore.steps,
+    connections: vsmDataStore.connections,
+  })
+  if (snapshot) {
+    vsmDataStore.restoreSnapshot(snapshot)
+  }
+}

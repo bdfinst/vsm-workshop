@@ -2,6 +2,7 @@
   import { SvelteFlowProvider } from '@xyflow/svelte'
   import { vsmDataStore } from './stores/vsmDataStore.svelte.js'
   import { vsmUIStore } from './stores/vsmUIStore.svelte.js'
+  import { performUndo, performRedo } from './utils/undoHelper.js'
   import Header from './components/ui/Header.svelte'
   import Canvas from './components/canvas/Canvas.svelte'
   import Sidebar from './components/ui/Sidebar.svelte'
@@ -38,7 +39,27 @@
   function handleCloseConnectionEditor() {
     vsmUIStore.clearConnectionSelection()
   }
+
+  function handleGlobalKeyDown(e) {
+    // Skip undo/redo when focus is in an input or textarea
+    const tag = e.target?.tagName
+    if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT') return
+
+    if ((e.ctrlKey || e.metaKey) && e.key === 'z' && !e.shiftKey) {
+      e.preventDefault()
+      e.stopPropagation()
+      performUndo()
+    } else if (
+      (e.ctrlKey || e.metaKey) && e.shiftKey && (e.key === 'z' || e.key === 'Z')
+    ) {
+      e.preventDefault()
+      e.stopPropagation()
+      performRedo()
+    }
+  }
 </script>
+
+<svelte:window onkeydown={handleGlobalKeyDown} />
 
 {#if !hasVsm}
   <WelcomeScreen />
