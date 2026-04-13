@@ -1,8 +1,11 @@
 <script>
   import { vsmDataStore } from '../../stores/vsmDataStore.svelte.js'
   import { validateConnection } from '../../utils/validation/connectionValidator.js'
+  import ConfirmPopover from '../ui/ConfirmPopover.svelte'
 
   let { connectionId, onClose } = $props()
+
+  let showDeleteConfirm = $state(false)
 
   // Get connection from store
   let connection = $derived(vsmDataStore.getConnectionById(connectionId))
@@ -54,10 +57,17 @@
   }
 
   function handleDelete() {
-    if (confirm('Delete this connection?')) {
-      vsmDataStore.deleteConnection(connectionId)
-      onClose()
-    }
+    showDeleteConfirm = true
+  }
+
+  function handleConfirmDelete() {
+    showDeleteConfirm = false
+    vsmDataStore.deleteConnection(connectionId)
+    onClose()
+  }
+
+  function handleCancelDelete() {
+    showDeleteConfirm = false
   }
 </script>
 
@@ -137,14 +147,23 @@
         >
           Save
         </button>
-        <button
-          type="button"
-          onclick={handleDelete}
-          class="py-2 px-4 bg-red-100 text-red-600 rounded-md hover:bg-red-200 transition-colors"
-          data-testid="delete-connection-button"
-        >
-          Delete
-        </button>
+        <div class="relative">
+          <button
+            type="button"
+            onclick={handleDelete}
+            class="py-2 px-4 bg-red-100 text-red-600 rounded-md hover:bg-red-200 transition-colors"
+            data-testid="delete-connection-button"
+          >
+            Delete
+          </button>
+          {#if showDeleteConfirm}
+            <ConfirmPopover
+              message="Delete this connection?"
+              onconfirm={handleConfirmDelete}
+              oncancel={handleCancelDelete}
+            />
+          {/if}
+        </div>
       </div>
     </form>
   </div>

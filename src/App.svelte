@@ -10,6 +10,7 @@
   import EditorPanel from './components/ui/EditorPanel.svelte'
   import SimulationPanel from './components/ui/SimulationPanel.svelte'
   import SimulationControls from './components/simulation/SimulationControls.svelte'
+  import Toast from './components/ui/Toast.svelte'
 
   // Reactive derived values from stores
   let hasVsm = $derived(vsmDataStore.id !== null)
@@ -40,6 +41,7 @@
   }
 </script>
 
+<Toast />
 {#if !hasVsm}
   <WelcomeScreen />
 {:else}

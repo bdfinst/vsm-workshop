@@ -3,8 +3,11 @@
   import { STEP_TYPES } from '../../data/stepTypes.js'
   import { STEP_TYPE_CONFIG } from '../../data/stepTypeConfig.js'
   import { validateStep } from '../../utils/validation/stepValidator.js'
+  import ConfirmPopover from '../ui/ConfirmPopover.svelte'
 
   let { stepId, onClose } = $props()
+
+  let showDeleteConfirm = $state(false)
 
   // Get step from store
   let step = $derived(vsmDataStore.getStepById(stepId))
@@ -73,10 +76,17 @@
   }
 
   function handleDelete() {
-    if (confirm('Delete this step?')) {
-      vsmDataStore.deleteStep(stepId)
-      onClose()
-    }
+    showDeleteConfirm = true
+  }
+
+  function handleConfirmDelete() {
+    showDeleteConfirm = false
+    vsmDataStore.deleteStep(stepId)
+    onClose()
+  }
+
+  function handleCancelDelete() {
+    showDeleteConfirm = false
   }
 </script>
 
@@ -236,14 +246,23 @@
         >
           Save
         </button>
-        <button
-          type="button"
-          onclick={handleDelete}
-          class="py-2 px-4 bg-red-100 text-red-600 rounded-md hover:bg-red-200 transition-colors"
-          data-testid="delete-step-button"
-        >
-          Delete
-        </button>
+        <div class="relative">
+          <button
+            type="button"
+            onclick={handleDelete}
+            class="py-2 px-4 bg-red-100 text-red-600 rounded-md hover:bg-red-200 transition-colors"
+            data-testid="delete-step-button"
+          >
+            Delete
+          </button>
+          {#if showDeleteConfirm}
+            <ConfirmPopover
+              message="Delete this step?"
+              onconfirm={handleConfirmDelete}
+              oncancel={handleCancelDelete}
+            />
+          {/if}
+        </div>
       </div>
     </form>
   </div>

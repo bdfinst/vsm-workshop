@@ -1,9 +1,12 @@
 <script>
   import { vsmDataStore } from '../../stores/vsmDataStore.svelte.js'
   import { vsmIOStore } from '../../stores/vsmIOStore.svelte.js'
+  import { toastStore } from '../../stores/toastStore.svelte.js'
   import { exportAsJson, exportAsPng, exportAsPdf } from '../../utils/export/index.js'
+  import ConfirmPopover from './ConfirmPopover.svelte'
 
   let isEditingName = $state(false)
+  let showNewMapConfirm = $state(false)
   let tempName = $state(vsmDataStore.name)
   let fileInputRef = $state(null)
   let isExportOpen = $state(false)
@@ -69,7 +72,7 @@
     if (!file) return
 
     if (file.size > 10000000) {
-      alert('File is too large. Please select a file under 10 MB.')
+      toastStore.add('File is too large. Please select a file under 10 MB.', 'error')
       e.target.value = ''
       return
     }
@@ -77,7 +80,7 @@
     const isJson =
       file.type === 'application/json' || file.name.toLowerCase().endsWith('.json')
     if (!isJson) {
-      alert('Invalid file type. Please select a JSON file.')
+      toastStore.add('Invalid file type. Please select a JSON file.', 'error')
       e.target.value = ''
       return
     }
@@ -86,20 +89,27 @@
     reader.onload = (event) => {
       const result = vsmIOStore.importFromJson(event.target.result)
       if (!result) {
-        alert('Failed to import file. Please check the format.')
+        toastStore.add('Failed to import file. Please check the format.', 'error')
       }
     }
     reader.onerror = () => {
-      alert('Failed to read file.')
+      toastStore.add('Failed to read file.', 'error')
     }
     reader.readAsText(file)
     e.target.value = ''
   }
 
   function handleNewMap() {
-    if (confirm('Create a new map? This will clear the current map.')) {
-      vsmDataStore.clearMap()
-    }
+    showNewMapConfirm = true
+  }
+
+  function handleConfirmNewMap() {
+    showNewMapConfirm = false
+    vsmDataStore.clearMap()
+  }
+
+  function handleCancelNewMap() {
+    showNewMapConfirm = false
   }
 
   function toggleExportMenu() {
@@ -169,13 +179,22 @@
   </div>
 
   <div class="flex items-center gap-2">
-    <button
-      onclick={handleNewMap}
-      class="px-3 py-1.5 text-sm text-gray-600 hover:text-gray-800 hover:bg-gray-100 rounded transition-colors"
-      data-testid="new-map-button"
-    >
-      New Map
-    </button>
+    <div class="relative">
+      <button
+        onclick={handleNewMap}
+        class="px-3 py-1.5 text-sm text-gray-600 hover:text-gray-800 hover:bg-gray-100 rounded transition-colors"
+        data-testid="new-map-button"
+      >
+        New Map
+      </button>
+      {#if showNewMapConfirm}
+        <ConfirmPopover
+          message="Create a new map? This will clear the current map."
+          onconfirm={handleConfirmNewMap}
+          oncancel={handleCancelNewMap}
+        />
+      {/if}
+    </div>
     <button
       onclick={handleImport}
       class="px-3 py-1.5 text-sm text-gray-600 hover:text-gray-800 hover:bg-gray-100 rounded transition-colors"

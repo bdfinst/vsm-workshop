@@ -25,6 +25,9 @@
   import StepNode from './nodes/StepNode.svelte'
   import ReworkEdge from './edges/ReworkEdge.svelte'
   import GuidanceBanner from '../ui/GuidanceBanner.svelte'
+  import ConfirmPopover from '../ui/ConfirmPopover.svelte'
+
+  let showDeleteConfirm = $state(false)
 
   const nodeTypes = {
     stepNode: StepNode,
@@ -155,10 +158,19 @@
       (event.key === 'Delete' || event.key === 'Backspace') &&
       vsmUIStore.selectedStepId
     ) {
-      if (confirm('Delete this step?')) {
-        vsmDataStore.deleteStep(vsmUIStore.selectedStepId)
-      }
+      showDeleteConfirm = true
     }
+  }
+
+  function handleConfirmKeyboardDelete() {
+    if (vsmUIStore.selectedStepId) {
+      vsmDataStore.deleteStep(vsmUIStore.selectedStepId)
+    }
+    showDeleteConfirm = false
+  }
+
+  function handleCancelKeyboardDelete() {
+    showDeleteConfirm = false
   }
 
   function getNodeColor(node) {
@@ -176,6 +188,17 @@
   data-testid="vsm-canvas"
 >
   <GuidanceBanner />
+  {#if showDeleteConfirm}
+    <div class="absolute top-4 left-1/2 -translate-x-1/2 z-[60]">
+      <div class="relative">
+        <ConfirmPopover
+          message="Delete this step?"
+          onconfirm={handleConfirmKeyboardDelete}
+          oncancel={handleCancelKeyboardDelete}
+        />
+      </div>
+    </div>
+  {/if}
   <SvelteFlow
     {nodes}
     {edges}
