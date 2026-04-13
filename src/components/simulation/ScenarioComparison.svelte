@@ -10,6 +10,38 @@
   let activeScenarioId = $derived(scenarioStore.activeScenarioId)
   let comparisonResults = $derived(scenarioStore.comparisonResults)
 
+  // Inline rename state
+  let editingScenarioId = $state(null)
+  let editingName = $state('')
+
+  function handleStartRename(scenario) {
+    editingScenarioId = scenario.id
+    editingName = scenario.name
+  }
+
+  function handleSaveRename() {
+    if (editingScenarioId) {
+      scenarioStore.renameScenario(editingScenarioId, editingName)
+    }
+    editingScenarioId = null
+    editingName = ''
+  }
+
+  function handleCancelRename() {
+    editingScenarioId = null
+    editingName = ''
+  }
+
+  function handleRenameKeydown(e) {
+    if (e.key === 'Enter') {
+      e.preventDefault()
+      handleSaveRename()
+    } else if (e.key === 'Escape') {
+      e.preventDefault()
+      handleCancelRename()
+    }
+  }
+
   function handleCompare(scenarioId) {
     scenarioStore.setActiveScenario(scenarioId)
     service.runComparison(scenarioId)
@@ -58,9 +90,26 @@
               : 'bg-slate-50 border-slate-200 hover:bg-slate-100'}"
           >
             <div>
-              <h4 class="text-sm font-medium text-slate-900">
-                {scenario.name}
-              </h4>
+              {#if editingScenarioId === scenario.id}
+                <input
+                  type="text"
+                  bind:value={editingName}
+                  onkeydown={handleRenameKeydown}
+                  onblur={handleSaveRename}
+                  class="text-sm font-medium text-slate-900 bg-white border border-blue-400 rounded px-1 py-0.5 w-full focus:outline-none focus:ring-1 focus:ring-blue-500"
+                  data-testid="scenario-rename-input"
+                  autofocus
+                />
+              {:else}
+                <h4
+                  class="text-sm font-medium text-slate-900 cursor-pointer"
+                  ondblclick={() => handleStartRename(scenario)}
+                  data-testid="scenario-name-{scenario.id}"
+                  title="Double-click to rename"
+                >
+                  {scenario.name}
+                </h4>
+              {/if}
               <p class="text-xs text-slate-600">
                 {scenario.steps.length} steps
               </p>
