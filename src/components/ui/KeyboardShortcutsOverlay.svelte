@@ -4,10 +4,11 @@
    *
    * Triggered by pressing "?" key. Focus trap: close button receives
    * focus on open. Escape closes (with stopPropagation to avoid
-   * bubbling to canvas handlers).
+   * bubbling to canvas handlers). Focus is restored to the triggering
+   * element on close.
    */
 
-  let { visible = false, onclose } = $props()
+  let { visible = false, onclose, triggerRef = null } = $props()
 
   let closeButtonRef = $state(null)
 
@@ -21,13 +22,24 @@
     if (e.key === 'Escape') {
       e.stopPropagation()
       e.preventDefault()
-      onclose()
+      closeAndRestoreFocus()
+    } else if (e.key === 'Tab') {
+      // Only one focusable element; keep focus on it
+      e.preventDefault()
+    }
+  }
+
+  function closeAndRestoreFocus() {
+    onclose()
+    // Restore focus to the element that triggered the overlay
+    if (triggerRef) {
+      triggerRef.focus()
     }
   }
 
   function handleBackdropClick(e) {
     if (e.target === e.currentTarget) {
-      onclose()
+      closeAndRestoreFocus()
     }
   }
 
@@ -35,6 +47,8 @@
     { keys: 'Delete / Backspace', description: 'Remove selected step' },
     { keys: '?', description: 'Show this overlay' },
     { keys: 'Escape', description: 'Close overlay / deselect' },
+    { keys: 'Ctrl+Z', description: 'Undo' },
+    { keys: 'Ctrl+Shift+Z', description: 'Redo' },
   ]
 </script>
 
@@ -53,18 +67,24 @@
         <h2 class="text-lg font-semibold text-slate-900">Keyboard Shortcuts</h2>
         <button
           bind:this={closeButtonRef}
-          onclick={onclose}
+          onclick={closeAndRestoreFocus}
           class="p-1 text-slate-400 hover:text-slate-600 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
           aria-label="Close keyboard shortcuts"
           data-testid="close-shortcuts-button"
         >
-          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
           </svg>
         </button>
       </div>
 
       <table class="w-full">
+        <thead class="sr-only">
+          <tr>
+            <th scope="col">Key</th>
+            <th scope="col">Action</th>
+          </tr>
+        </thead>
         <tbody>
           {#each shortcuts as shortcut (shortcut.keys)}
             <tr class="border-t border-slate-100">

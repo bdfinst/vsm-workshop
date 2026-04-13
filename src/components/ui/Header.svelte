@@ -39,8 +39,12 @@
     exportAsJson(json, `${vsmDataStore.name || 'vsm'}.json`)
   }
 
+  function getFlowCanvas() {
+    return document.querySelector('.svelte-flow')
+  }
+
   async function handleExportPng() {
-    const canvas = document.querySelector('.svelte-flow')
+    const canvas = getFlowCanvas()
     if (!canvas) return
 
     try {
@@ -53,7 +57,7 @@
   }
 
   async function handleExportPdf() {
-    const canvas = document.querySelector('.svelte-flow')
+    const canvas = getFlowCanvas()
     if (!canvas) return
 
     try {
@@ -166,6 +170,7 @@
         onblur={handleNameSubmit}
         onkeydown={handleNameKeyDown}
         class="px-2 py-1 border border-blue-500 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
+        aria-label="Map name"
         data-testid="map-name-input"
       />
     {:else}
@@ -217,6 +222,7 @@
       {#if showNewMapConfirm}
         <ConfirmPopover
           message="Create a new map? This will clear the current map."
+          confirmLabel="Create"
           onconfirm={handleConfirmNewMap}
           oncancel={handleCancelNewMap}
         />
@@ -233,7 +239,7 @@
       <button
         onclick={toggleExportMenu}
         onkeydown={handleExportMenuKeyDown}
-        aria-haspopup="true"
+        aria-haspopup="menu"
         aria-expanded={isExportOpen}
         aria-label="Export options"
         class="px-3 py-1.5 text-sm bg-blue-600 text-white rounded hover:bg-blue-700 transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
@@ -254,7 +260,7 @@
           <button
             onclick={() => { handleExportJson(); closeExportMenu() }}
             role="menuitem"
-            class="w-full px-4 py-2 text-left text-sm hover:bg-gray-100 focus:outline-none focus:bg-gray-100"
+            class="w-full px-4 py-2 text-left text-sm hover:bg-gray-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-blue-500 focus:bg-gray-100"
             data-testid="export-json"
           >
             Export as JSON
@@ -262,7 +268,7 @@
           <button
             onclick={() => { handleExportPng(); closeExportMenu() }}
             role="menuitem"
-            class="w-full px-4 py-2 text-left text-sm hover:bg-gray-100 focus:outline-none focus:bg-gray-100"
+            class="w-full px-4 py-2 text-left text-sm hover:bg-gray-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-blue-500 focus:bg-gray-100"
             data-testid="export-png"
           >
             Export as PNG
@@ -270,7 +276,7 @@
           <button
             onclick={() => { handleExportPdf(); closeExportMenu() }}
             role="menuitem"
-            class="w-full px-4 py-2 text-left text-sm hover:bg-gray-100 focus:outline-none focus:bg-gray-100"
+            class="w-full px-4 py-2 text-left text-sm hover:bg-gray-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-blue-500 focus:bg-gray-100"
             data-testid="export-pdf"
           >
             Export as PDF

@@ -41,7 +41,7 @@ export const createSimulationOrchestrator = (runner, storeApi, initializer) => {
         storeApi.updateQueueSizes(newState.queueSizesByStepId)
         storeApi.setDetectedBottlenecks(newState.detectedBottlenecks)
 
-        pendingHistory = pendingHistory.concat(newState.queueHistory)
+        pendingHistory.push(...newState.queueHistory)
         tickCount++
         if (tickCount % HISTORY_FLUSH_INTERVAL === 0) {
           storeApi.addQueueHistoryBatch(pendingHistory)

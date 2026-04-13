@@ -16,6 +16,8 @@
 
   // Keyboard shortcuts overlay (local state per D5)
   let showShortcuts = $state(false)
+  // Capture the element that had focus when the overlay was opened so we can restore it on close
+  let shortcutsTriggerRef = $state(null)
 
   function handleGlobalKeyDown(e) {
     const tag = e.target?.tagName?.toLowerCase()
@@ -38,6 +40,7 @@
     // Keyboard shortcuts overlay
     if (e.key === '?') {
       e.preventDefault()
+      shortcutsTriggerRef = document.activeElement
       showShortcuts = true
     }
   }
@@ -74,7 +77,7 @@
 <Toast />
 <svelte:window onkeydown={handleGlobalKeyDown} />
 
-<KeyboardShortcutsOverlay visible={showShortcuts} onclose={() => { showShortcuts = false }} />
+<KeyboardShortcutsOverlay visible={showShortcuts} triggerRef={shortcutsTriggerRef} onclose={() => { showShortcuts = false }} />
 {#if !hasVsm}
   <WelcomeScreen />
 {:else}

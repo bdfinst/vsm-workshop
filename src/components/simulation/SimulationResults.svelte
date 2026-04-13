@@ -12,7 +12,6 @@
   import { simDataStore } from '../../stores/simulationDataStore.svelte.js'
   import { vsmDataStore } from '../../stores/vsmDataStore.svelte.js'
   import { formatDuration } from '../../utils/calculations/metrics.js'
-  import { calculateQueueBarWidth } from '../../utils/calculations/queueBarWidth.js'
 
   let results = $derived(simDataStore.results)
   let queueSizesByStepId = $derived(simDataStore.queueSizesByStepId)
@@ -28,14 +27,17 @@
       currentQueue: queueSizesByStepId[step.id] || 0,
     }))
   )
+
+  // Pre-compute max to avoid O(N²) recalculation inside the {#each} loop
+  let maxPeakQueue = $derived(Math.max(...queueChartData.map((d) => d.peakQueue), 1))
 </script>
 
 {#if results}
   <div
     class="bg-white border-t border-slate-200 p-4"
     data-testid="simulation-results"
-    aria-live="polite"
     role="status"
+    aria-atomic="false"
   >
     <h3 class="text-sm font-semibold text-slate-900 mb-3">
       Simulation Results
@@ -119,11 +121,11 @@
                 aria-label="Peak queue for {item.fullName}"
                 aria-valuenow={item.peakQueue}
                 aria-valuemin={0}
-                aria-valuemax={Math.max(...queueChartData.map((d) => d.peakQueue), 1)}
+                aria-valuemax={maxPeakQueue}
               >
                 <div
                   class="h-full bg-red-400 transition-all"
-                  style="width: {calculateQueueBarWidth(item.peakQueue, queueChartData)}%"
+                  style="width: {(item.peakQueue / maxPeakQueue) * 100}%"
                 ></div>
               </div>
               <span class="w-8 text-xs text-slate-600 text-right">{item.peakQueue}</span>

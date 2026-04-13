@@ -68,8 +68,14 @@
     selected,
   })
 
-  let nodes = $derived(
-    vsmDataStore.steps.map((step) => {
+  let nodes = $derived.by(() => {
+    const currentStepIds = new Set(vsmDataStore.steps.map((s) => s.id))
+    // Evict stale cache entries for deleted steps
+    for (const id of Object.keys(nodeCache)) {
+      if (!currentStepIds.has(id)) delete nodeCache[id]
+    }
+
+    return vsmDataStore.steps.map((step) => {
       const queueSize = simControlStore.isRunning
         ? simDataStore.queueSizesByStepId[step.id]
         : undefined
@@ -91,7 +97,7 @@
       nodeCache[step.id] = { step, queueSize, isBottleneck, selected, node }
       return node
     })
-  )
+  })
 
   // Helper function to get edge stroke color
   function getEdgeStrokeColor(isSelected, connectionType) {

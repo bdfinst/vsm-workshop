@@ -55,7 +55,7 @@ test.describe('Guided Backwards Mapping', () => {
     await page.getByRole('button', { name: 'Save' }).click()
 
     // Close editor if open
-    const closeBtn = page.getByRole('button', { name: '✕' })
+    const closeBtn = page.getByTestId('close-editor')
     if (await closeBtn.isVisible()) {
       await closeBtn.click()
     }

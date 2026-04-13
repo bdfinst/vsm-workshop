@@ -10,8 +10,11 @@
 /** Base vertical offset above the node row */
 const BASE_Y_OFFSET = 60
 
-/** Additional offset per 250px of horizontal span */
+/** Additional offset per SPAN_THRESHOLD_PX of horizontal span */
 const OFFSET_PER_SPAN = 30
+
+/** Horizontal span unit for scaling the vertical offset */
+const SPAN_THRESHOLD_PX = 250
 
 /** Horizontal padding from the source/target handles before turning up */
 const HANDLE_PADDING = 20
@@ -32,7 +35,7 @@ export const calculateReworkPath = ({
   targetY,
 }) => {
   const span = Math.abs(sourceX - targetX)
-  const verticalOffset = BASE_Y_OFFSET + (span / 250) * OFFSET_PER_SPAN
+  const verticalOffset = BASE_Y_OFFSET + (span / SPAN_THRESHOLD_PX) * OFFSET_PER_SPAN
 
   // Route: source handle -> right padding -> up -> across -> down -> left padding -> target handle
   const topY = Math.min(sourceY, targetY) - verticalOffset

@@ -3,12 +3,14 @@ import { vsmDataStore } from '../../../src/stores/vsmDataStore.svelte.js'
 import { undoStore } from '../../../src/stores/undoStore.svelte.js'
 
 /**
- * Helper: capture a snapshot of current vsmDataStore state
+ * Helper: capture a shallow-cloned snapshot of current vsmDataStore state.
+ * Uses spread to avoid capturing live reactive references that would
+ * reflect post-mutation state.
  * @returns {{ steps: Array, connections: Array }}
  */
 const snapshot = () => ({
-  steps: vsmDataStore.steps,
-  connections: vsmDataStore.connections,
+  steps: [...vsmDataStore.steps],
+  connections: [...vsmDataStore.connections],
 })
 
 /**

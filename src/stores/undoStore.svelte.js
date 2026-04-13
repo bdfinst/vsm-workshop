@@ -51,11 +51,8 @@ function createUndoStore() {
      */
     pushSnapshot(snapshot) {
       const cloned = cloneSnapshot(snapshot)
-      const newStack = [...undoStack, cloned]
-      if (newStack.length > MAX_UNDO_DEPTH) {
-        newStack.shift()
-      }
-      undoStack = newStack
+      const full = [...undoStack, cloned]
+      undoStack = full.length > MAX_UNDO_DEPTH ? full.slice(1) : full
       redoStack = []
     },
 

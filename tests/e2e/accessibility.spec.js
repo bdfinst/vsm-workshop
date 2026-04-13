@@ -61,7 +61,7 @@ test.describe('Form Label Accessibility', () => {
 
     // Fit view then connect
     await page.locator('.svelte-flow__controls-fitview').click()
-    await page.waitForTimeout(300)
+    await page.locator('.svelte-flow__viewport').waitFor({ state: 'visible' })
 
     const stepA = page.locator('.vsm-node', { hasText: 'Step A' })
     const stepB = page.locator('.vsm-node', { hasText: 'Step B' })
@@ -125,7 +125,7 @@ test.describe('Simulation Results Accessibility', () => {
 
     // Fit view and connect
     await page.locator('.svelte-flow__controls-fitview').click()
-    await page.waitForTimeout(300)
+    await page.locator('.svelte-flow__viewport').waitFor({ state: 'visible' })
     const devNode = page.locator('.vsm-node', { hasText: 'Development' })
     const testNode = page.locator('.vsm-node', { hasText: 'Testing' })
     await testNode
@@ -145,8 +145,8 @@ test.describe('Simulation Results Accessibility', () => {
     const resultsContainer = page.getByTestId('simulation-results')
     await expect(resultsContainer).toBeVisible()
 
-    // Verify aria-live and role attributes
-    await expect(resultsContainer).toHaveAttribute('aria-live', 'polite')
+    // Verify role and aria-atomic attributes (role="status" implies aria-live="polite")
     await expect(resultsContainer).toHaveAttribute('role', 'status')
+    await expect(resultsContainer).toHaveAttribute('aria-atomic', 'false')
   })
 })

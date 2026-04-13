@@ -13,6 +13,7 @@
   // Inline rename state
   let editingScenarioId = $state(null)
   let editingName = $state('')
+  let scenarioNameRefs = $state({})
 
   function handleStartRename(scenario) {
     editingScenarioId = scenario.id
@@ -20,16 +21,25 @@
   }
 
   function handleSaveRename() {
-    if (editingScenarioId) {
-      scenarioStore.renameScenario(editingScenarioId, editingName)
+    const id = editingScenarioId
+    if (id) {
+      scenarioStore.renameScenario(id, editingName)
     }
     editingScenarioId = null
     editingName = ''
+    // Restore focus to the scenario name element
+    if (id && scenarioNameRefs[id]) {
+      scenarioNameRefs[id].focus()
+    }
   }
 
   function handleCancelRename() {
+    const id = editingScenarioId
     editingScenarioId = null
     editingName = ''
+    if (id && scenarioNameRefs[id]) {
+      scenarioNameRefs[id].focus()
+    }
   }
 
   function handleRenameKeydown(e) {
@@ -101,14 +111,27 @@
                   autofocus
                 />
               {:else}
-                <h4
-                  class="text-sm font-medium text-slate-900 cursor-pointer"
-                  ondblclick={() => handleStartRename(scenario)}
-                  data-testid="scenario-name-{scenario.id}"
-                  title="Double-click to rename"
-                >
-                  {scenario.name}
-                </h4>
+                <div class="flex items-center gap-1">
+                  <h4
+                    bind:this={scenarioNameRefs[scenario.id]}
+                    class="text-sm font-medium text-slate-900 cursor-pointer"
+                    ondblclick={() => handleStartRename(scenario)}
+                    data-testid="scenario-name-{scenario.id}"
+                    title="Double-click to rename"
+                  >
+                    {scenario.name}
+                  </h4>
+                  <button
+                    onclick={() => handleStartRename(scenario)}
+                    class="p-0.5 text-slate-400 hover:text-slate-600 transition-colors"
+                    aria-label="Rename {scenario.name}"
+                    data-testid="rename-scenario-{scenario.id}"
+                  >
+                    <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                    </svg>
+                  </button>
+                </div>
               {/if}
               <p class="text-xs text-slate-600">
                 {scenario.steps.length} steps
@@ -126,8 +149,10 @@
               <button
                 onclick={() => handleRemoveScenario(scenario.id)}
                 class="p-1 text-slate-400 hover:text-red-600 transition-colors"
+                aria-label="Remove {scenario.name}"
+                data-testid="remove-scenario-{scenario.id}"
               >
-                <Trash2 class="w-4 h-4" />
+                <Trash2 class="w-4 h-4" aria-hidden="true" />
               </button>
             </div>
           </div>

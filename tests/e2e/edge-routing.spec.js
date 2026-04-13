@@ -19,7 +19,7 @@ test.describe('Edge Routing', () => {
 
   async function fitView(page) {
     await page.locator('.svelte-flow__controls-fitview').click()
-    await page.waitForTimeout(300)
+    await page.locator('.svelte-flow__viewport').waitFor({ state: 'visible' })
   }
 
   async function connectNodes(page, sourceName, targetName) {
@@ -51,7 +51,7 @@ test.describe('Edge Routing', () => {
     await addStep(page, 'Dev')
 
     // Close editor and fit view
-    const closeBtn = page.getByRole('button', { name: '✕' })
+    const closeBtn = page.getByTestId('close-editor')
     if (await closeBtn.isVisible()) await closeBtn.click()
     await fitView(page)
 
@@ -69,7 +69,7 @@ test.describe('Edge Routing', () => {
     await addStep(page, 'Dev')
 
     // Close editor and fit view
-    const closeBtn = page.getByRole('button', { name: '✕' })
+    const closeBtn = page.getByTestId('close-editor')
     if (await closeBtn.isVisible()) await closeBtn.click()
     await fitView(page)
 
@@ -95,7 +95,7 @@ test.describe('Edge Routing', () => {
     await addStep(page, 'Deploy')
     await addStep(page, 'Dev')
 
-    const closeBtn = page.getByRole('button', { name: '✕' })
+    const closeBtn = page.getByTestId('close-editor')
     if (await closeBtn.isVisible()) await closeBtn.click()
     await fitView(page)
 
