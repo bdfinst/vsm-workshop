@@ -25,6 +25,7 @@
   import StepNode from './nodes/StepNode.svelte'
   import ReworkEdge from './edges/ReworkEdge.svelte'
   import GuidanceBanner from '../ui/GuidanceBanner.svelte'
+  import EmptyCanvasPlaceholder from './EmptyCanvasPlaceholder.svelte'
 
   const nodeTypes = {
     stepNode: StepNode,
@@ -175,7 +176,11 @@
   aria-label="Value stream map canvas"
   data-testid="vsm-canvas"
 >
-  <GuidanceBanner />
+  {#if nodes.length === 0}
+    <EmptyCanvasPlaceholder />
+  {:else}
+    <GuidanceBanner />
+  {/if}
   <SvelteFlow
     {nodes}
     {edges}

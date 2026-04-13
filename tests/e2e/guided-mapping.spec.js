@@ -7,38 +7,30 @@ test.describe('Guided Backwards Mapping', () => {
     await page.goto('/')
   })
 
-  test('shows guidance banner when creating a blank map', async ({ page }) => {
+  test('shows empty canvas placeholder when creating a blank map', async ({ page }) => {
     await page.getByTestId('new-map-name-input').fill('My Delivery Process')
     await page.getByTestId('create-map-button').click()
 
-    const banner = page.getByTestId('guidance-banner')
-    await expect(banner).toBeVisible()
-    await expect(banner).toContainText('Start from the end')
-    await expect(banner).toContainText('final delivery step')
+    const placeholder = page.getByTestId('empty-canvas-placeholder')
+    await expect(placeholder).toBeVisible()
+    await expect(placeholder).toContainText('Add your first step')
+    await expect(placeholder).toContainText('final delivery step')
+
+    // Guidance banner should NOT be visible (placeholder replaces it)
+    await expect(page.getByTestId('guidance-banner')).not.toBeVisible()
   })
 
-  test('guidance banner disappears after adding a step', async ({ page }) => {
+  test('empty canvas placeholder disappears after adding a step', async ({ page }) => {
     await page.getByTestId('new-map-name-input').fill('My Process')
     await page.getByTestId('create-map-button').click()
 
-    await expect(page.getByTestId('guidance-banner')).toBeVisible()
+    await expect(page.getByTestId('empty-canvas-placeholder')).toBeVisible()
 
     // Add a step
     await page.getByRole('button', { name: 'Add Step' }).click()
 
-    // Banner should disappear once a step exists
-    await expect(page.getByTestId('guidance-banner')).not.toBeVisible()
-  })
-
-  test('guidance banner can be dismissed', async ({ page }) => {
-    await page.getByTestId('new-map-name-input').fill('My Process')
-    await page.getByTestId('create-map-button').click()
-
-    await expect(page.getByTestId('guidance-banner')).toBeVisible()
-
-    await page.getByTestId('dismiss-guidance-button').click()
-
-    await expect(page.getByTestId('guidance-banner')).not.toBeVisible()
+    // Placeholder should disappear once a step exists
+    await expect(page.getByTestId('empty-canvas-placeholder')).not.toBeVisible()
   })
 
   test('guidance does not appear for template maps', async ({ page }) => {
