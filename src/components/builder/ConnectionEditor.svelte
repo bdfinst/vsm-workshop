@@ -1,5 +1,6 @@
 <script>
   import { vsmDataStore } from '../../stores/vsmDataStore.svelte.js'
+  import { withUndo } from '../../utils/undoHelper.js'
   import { validateConnection } from '../../utils/validation/connectionValidator.js'
 
   let { connectionId, onClose } = $props()
@@ -46,16 +47,16 @@
     e.preventDefault()
     if (!validate()) return
 
-    vsmDataStore.updateConnection(connectionId, {
+    withUndo(() => vsmDataStore.updateConnection(connectionId, {
       type: formData.type,
       reworkRate: formData.type === 'rework' ? Number(formData.reworkRate) : 0,
-    })
+    }))
     onClose()
   }
 
   function handleDelete() {
     if (confirm('Delete this connection?')) {
-      vsmDataStore.deleteConnection(connectionId)
+      withUndo(() => vsmDataStore.deleteConnection(connectionId))
       onClose()
     }
   }

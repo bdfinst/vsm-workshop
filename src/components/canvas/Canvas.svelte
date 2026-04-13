@@ -20,6 +20,7 @@
 
   import { vsmDataStore } from '../../stores/vsmDataStore.svelte.js'
   import { vsmUIStore } from '../../stores/vsmUIStore.svelte.js'
+  import { withUndo } from '../../utils/undoHelper.js'
   import { simDataStore } from '../../stores/simulationDataStore.svelte.js'
   import { simControlStore } from '../../stores/simulationControlStore.svelte.js'
   import StepNode from './nodes/StepNode.svelte'
@@ -120,7 +121,7 @@
 
   function handleConnect(event) {
     const { source, target } = event.detail.connection
-    vsmDataStore.addConnection(source, target)
+    withUndo(() => vsmDataStore.addConnection(source, target))
   }
 
   function handleNodeDragStop(event) {
@@ -156,7 +157,7 @@
       vsmUIStore.selectedStepId
     ) {
       if (confirm('Delete this step?')) {
-        vsmDataStore.deleteStep(vsmUIStore.selectedStepId)
+        withUndo(() => vsmDataStore.deleteStep(vsmUIStore.selectedStepId))
       }
     }
   }

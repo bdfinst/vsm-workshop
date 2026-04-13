@@ -208,6 +208,18 @@ function createVsmDataStore(repository = vsmLocalStorageRepo) {
       persist()
     },
 
+    /**
+     * Restore a snapshot of steps and connections (used by undo/redo).
+     * Bulk-assigns state fields and persists.
+     * @param {{ steps: Array, connections: Array }} snapshot
+     */
+    restoreSnapshot(snapshot) {
+      steps = snapshot.steps.map((s) => ({ ...s }))
+      connections = snapshot.connections.map((c) => ({ ...c }))
+      updatedAt = new Date().toISOString()
+      persist()
+    },
+
     // Get step by ID helper — returns shallow copy to prevent untracked mutations
     getStepById(stepId) {
       const step = steps.find((s) => s.id === stepId)
