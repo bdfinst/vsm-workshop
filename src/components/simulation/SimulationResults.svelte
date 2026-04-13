@@ -30,7 +30,12 @@
 </script>
 
 {#if results}
-  <div class="bg-white border-t border-slate-200 p-4">
+  <div
+    class="bg-white border-t border-slate-200 p-4"
+    data-testid="simulation-results"
+    aria-live="polite"
+    role="status"
+  >
     <h3 class="text-sm font-semibold text-slate-900 mb-3">
       Simulation Results
     </h3>
