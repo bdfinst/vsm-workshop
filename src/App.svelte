@@ -2,6 +2,7 @@
   import { SvelteFlowProvider } from '@xyflow/svelte'
   import { vsmDataStore } from './stores/vsmDataStore.svelte.js'
   import { vsmUIStore } from './stores/vsmUIStore.svelte.js'
+  import { performUndo, performRedo } from './utils/undoHelper.js'
   import Header from './components/ui/Header.svelte'
   import Canvas from './components/canvas/Canvas.svelte'
   import Sidebar from './components/ui/Sidebar.svelte'
@@ -16,11 +17,25 @@
   // Keyboard shortcuts overlay (local state per D5)
   let showShortcuts = $state(false)
 
-  function handleGlobalKeydown(e) {
+  function handleGlobalKeyDown(e) {
     const tag = e.target?.tagName?.toLowerCase()
     if (tag === 'input' || tag === 'textarea' || tag === 'select') return
     if (e.target?.isContentEditable) return
 
+    // Undo/Redo shortcuts
+    if ((e.ctrlKey || e.metaKey) && e.key === 'z' && !e.shiftKey) {
+      e.preventDefault()
+      e.stopPropagation()
+      performUndo()
+    } else if (
+      (e.ctrlKey || e.metaKey) && e.shiftKey && (e.key === 'z' || e.key === 'Z')
+    ) {
+      e.preventDefault()
+      e.stopPropagation()
+      performRedo()
+    }
+
+    // Keyboard shortcuts overlay
     if (e.key === '?') {
       e.preventDefault()
       showShortcuts = true
@@ -57,7 +72,7 @@
 </script>
 
 <Toast />
-<svelte:window onkeydown={handleGlobalKeydown} />
+<svelte:window onkeydown={handleGlobalKeyDown} />
 
 <KeyboardShortcutsOverlay visible={showShortcuts} onclose={() => { showShortcuts = false }} />
 {#if !hasVsm}

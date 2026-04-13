@@ -2,6 +2,8 @@
   import { vsmDataStore } from '../../stores/vsmDataStore.svelte.js'
   import { vsmIOStore } from '../../stores/vsmIOStore.svelte.js'
   import { toastStore } from '../../stores/toastStore.svelte.js'
+  import { undoStore } from '../../stores/undoStore.svelte.js'
+  import { performUndo, performRedo } from '../../utils/undoHelper.js'
   import { exportAsJson, exportAsPng, exportAsPdf } from '../../utils/export/index.js'
   import ConfirmPopover from './ConfirmPopover.svelte'
 
@@ -179,6 +181,31 @@
   </div>
 
   <div class="flex items-center gap-2">
+    <button
+      onclick={performUndo}
+      disabled={!undoStore.canUndo}
+      class="px-2 py-1.5 text-sm text-gray-600 hover:text-gray-800 hover:bg-gray-100 rounded transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+      aria-label="Undo"
+      title="Undo (Ctrl+Z)"
+      data-testid="undo-button"
+    >
+      <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h10a5 5 0 015 5v2M3 10l4-4M3 10l4 4" />
+      </svg>
+    </button>
+    <button
+      onclick={performRedo}
+      disabled={!undoStore.canRedo}
+      class="px-2 py-1.5 text-sm text-gray-600 hover:text-gray-800 hover:bg-gray-100 rounded transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+      aria-label="Redo"
+      title="Redo (Ctrl+Shift+Z)"
+      data-testid="redo-button"
+    >
+      <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 10H11a5 5 0 00-5 5v2M21 10l-4-4M21 10l-4 4" />
+      </svg>
+    </button>
+    <div class="h-6 w-px bg-gray-300"></div>
     <div class="relative">
       <button
         onclick={handleNewMap}

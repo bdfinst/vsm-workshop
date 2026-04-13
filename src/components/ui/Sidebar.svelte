@@ -1,6 +1,7 @@
 <script>
   import { vsmDataStore } from '../../stores/vsmDataStore.svelte.js'
   import { vsmUIStore } from '../../stores/vsmUIStore.svelte.js'
+  import { withUndo } from '../../utils/undoHelper.js'
   import {
     getTemplatesByCategory,
     CATEGORY_LABELS,
@@ -13,13 +14,13 @@
   const templatesByCategory = getTemplatesByCategory()
 
   function handleAddStep() {
-    const step = vsmDataStore.addStep('New Step')
+    const step = withUndo(() => vsmDataStore.addStep('New Step'))
     vsmUIStore.selectStep(step.id)
     vsmUIStore.setEditing(true)
   }
 
   function handleAddFromTemplate(template) {
-    const step = vsmDataStore.addStep(template.name, {
+    const step = withUndo(() => vsmDataStore.addStep(template.name, {
       type: template.type,
       description: template.description,
       processTime: template.processTime,
@@ -27,7 +28,7 @@
       percentCompleteAccurate: template.percentCompleteAccurate,
       queueSize: template.queueSize,
       batchSize: template.batchSize,
-    })
+    }))
     vsmUIStore.selectStep(step.id)
     vsmUIStore.setEditing(true)
   }

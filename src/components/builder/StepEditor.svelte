@@ -1,5 +1,6 @@
 <script>
   import { vsmDataStore } from '../../stores/vsmDataStore.svelte.js'
+  import { withUndo } from '../../utils/undoHelper.js'
   import { STEP_TYPES } from '../../data/stepTypes.js'
   import { STEP_TYPE_CONFIG } from '../../data/stepTypeConfig.js'
   import { validateStep } from '../../utils/validation/stepValidator.js'
@@ -63,7 +64,7 @@
     e.preventDefault()
     if (!validate()) return
 
-    vsmDataStore.updateStep(stepId, {
+    withUndo(() => vsmDataStore.updateStep(stepId, {
       ...formData,
       processTime: Number(formData.processTime),
       leadTime: Number(formData.leadTime),
@@ -71,7 +72,7 @@
       queueSize: Number(formData.queueSize),
       batchSize: Number(formData.batchSize),
       peopleCount: Number(formData.peopleCount),
-    })
+    }))
     onClose()
   }
 
@@ -81,7 +82,7 @@
 
   function handleConfirmDelete() {
     showDeleteConfirm = false
-    vsmDataStore.deleteStep(stepId)
+    withUndo(() => vsmDataStore.deleteStep(stepId))
     onClose()
   }
 
