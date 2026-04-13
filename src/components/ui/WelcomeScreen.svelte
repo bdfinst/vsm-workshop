@@ -111,18 +111,31 @@
             </div>
           </div>
         </button>
-        {#each MAP_TEMPLATES as template (template.id)}
+        {#each MAP_TEMPLATES as template, i (template.id)}
+          {@const colors = [
+            { bg: 'bg-teal-600', hover: 'hover:bg-teal-700', badge: 'bg-teal-500', text: 'text-teal-200' },
+            { bg: 'bg-cyan-600', hover: 'hover:bg-cyan-700', badge: 'bg-cyan-500', text: 'text-cyan-200' },
+          ]}
+          {@const color = colors[i % colors.length]}
           <button
             onclick={() => handleLoadTemplate(template)}
-            class="w-full py-3 px-4 bg-emerald-600 text-white font-medium rounded-lg hover:bg-emerald-700 transition-colors text-left flex items-center gap-3"
+            class="w-full py-3 px-4 {color.bg} text-white font-medium rounded-lg {color.hover} transition-colors text-left flex items-center gap-3"
             data-testid="template-{template.id}-button"
           >
             <span class="text-xl" aria-hidden="true">
               {template.id === 'software-delivery' ? '🚀' : '🎫'}
             </span>
-            <div>
-              <div>{template.name}</div>
-              <div class="text-xs text-emerald-200">
+            <div class="flex-1">
+              <div class="flex items-center gap-2">
+                {template.name}
+                <span
+                  class="inline-flex items-center px-1.5 py-0.5 rounded text-xs font-medium {color.badge} text-white"
+                  data-testid="template-step-count-{template.id}"
+                >
+                  {template.steps.length} steps
+                </span>
+              </div>
+              <div class="text-xs {color.text}">
                 {template.description}
               </div>
             </div>
