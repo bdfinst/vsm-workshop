@@ -98,10 +98,11 @@
 
     <form onsubmit={handleSubmit} class="space-y-4">
       <div>
-        <label class="block text-sm font-medium text-gray-700 mb-1">
+        <label for="step-name-input" class="block text-sm font-medium text-gray-700 mb-1">
           Step Name
         </label>
         <input
+          id="step-name-input"
           type="text"
           value={formData.name}
           oninput={(e) => handleChange('name', e.target.value)}
@@ -114,10 +115,11 @@
       </div>
 
       <div>
-        <label class="block text-sm font-medium text-gray-700 mb-1">
+        <label for="step-type-select" class="block text-sm font-medium text-gray-700 mb-1">
           Step Type
         </label>
         <select
+          id="step-type-select"
           value={formData.type}
           onchange={(e) => handleChange('type', e.target.value)}
           class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
@@ -132,10 +134,11 @@
       </div>
 
       <div>
-        <label class="block text-sm font-medium text-gray-700 mb-1">
+        <label for="step-description-input" class="block text-sm font-medium text-gray-700 mb-1">
           Description
         </label>
         <textarea
+          id="step-description-input"
           value={formData.description}
           oninput={(e) => handleChange('description', e.target.value)}
           rows="2"
@@ -146,10 +149,11 @@
 
       <div class="grid grid-cols-2 gap-4">
         <div>
-          <label class="block text-sm font-medium text-gray-700 mb-1">
+          <label for="process-time-input" class="block text-sm font-medium text-gray-700 mb-1">
             Process Time (min)
           </label>
           <input
+            id="process-time-input"
             type="number"
             value={formData.processTime}
             oninput={(e) => handleChange('processTime', e.target.value)}
@@ -163,10 +167,11 @@
         </div>
 
         <div>
-          <label class="block text-sm font-medium text-gray-700 mb-1">
+          <label for="lead-time-input" class="block text-sm font-medium text-gray-700 mb-1">
             Lead Time (min)
           </label>
           <input
+            id="lead-time-input"
             type="number"
             value={formData.leadTime}
             oninput={(e) => handleChange('leadTime', e.target.value)}
@@ -181,10 +186,11 @@
       </div>
 
       <div>
-        <label class="block text-sm font-medium text-gray-700 mb-1">
+        <label for="percent-ca-input" class="block text-sm font-medium text-gray-700 mb-1">
           % Complete & Accurate
         </label>
         <input
+          id="percent-ca-input"
           type="number"
           value={formData.percentCompleteAccurate}
           oninput={(e) => handleChange('percentCompleteAccurate', e.target.value)}
@@ -200,10 +206,11 @@
 
       <div class="grid grid-cols-2 gap-4">
         <div>
-          <label class="block text-sm font-medium text-gray-700 mb-1">
+          <label for="queue-size-input" class="block text-sm font-medium text-gray-700 mb-1">
             Queue Size
           </label>
           <input
+            id="queue-size-input"
             type="number"
             value={formData.queueSize}
             oninput={(e) => handleChange('queueSize', e.target.value)}
@@ -214,10 +221,11 @@
         </div>
 
         <div>
-          <label class="block text-sm font-medium text-gray-700 mb-1">
+          <label for="batch-size-input" class="block text-sm font-medium text-gray-700 mb-1">
             Batch Size
           </label>
           <input
+            id="batch-size-input"
             type="number"
             value={formData.batchSize}
             oninput={(e) => handleChange('batchSize', e.target.value)}
