@@ -87,10 +87,11 @@
 
     <form onsubmit={handleSubmit} class="space-y-4">
       <div>
-        <label class="block text-sm font-medium text-gray-700 mb-1">
+        <label for="connection-type-select" class="block text-sm font-medium text-gray-700 mb-1">
           Connection Type
         </label>
         <select
+          id="connection-type-select"
           value={formData.type}
           onchange={(e) => handleChange('type', e.target.value)}
           class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
@@ -108,10 +109,11 @@
 
       {#if formData.type === 'rework'}
         <div>
-          <label class="block text-sm font-medium text-gray-700 mb-1">
+          <label for="rework-rate-input" class="block text-sm font-medium text-gray-700 mb-1">
             Rework Rate (%)
           </label>
           <input
+            id="rework-rate-input"
             type="number"
             value={formData.reworkRate}
             oninput={(e) => handleChange('reworkRate', e.target.value)}
