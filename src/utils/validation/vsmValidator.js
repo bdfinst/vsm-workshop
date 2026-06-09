@@ -128,5 +128,6 @@ export function sanitizeVSMData(data) {
       data.readinessOverrides && typeof data.readinessOverrides === 'object'
         ? data.readinessOverrides
         : {},
+    annotations: Array.isArray(data.annotations) ? data.annotations : undefined,
   }
 }

@@ -9,6 +9,7 @@ import { createStep } from '../models/StepFactory.js'
 import { createConnection } from '../models/ConnectionFactory.js'
 import { calculateMetrics } from '../utils/calculations/metrics.js'
 import { calculateCdReadiness } from '../utils/calculations/cdReadiness.js'
+import { createAnnotation } from '../utils/annotations.js'
 import { sanitizeVSMData, validateVSMData } from '../utils/validation/vsmValidator.js'
 import { autoPositionStep } from '../utils/ui/autoPositionStep.js'
 import { vsmLocalStorageRepo } from '../infrastructure/VsmLocalStorageRepository.js'
@@ -34,6 +35,7 @@ function createVsmDataStore(repository = vsmLocalStorageRepo) {
     createdAt: null,
     updatedAt: null,
     readinessOverrides: {},
+    annotations: [],
   }
 
   // Load persisted state; sanitize on read and validate to catch corrupted localStorage
@@ -51,6 +53,8 @@ function createVsmDataStore(repository = vsmLocalStorageRepo) {
   let updatedAt = $state(persisted.updatedAt)
   // User confirm/override decisions for the CD readiness scorecard, keyed by item id
   let readinessOverrides = $state(persisted.readinessOverrides || {})
+  // Kaizen-burst improvement annotations for this map
+  let annotations = $state(persisted.annotations || [])
 
   // Cached metrics — only recomputed when steps or connections change
   let cachedMetrics = $derived(calculateMetrics(steps, connections))
@@ -71,6 +75,7 @@ function createVsmDataStore(repository = vsmLocalStorageRepo) {
       createdAt,
       updatedAt,
       readinessOverrides,
+      annotations,
     })
   }
 
@@ -113,6 +118,11 @@ function createVsmDataStore(repository = vsmLocalStorageRepo) {
       return readinessOverrides
     },
 
+    // Kaizen-burst improvement annotations
+    get annotations() {
+      return [...annotations]
+    },
+
     // Map-level Actions
     createNewMap(mapName) {
       const now = new Date().toISOString()
@@ -124,6 +134,7 @@ function createVsmDataStore(repository = vsmLocalStorageRepo) {
       createdAt = now
       updatedAt = now
       readinessOverrides = {}
+      annotations = []
       persist()
     },
 
@@ -153,6 +164,7 @@ function createVsmDataStore(repository = vsmLocalStorageRepo) {
       createdAt = safe.createdAt
       updatedAt = safe.updatedAt
       readinessOverrides = safe.readinessOverrides || {}
+      annotations = safe.annotations || []
       persist()
     },
 
@@ -165,6 +177,28 @@ function createVsmDataStore(repository = vsmLocalStorageRepo) {
       createdAt = null
       updatedAt = null
       readinessOverrides = {}
+      annotations = []
+      persist()
+    },
+
+    // Kaizen-burst annotation CRUD (per-map improvement backlog)
+    addAnnotation(targetType, targetId, wasteType, note = '') {
+      const annotation = createAnnotation(targetType, targetId, wasteType, note)
+      annotations = [...annotations, annotation]
+      updatedAt = new Date().toISOString()
+      persist()
+      return annotation
+    },
+
+    updateAnnotation(annotationId, updates) {
+      annotations = annotations.map((a) => (a.id === annotationId ? { ...a, ...updates } : a))
+      updatedAt = new Date().toISOString()
+      persist()
+    },
+
+    removeAnnotation(annotationId) {
+      annotations = annotations.filter((a) => a.id !== annotationId)
+      updatedAt = new Date().toISOString()
       persist()
     },
 
@@ -205,9 +239,18 @@ function createVsmDataStore(repository = vsmLocalStorageRepo) {
     },
 
     deleteStep(stepId) {
+      const removedConnectionIds = connections
+        .filter((conn) => conn.source === stepId || conn.target === stepId)
+        .map((conn) => conn.id)
       steps = steps.filter((step) => step.id !== stepId)
       connections = connections.filter(
         (conn) => conn.source !== stepId && conn.target !== stepId
+      )
+      // Prune annotations targeting the removed step or its connections
+      annotations = annotations.filter(
+        (a) =>
+          !(a.targetType === 'step' && a.targetId === stepId) &&
+          !(a.targetType === 'connection' && removedConnectionIds.includes(a.targetId))
       )
       updatedAt = new Date().toISOString()
       persist()
@@ -245,6 +288,9 @@ function createVsmDataStore(repository = vsmLocalStorageRepo) {
 
     deleteConnection(connectionId) {
       connections = connections.filter((conn) => conn.id !== connectionId)
+      annotations = annotations.filter(
+        (a) => !(a.targetType === 'connection' && a.targetId === connectionId)
+      )
       updatedAt = new Date().toISOString()
       persist()
     },
