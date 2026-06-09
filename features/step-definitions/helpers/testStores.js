@@ -9,6 +9,7 @@ import { createConnection } from '../../../src/models/ConnectionFactory.js'
 import { calculateMetrics } from '../../../src/utils/calculations/metrics.js'
 import { calculateCdReadiness } from '../../../src/utils/calculations/cdReadiness.js'
 import { emptyDora } from '../../../src/utils/calculations/doraReconciliation.js'
+import { createAnnotation } from '../../../src/utils/annotations.js'
 import { EXAMPLE_MAP } from '../../../src/data/exampleMaps.js'
 // MAP_TEMPLATES is available if needed for template loading tests
 
@@ -25,6 +26,7 @@ function createTestVsmDataStore() {
   let updatedAt = null
   let readinessOverrides = {}
   let dora = emptyDora()
+  let annotations = []
 
   return {
     get id() {
@@ -63,6 +65,17 @@ function createTestVsmDataStore() {
     setDora(updates) {
       dora = { ...dora, ...updates }
     },
+    get annotations() {
+      return annotations
+    },
+    addAnnotation(targetType, targetId, wasteType, note = '') {
+      const annotation = createAnnotation(targetType, targetId, wasteType, note)
+      annotations = [...annotations, annotation]
+      return annotation
+    },
+    removeAnnotation(annotationId) {
+      annotations = annotations.filter((a) => a.id !== annotationId)
+    },
 
     createNewMap(mapName) {
       const now = new Date().toISOString()
@@ -75,6 +88,7 @@ function createTestVsmDataStore() {
       updatedAt = now
       readinessOverrides = {}
       dora = emptyDora()
+      annotations = []
     },
 
     setReadinessOverride(itemId, status) {
@@ -111,6 +125,7 @@ function createTestVsmDataStore() {
       updatedAt = mapData.updatedAt
       readinessOverrides = mapData.readinessOverrides || {}
       dora = mapData.dora || emptyDora()
+      annotations = mapData.annotations || []
     },
 
     clearMap() {
@@ -123,6 +138,7 @@ function createTestVsmDataStore() {
       updatedAt = null
       readinessOverrides = {}
       dora = emptyDora()
+      annotations = []
     },
 
     addStep(stepName = 'New Step', overrides = {}) {
@@ -144,9 +160,17 @@ function createTestVsmDataStore() {
     },
 
     deleteStep(stepId) {
+      const removedConnectionIds = connections
+        .filter((conn) => conn.source === stepId || conn.target === stepId)
+        .map((conn) => conn.id)
       steps = steps.filter((step) => step.id !== stepId)
       connections = connections.filter(
         (conn) => conn.source !== stepId && conn.target !== stepId
+      )
+      annotations = annotations.filter(
+        (a) =>
+          !(a.targetType === 'step' && a.targetId === stepId) &&
+          !(a.targetType === 'connection' && removedConnectionIds.includes(a.targetId))
       )
       updatedAt = new Date().toISOString()
     },
@@ -322,6 +346,7 @@ function createTestVsmIOStore(dataStore) {
         updatedAt: dataStore.updatedAt,
         readinessOverrides: dataStore.readinessOverrides,
         dora: dataStore.dora,
+        annotations: dataStore.annotations,
       })
     },
 
