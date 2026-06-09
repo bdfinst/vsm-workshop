@@ -8,6 +8,7 @@
   import Sidebar from './components/ui/Sidebar.svelte'
   import MetricsDashboard from './components/metrics/MetricsDashboard.svelte'
   import CdReadinessScorecard from './components/metrics/CdReadinessScorecard.svelte'
+  import WaitTimeWaterfall from './components/metrics/WaitTimeWaterfall.svelte'
   import WelcomeScreen from './components/ui/WelcomeScreen.svelte'
   import EditorPanel from './components/ui/EditorPanel.svelte'
   import SimulationPanel from './components/ui/SimulationPanel.svelte'
@@ -94,6 +95,7 @@
           </div>
           <SimulationPanel />
           <MetricsDashboard />
+          <WaitTimeWaterfall />
           <CdReadinessScorecard />
         </main>
         <EditorPanel
