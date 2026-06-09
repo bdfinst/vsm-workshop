@@ -13,27 +13,48 @@ reference frame for improvements.
 
 ## Reference framework (MinimumCD / Beyond MinimumCD)
 
-Gathered via web search; the site itself was **not directly fetchable from the cloud
-sandbox** (see "Network access note" below).
+**Updated 2026-06-09: pages fetched DIRECTLY from beyond.minimumcd.org** (network now works in
+this environment — see "Network access note"). The grounded content corrects the earlier
+search-based notes in three ways:
 
-- **[MinimumCD](https://minimumcd.org/) core practices:** Continuous Integration (integrate to
-  trunk ≥ 1×/dev/day with automated tests), Trunk-Based Development, Single Path to Production,
-  Deterministic Pipeline, Definition of Deployable, Immutable Artifacts, Production-Like
-  Environments, Rollback. ([CD Practices](https://beyond.minimumcd.org/docs/reference/practices/))
-- **[Beyond MinimumCD migration phases](https://beyond.minimumcd.org/docs/migrate-to-cd/):**
-  Assess → Foundations → Pipeline → Optimize → Deliver on Demand.
+- **9 core CD practices, not 8.** The site's
+  [CD Practices](https://beyond.minimumcd.org/docs/reference/practices/) list is: Continuous
+  Integration (integrate to trunk ≥ daily with automated tests), Trunk-Based Development, Single
+  Path to Production, Deterministic Pipeline, Definition of Deployable, Immutable Artifacts,
+  Production-Like Environments, Rollback, **and Application Configuration** ("separate what varies
+  between environments from what does not").
+- **The migration model is explicitly iterative, NOT sequential.** Phases are Assess →
+  Foundations → Pipeline → Optimize → Deliver on Demand, but
+  [the overview](https://beyond.minimumcd.org/docs/migrate-to-cd/) states teams "typically work
+  across multiple phases simultaneously." → A diagnosis should point at *practices/constraints*,
+  not lock a team into a single phase.
+- **Phase 2 Pipeline explicitly names manual approval chains, handoff delays, and manual
+  validation gates as *waste*** ("Human approval processes are noticeably absent from success
+  criteria"). → Direct textual backing for flagging handoffs / manual steps in the VSM.
+
+**Objective thresholds the site gives (these map onto data the app already stores per step):**
+
+| Site threshold | Source phase |
+|---|---|
+| Work items completable within **2 days** (work decomposition) | Phase 1 Foundations |
+| Test suites run in **< 10 minutes** | Phase 1 Foundations |
+| Single-command build; daily trunk integration | Phase 1 Foundations |
+| Rollback executes **within minutes** | Phase 2 Pipeline |
+| WIP limits act as "flow governors"; small batches | Phase 3 Optimize |
+
 - **[Phase 0: Assess](https://beyond.minimumcd.org/docs/migrate-to-cd/assess/):** the pivotal
-  reference. Teams **map the value stream AND baseline DORA metrics** (deployment frequency,
-  lead time for changes, change failure rate, MTTR) **together**, plus a **current-state
-  checklist self-assessing against MinimumCD practices**, in order to **find the constraint**
-  limiting flow.
-- **[Work in Small Batches](https://minimumcd.org/practices/smallbatches/):** central thesis —
-  small batches, WIP limits, queue length, and handoffs-as-hidden-queues are the primary levers.
-  (~85% of a work item's life is typically spent in queue.)
+  reference. Four activities done **together**: (1) value stream mapping, (2) baseline DORA
+  metrics (deployment frequency, lead time for changes, change failure rate, MTTR), (3) identify
+  constraints, (4) current-state checklist self-assessing against MinimumCD practices. Readiness
+  to advance = team can articulate its value stream, its lead time / deploy freq / CFR numbers,
+  its **top three constraints**, and its missing practices. "Teams that skip assessment often
+  invest in the wrong improvements."
+- **Phase 3 Optimize:** DORA metrics are both **diagnostic and confirmatory**; WIP limits and
+  small batches are the flow levers. "Having a pipeline isn't enough."
 
-**Sources:** minimumcd.org · beyond.minimumcd.org/ · /docs/migrate-to-cd/assess/ ·
-/docs/reference/practices/ · /docs/migrate-to-cd/pipeline/single-path-to-production/ ·
-minimumcd.org/practices/smallbatches/
+**Sources (fetched directly 2026-06-09):** /docs/reference/practices/ · /docs/migrate-to-cd/ ·
+/docs/migrate-to-cd/assess/ · /docs/migrate-to-cd/foundations/ · /docs/migrate-to-cd/pipeline/ ·
+/docs/migrate-to-cd/optimize/ (deliver-on-demand subpage 404'd; covered via the overview page)
 
 ## Current capabilities (inventory)
 
@@ -56,69 +77,91 @@ value stream but does not yet *diagnose a software-delivery* process** — which
 Beyond MinimumCD is built around. Notably unimplemented: improvement recommendations,
 Theory-of-Constraints analysis, real-data import, DORA metrics.
 
-## Gap analysis + prioritized recommendations
+## Gap analysis + prioritized recommendations (regenerated from direct site content)
 
-**Core gap:** Phase 0 Assess says map the stream **and** baseline DORA **and** self-assess
-practices, together, to find the constraint. The app does the mapping half well and the
-diagnosis half not at all. Every P1 below closes that loop.
+**Core gap (unchanged but better grounded):** Phase 0 Assess is **one combined activity** — map
+the stream **and** baseline DORA **and** self-assess practices, together, to find the constraint.
+The app does the mapping half well and the diagnosis half not at all.
 
-### P1 — Turn the map into a diagnosis (small build, big payoff)
+**Key new leverage from the grounded read:** the site's objective thresholds (≤2-day work items,
+<10-min tests, single automated deploy path, minutes-to-rollback, WIP limits) map directly onto
+data the app **already stores per step**. That means the practice self-assessment can be
+**auto-inferred from the VSM** rather than entered by hand — the strongest "find the problem"
+story for the least new data model. This is the central regenerated insight.
 
-1. **DORA / flow-metrics baseline panel.** Capture deployment frequency, lead time for changes,
-   change failure rate, MTTR per map. Killer move: **reconcile VSM-derived lead time vs. the
-   team's *actual* lead time for changes** — the discrepancy reveals hidden queues. (Phase 0.)
-2. **"Where is the time going?" wait-time breakdown.** Decompose flow efficiency into a per-step
-   **value-add vs. wait-time waterfall**, and flag **handoffs as hidden queues**. Data already
-   stored per step. Most literal "find the problem" feature. (Small Batches.)
-3. **CD-practice self-assessment attached to the map.** Scorecard for the 8 MinimumCD practices;
-   **pin each gap to the step it afflicts** (e.g., manual "Production Deploy" → "Single Path to
-   Production: not met"). (Phase 0 checklist.)
-4. **Kaizen-burst problem annotations.** Drop problem/observation markers on steps/edges, tag by
-   waste type or MinimumCD-practice gap, roll up into an **improvement backlog**.
+### VSM-finding → MinimumCD-content mapping (the engine behind every recommendation)
+
+| VSM finding (already computable) | MinimumCD signal | Phase | Countermeasure (deep-link) |
+|---|---|---|---|
+| Step lead time > 2 days | Work Decomposition gap | Foundations | Story slicing |
+| Test step process time > 10 min | Testing Fundamentals | Foundations | Test architecture |
+| Manual / multiple deploy steps | Single Path to Production not met | Pipeline | Automate the path |
+| Rework loops / low %C&A | CI + Definition of Deployable gap | Foundations/Pipeline | Automated deployable criteria |
+| Large queue before a step (bottleneck) | WIP not constrained ("flow governors") | Optimize | WIP limits |
+| Flow efficiency < 25%, wait-dominated | Queue-dominated flow = waste | Assess/Optimize | Small batches |
+| No rollback step / manual recovery | Rollback gap (recovery in minutes) | Pipeline | Automated rollback |
+
+### P1 — "CD Readiness Diagnosis" panel (one combined Phase-0 feature)
+
+1. **P1b — Auto-inferred practice scorecard (TOP PICK, build first).** Score the 9 MinimumCD
+   practices, **pre-filling likely gaps from VSM data** via the thresholds above, each pinned to
+   the offending step, user can confirm/override. Reuses stored step data; embodies "map +
+   self-assess together"; most visible output for least new model.
+2. **P1a — Wait-time waterfall.** Per-step value-add vs. wait, flagging handoffs / manual steps as
+   hidden queues. Now backed by Phase 2's explicit "manual gates are waste" text.
+3. **P1c — DORA reconciliation.** Capture deploy freq, lead time for changes, CFR, MTTR per map;
+   killer check = **VSM-derived lead time vs. actual lead time for changes** (the gap is the
+   hidden queue). Only genuinely new data surface in P1.
+4. **Kaizen-burst problem annotations.** Drop markers on steps/edges, tag by waste type or
+   practice gap, roll up into an improvement backlog.
 
 ### P2 — Make analysis prescriptive
 
-5. **Constraint-based improvement recommendations.** Map the detected constraint to
-   MinimumCD-aligned countermeasures with deep links (high rework → CI + Definition of
-   Deployable; large queue before manual QA/deploy → automate path, shrink batch).
-6. **Batch size & WIP as primary levers (Little's Law).** WIP limits per step; compute
-   WIP = throughput × lead time; simulator lever "halve batch size → projected LT change."
+5. **Constraint → countermeasure recommendations.** Drive the mapping table above off the detected
+   bottleneck as deep-linked prescriptive advice. **Iterative framing — point at practices, never
+   phase-gate** (the site says phases run simultaneously).
+6. **Batch size & WIP as primary levers (Little's Law).** WIP limits per step; WIP = throughput ×
+   lead time; simulator lever "halve batch size → projected LT change."
 
 ### P3 — Trustworthy inputs & realistic model
 
-7. **Import current-state from real tooling (Jira/GitHub/CI)** — derive durations/queues/WIP
-   from actual timestamps; guessed maps hide the real waste.
+7. **Import current-state from real tooling (Jira/GitHub/CI)** — derive durations/queues/WIP from
+   actual timestamps; guessed maps hide the real waste.
 8. **Variability / Monte Carlo in the simulation** — queues from variability + high utilization,
-   not just rework (queueing theory).
+   not just rework.
 9. **Formal Current-State vs. Future-State framing** — evolve the scenario feature into the
-   classic two-state VSM model with a documented improvement plan + projected deltas.
+   classic two-state VSM model with projected deltas.
 
 ### Suggested sequencing
 
-- **P1** first (reuses stored data; converts the map into a problem-finder).
+- **P1** first as a single "CD Readiness Diagnosis" panel (reuses stored data; converts the map
+  into a problem-finder). Start with **P1b auto-inferred scorecard**.
 - **P2** next (builds on existing bottleneck + simulation engine).
 - **P3** later (larger; raises accuracy/realism).
 
-## Network access note (why direct fetch failed)
+## Network access note
 
-`beyond.minimumcd.org` returned `HTTP 403` with header **`x-deny-reason: host_not_allowed`** —
-that's **this cloud environment's egress proxy**, not the website. The env is on the **Trusted**
-network policy, which only allows package registries / GitHub / cloud SDKs. WebSearch worked
-because it routes through a separate channel.
+**Resolved as of 2026-06-09:** `beyond.minimumcd.org` is now directly fetchable from this
+environment (WebFetch succeeded for the practices page and all four phase pages;
+only the `deliver-on-demand/` subpage 404'd, covered instead via the migrate-to-cd overview).
+The recommendations above are now grounded in the real page text rather than search snippets.
 
-**To enable direct fetching in a future cloud session:** edit the environment (cloud icon) →
-**Network access** → **Custom** → add `beyond.minimumcd.org` and `*.minimumcd.org` to
-**Allowed domains** → keep "Also include default list of common package managers" checked → save
-→ start a new session. (Alternatively, teleport the session to a local terminal, which uses your
-machine's network and needs no allowlist.)
+(Historical: it previously returned `HTTP 403` / `x-deny-reason: host_not_allowed` from the
+env's egress proxy under the **Trusted** network policy. If it regresses, edit the environment →
+**Network access** → **Custom** → add `beyond.minimumcd.org` + `*.minimumcd.org` to allowed
+domains, keep default package-manager list checked, save, start a new session.)
 
 ## Where we left off / next steps
 
-- Review + recommendations delivered to the user (above is the full content).
-- User chose to **persist this handoff** so work can resume in a fresh session.
-- **Open offer / next action:** draft the ATDD `.feature` file for the top pick. Recommended
-  starting point: **#2 wait-time / flow-efficiency breakdown** or **#3 CD-practice
-  self-assessment** — both reuse data the app already stores and fit the test-first workflow
-  (feature file → review → implementation, per `.claude/rules/atdd-workflow.md`).
-- If resuming with network access enabled, **fetch the beyond.minimumcd.org pages directly** to
-  refine the recommendations against the real page text before writing feature files.
+- **Done 2026-06-09:** re-fetched beyond.minimumcd.org directly and **regenerated the gap analysis
+  + recommendations** against the real content (corrections: 9 practices not 8; phases are
+  iterative not sequential; Phase 2 explicitly calls manual gates/handoffs waste). Added the
+  **VSM-finding → MinimumCD-content mapping table** that is the engine behind every recommendation,
+  and reframed P1 as a single combined "CD Readiness Diagnosis" panel.
+- **Top pick / next action:** draft the ATDD `.feature` file for **P1b — auto-inferred practice
+  scorecard** (pre-fill the 9-practice gaps from VSM step data via the threshold table, pin each
+  gap to its step, user confirms/overrides). Reuses stored data, embodies Phase-0 "map +
+  self-assess together," fits the test-first workflow (`.claude/rules/atdd-workflow.md`:
+  feature file → review → implementation).
+- Per ATDD rules, the feature file must be **presented for explicit review/approval before any
+  implementation code**.
