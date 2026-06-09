@@ -51,6 +51,8 @@ function createVsmDataStore(repository = vsmLocalStorageRepo) {
   let updatedAt = $state(persisted.updatedAt)
   // User confirm/override decisions for the CD readiness scorecard, keyed by item id
   let readinessOverrides = $state(persisted.readinessOverrides || {})
+  // Captured baseline (current-state) snapshot for future-state comparison
+  let baseline = $state(persisted.baseline || null)
 
   // Cached metrics — only recomputed when steps or connections change
   let cachedMetrics = $derived(calculateMetrics(steps, connections))
@@ -71,6 +73,7 @@ function createVsmDataStore(repository = vsmLocalStorageRepo) {
       createdAt,
       updatedAt,
       readinessOverrides,
+      baseline,
     })
   }
 
@@ -113,6 +116,11 @@ function createVsmDataStore(repository = vsmLocalStorageRepo) {
       return readinessOverrides
     },
 
+    // Captured baseline snapshot for current-vs-future-state comparison
+    get baseline() {
+      return baseline
+    },
+
     // Map-level Actions
     createNewMap(mapName) {
       const now = new Date().toISOString()
@@ -124,6 +132,22 @@ function createVsmDataStore(repository = vsmLocalStorageRepo) {
       createdAt = now
       updatedAt = now
       readinessOverrides = {}
+      baseline = null
+      persist()
+    },
+
+    // Capture the live map as the baseline (current state) for comparison
+    captureBaseline() {
+      baseline = {
+        steps: steps.map((s) => ({ ...s })),
+        connections: connections.map((c) => ({ ...c })),
+        capturedAt: new Date().toISOString(),
+      }
+      persist()
+    },
+
+    clearBaseline() {
+      baseline = null
       persist()
     },
 
@@ -153,6 +177,7 @@ function createVsmDataStore(repository = vsmLocalStorageRepo) {
       createdAt = safe.createdAt
       updatedAt = safe.updatedAt
       readinessOverrides = safe.readinessOverrides || {}
+      baseline = safe.baseline || null
       persist()
     },
 
@@ -165,6 +190,7 @@ function createVsmDataStore(repository = vsmLocalStorageRepo) {
       createdAt = null
       updatedAt = null
       readinessOverrides = {}
+      baseline = null
       persist()
     },
 

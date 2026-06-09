@@ -128,5 +128,7 @@ export function sanitizeVSMData(data) {
       data.readinessOverrides && typeof data.readinessOverrides === 'object'
         ? data.readinessOverrides
         : {},
+    baseline:
+      data.baseline && typeof data.baseline === 'object' ? data.baseline : undefined,
   }
 }

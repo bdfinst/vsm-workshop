@@ -23,6 +23,7 @@ function createTestVsmDataStore() {
   let createdAt = null
   let updatedAt = null
   let readinessOverrides = {}
+  let baseline = null
 
   return {
     get id() {
@@ -55,6 +56,19 @@ function createTestVsmDataStore() {
     get readinessOverrides() {
       return readinessOverrides
     },
+    get baseline() {
+      return baseline
+    },
+    captureBaseline() {
+      baseline = {
+        steps: steps.map((s) => ({ ...s })),
+        connections: connections.map((c) => ({ ...c })),
+        capturedAt: new Date().toISOString(),
+      }
+    },
+    clearBaseline() {
+      baseline = null
+    },
 
     createNewMap(mapName) {
       const now = new Date().toISOString()
@@ -66,6 +80,7 @@ function createTestVsmDataStore() {
       createdAt = now
       updatedAt = now
       readinessOverrides = {}
+      baseline = null
     },
 
     setReadinessOverride(itemId, status) {
@@ -101,6 +116,7 @@ function createTestVsmDataStore() {
       createdAt = mapData.createdAt
       updatedAt = mapData.updatedAt
       readinessOverrides = mapData.readinessOverrides || {}
+      baseline = mapData.baseline || null
     },
 
     clearMap() {
@@ -112,6 +128,7 @@ function createTestVsmDataStore() {
       createdAt = null
       updatedAt = null
       readinessOverrides = {}
+      baseline = null
     },
 
     addStep(stepName = 'New Step', overrides = {}) {
@@ -310,6 +327,7 @@ function createTestVsmIOStore(dataStore) {
         createdAt: dataStore.createdAt,
         updatedAt: dataStore.updatedAt,
         readinessOverrides: dataStore.readinessOverrides,
+        baseline: dataStore.baseline,
       })
     },
 
