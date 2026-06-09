@@ -112,6 +112,9 @@ function createVsmIOStore() {
         createdAt: vsmDataStore.createdAt,
         updatedAt: vsmDataStore.updatedAt,
         readinessOverrides: vsmDataStore.readinessOverrides,
+        dora: vsmDataStore.dora,
+        annotations: vsmDataStore.annotations,
+        baseline: vsmDataStore.baseline,
       })
     },
 
