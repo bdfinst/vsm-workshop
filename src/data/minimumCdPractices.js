@@ -20,7 +20,9 @@ const OPTIMIZE_URL = 'https://beyond.minimumcd.org/docs/migrate-to-cd/optimize/'
  * @property {string} id - Stable identifier
  * @property {string} label - Display name
  * @property {'practice'|'signal'} kind - Core practice vs. flow signal
- * @property {string} phase - The MinimumCD phase a gap typically maps to
+ * @property {string} phase - The MinimumCD phase a gap typically maps to.
+ *   NOTE: informational only — must NOT be rendered in the scorecard. The
+ *   framing is iterative (findings point at practices, never a single phase).
  * @property {string} link - Deep link to beyond.minimumcd.org
  */
 

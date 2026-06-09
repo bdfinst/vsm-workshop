@@ -82,6 +82,12 @@ describe('calculateCdReadiness', () => {
       expect(sb.explanation.toLowerCase()).toContain('wait')
     })
 
+    it('does not flag a gap when there is no lead-time data', () => {
+      const step = makeStep({ processTime: 0, leadTime: 0 })
+      const sb = itemById(calculateCdReadiness([step], []), 'small-batches')
+      expect(sb.status).toBe('met')
+    })
+
     it('is met when flow efficiency is at least 25 percent', () => {
       const step = makeStep({ processTime: 120, leadTime: 360 })
       const sb = itemById(calculateCdReadiness([step], []), 'small-batches')
@@ -221,6 +227,13 @@ describe('calculateCdReadiness', () => {
 
     it('returns to the inferred status when the override is removed (reset)', () => {
       const wd = itemById(calculateCdReadiness([gapStep()], [], {}), 'work-decomposition')
+      expect(wd.status).toBe('gap')
+      expect(wd.source).toBe('inferred')
+    })
+
+    it('ignores an unrecognized override value (e.g. from corrupted storage)', () => {
+      const result = calculateCdReadiness([gapStep()], [], { 'work-decomposition': ['met'] })
+      const wd = itemById(result, 'work-decomposition')
       expect(wd.status).toBe('gap')
       expect(wd.source).toBe('inferred')
     })

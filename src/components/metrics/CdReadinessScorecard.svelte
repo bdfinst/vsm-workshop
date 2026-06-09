@@ -51,7 +51,7 @@
         <span class="font-medium">{item.label}</span>
         <span
           class="text-xs font-semibold uppercase tracking-wide"
-          data-testid="cd-readiness-status"
+          data-testid="cd-readiness-status-{item.id}"
           aria-label="status: {readinessStatusText(item.status)}"
         >
           {readinessStatusText(item.status)}

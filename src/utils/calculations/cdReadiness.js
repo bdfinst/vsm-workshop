@@ -56,7 +56,7 @@ function inferItem(itemId, steps, connections) {
       const slow = steps.filter(
         (s) => s.type === TESTING_TYPE && (s.processTime || 0) > TEST_STEP_MAX_PROCESS_TIME_MINUTES
       )
-      if (slow.length === 0) return met('Test steps run in under 10 minutes.')
+      if (slow.length === 0) return met('No test step exceeds 10 minutes.')
       const worst = maxBy(slow, (s) => s.processTime)
       return gap(`"${worst.name}" tests take over 10 minutes to run.`, worst.id)
     }
@@ -68,8 +68,12 @@ function inferItem(itemId, steps, connections) {
       return gap(`"${worst.name}" has a large queue; limit work in progress.`, worst.id)
     }
     case 'small-batches': {
-      const { percentage } = calculateFlowEfficiency(steps)
-      if (percentage >= FLOW_EFFICIENCY_GOOD_THRESHOLD) return met('Flow is dominated by active work.')
+      const flowEfficiency = calculateFlowEfficiency(steps)
+      // status 'neutral' means there is no lead-time data to judge flow against,
+      // so there is no wait-dominated batch problem to flag.
+      if (flowEfficiency.status === 'neutral') return met('Not enough lead-time data to flag.')
+      if (flowEfficiency.percentage >= FLOW_EFFICIENCY_GOOD_THRESHOLD)
+        return met('Flow is dominated by active work.')
       return gap('Flow is dominated by waiting rather than working; reduce batch size.', null)
     }
 
@@ -113,17 +117,22 @@ const needsReview = () => ({
   explanation: 'Cannot be inferred from the value stream; assess manually.',
 })
 
+const OVERRIDE_STATUSES = new Set(['met', 'gap', 'needs-review'])
+
 /**
  * Apply a user decision (override/confirm/reset) over an inferred result.
  * overrides[itemId] may be:
  *   'met' | 'gap' | 'needs-review'  -> override to that status (source: overridden)
  *   'confirmed'                     -> keep inferred status (source: confirmed)
- *   absent                          -> inferred (source: inferred)
+ *   absent / unrecognized           -> inferred (source: inferred)
+ *
+ * Unrecognized values (e.g. from corrupted storage) fall back to the inferred
+ * status rather than leaking a bad value into the rendered status.
  */
 function applyOverride(inferred, decision) {
-  if (!decision) return { ...inferred, source: 'inferred' }
   if (decision === 'confirmed') return { ...inferred, source: 'confirmed' }
-  return { ...inferred, status: decision, source: 'overridden' }
+  if (OVERRIDE_STATUSES.has(decision)) return { ...inferred, status: decision, source: 'overridden' }
+  return { ...inferred, source: 'inferred' }
 }
 
 /**
@@ -136,6 +145,8 @@ function applyOverride(inferred, decision) {
 export function calculateCdReadiness(steps = [], connections = [], overrides = {}) {
   return MINIMUM_CD_READINESS_ITEMS.map((item) => {
     const inferred = inferItem(item.id, steps, connections)
+    // `signal` preserves the raw VSM-derived status independent of any user
+    // override, so a reset can restore it and the UI can show the inferred value.
     const resolved = applyOverride(
       { ...inferred, signal: inferred.status },
       overrides[item.id]

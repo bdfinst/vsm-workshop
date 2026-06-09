@@ -33,6 +33,7 @@ function createVsmDataStore(repository = vsmLocalStorageRepo) {
     connections: [],
     createdAt: null,
     updatedAt: null,
+    readinessOverrides: {},
   }
 
   // Load persisted state; sanitize on read and validate to catch corrupted localStorage

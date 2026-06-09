@@ -88,3 +88,9 @@ Feature: CD Readiness Scorecard
     And I have overridden "Work Decomposition" to met
     When I open the CD readiness scorecard
     Then the readiness summary shows 4 met, 1 gap, and 8 needs review
+
+  Scenario: Override decisions survive export and import
+    Given the scorecard flags a "Work Decomposition" gap
+    And I have overridden "Work Decomposition" to met
+    When the map is exported and re-imported
+    Then the "Work Decomposition" item shows the status text "met"
