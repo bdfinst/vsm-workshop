@@ -165,3 +165,31 @@ domains, keep default package-manager list checked, save, start a new session.)
   feature file → review → implementation).
 - Per ATDD rules, the feature file must be **presented for explicit review/approval before any
   implementation code**.
+
+## Next-session kickoff (dev-team plugin)
+
+The `dev-team@bfinster` plugin (v6.7.0) is installed and auto-installs every session via the
+`.claude/install-dev-team.sh` SessionStart hook (added to `.claude/settings.json`). **Plugin
+skills/agents activate on session start**, so they are available in a fresh session, not the one
+that installed them.
+
+To kick off **P1b — CD Readiness Scorecard** next session, drive it with the plugin:
+
+1. `product-manager` agent + `specs` skill — shape acceptance criteria from the P1b description
+   and the VSM-finding → MinimumCD mapping table above.
+2. `new-feature` (project skill) to create
+   `features/visualization/cd-readiness-scorecard.feature`, then `feature-file-validation` skill
+   to lint the Gherkin. **Stop for review/approval before code.**
+3. `architect` agent + `plan`/`explore` skills — design the inference engine (threshold table →
+   practice gap → offending step) and locate the metrics/dashboard/StepNode files.
+4. `test-driven-development` + `cd-test-architecture` skills, `software-engineer` agent —
+   implement test-first.
+5. `svelte-review` + `js-fp-review` + `spec-compliance-review` + `code-review` — quality pass
+   (these correctly target Svelte 5 + functional style; the project's local skills are stale on
+   "React/PropTypes").
+
+**Known config note:** `.claude/settings.json` `enabledPlugins` still references the OLD name
+`agentic-dev-team@agentic-dev-team`; the live plugin is `dev-team@bfinster` (marketplace internal
+name `bfinster`). The SessionStart hook installs the correct one regardless, but the stale
+declarative entry may emit a "plugin not found" warning and could be cleaned up to
+`"dev-team@bfinster": true`.
