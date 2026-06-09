@@ -33,6 +33,8 @@ export const PROGRESS_MULTIPLIER = 10
 export const WORK_ITEM_MAX_LEAD_TIME_MINUTES = 960
 // A test step's suite should run in under 10 minutes.
 export const TEST_STEP_MAX_PROCESS_TIME_MINUTES = 10
+// A step whose wait time is at/above this % of lead time is a hidden queue.
+export const WAIT_DOMINATED_THRESHOLD = 50
 
 // Canvas layout constants have been moved to canvasConfig.js
 // Re-exported here for backward compatibility
