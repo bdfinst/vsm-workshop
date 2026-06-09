@@ -2,7 +2,7 @@
 
 **Created**: 2026-06-09
 **Branch**: claude/cd-readiness-scorecard-1s4uym
-**Status**: draft
+**Status**: approved
 **Spec**: docs/specs/cd-readiness-scorecard.md
 
 ## Goal
@@ -523,10 +523,10 @@ mechanical, deterministic additions (no logic change).
 ### Slices (grouped by wave)
 
 #### Wave 1
-- [ ] Slice 1: Pure inference engine + reference data + thresholds
-  - [ ] Step 1.1: Reference data + threshold constants
-  - [ ] Step 1.2: Inference engine — signal + practice rules
-  - [ ] Step 1.3: Override / confirm / reset resolution
+- [x] Slice 1: Pure inference engine + reference data + thresholds
+  - [x] Step 1.1: Reference data + threshold constants
+  - [x] Step 1.2: Inference engine — signal + practice rules
+  - [x] Step 1.3: Override / confirm / reset resolution
 - [ ] Slice 2: `automated` step-model field, editor control, persistence
   - [ ] Step 2.1: Add `automated` to the step factory + `isAutomated` accessor
   - [ ] Step 2.2: Editor control for the automated flag
