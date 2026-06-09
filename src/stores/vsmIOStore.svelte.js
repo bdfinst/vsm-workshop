@@ -7,6 +7,8 @@ import {
   serializeVsm,
   deserializeVsm,
 } from '../infrastructure/VsmJsonRepository.js'
+import { deriveVsmFromEvents } from '../utils/import/deriveVsm.js'
+import { parseEventsFromCsv, parseEventsFromJson } from '../utils/import/eventAdapters.js'
 import { vsmDataStore } from './vsmDataStore.svelte.js'
 import { vsmUIStore } from './vsmUIStore.svelte.js'
 
@@ -131,6 +133,38 @@ function createVsmIOStore() {
         return true
       } catch (e) {
         console.error('Failed to import JSON:', e)
+        return false
+      }
+    },
+
+    /**
+     * Import a current-state map from a real-tooling event log (CSV or JSON).
+     * Derives a VSM from the events and loads it as the working map.
+     * @param {string} rawData - Raw CSV or JSON event log
+     * @param {'csv'|'json'} format
+     * @param {{name?: string, stageOrder?: string[]}} [options]
+     * @returns {boolean} Success status
+     */
+    importEventLog(rawData, format, options = {}) {
+      try {
+        const events =
+          format === 'csv' ? parseEventsFromCsv(rawData) : parseEventsFromJson(rawData)
+        const { steps, connections } = deriveVsmFromEvents(events, options)
+        if (steps.length === 0) return false
+        const now = new Date().toISOString()
+        vsmDataStore.loadMap({
+          id: crypto.randomUUID(),
+          name: options.name || 'Imported current state',
+          description: 'Derived from a real-tooling event log',
+          steps,
+          connections,
+          createdAt: now,
+          updatedAt: now,
+        })
+        vsmUIStore.clearUIState()
+        return true
+      } catch (e) {
+        console.error('Failed to import event log:', e)
         return false
       }
     },

@@ -15,6 +15,7 @@
   import DoraPanel from './components/metrics/DoraPanel.svelte'
   import AnnotationsPanel from './components/metrics/AnnotationsPanel.svelte'
   import FutureStatePanel from './components/metrics/FutureStatePanel.svelte'
+  import ImportEventLog from './components/io/ImportEventLog.svelte'
   import WelcomeScreen from './components/ui/WelcomeScreen.svelte'
   import EditorPanel from './components/ui/EditorPanel.svelte'
   import SimulationPanel from './components/ui/SimulationPanel.svelte'
@@ -109,6 +110,7 @@
           <DoraPanel />
           <AnnotationsPanel />
           <FutureStatePanel />
+          <ImportEventLog />
         </main>
         <EditorPanel
           {selectedStepId}

@@ -1,10 +1,11 @@
 # Design: Import Current-State from Real Tooling (P3)
 
-> **Status: design only.** This PR contains no runtime code. Live Jira/GitHub/CI
-> integration needs external systems and credentials that are not reachable in
-> the build sandbox, so it cannot ship as working, tested code here. This document
-> specifies the adapter interface and a file-based importer so the live adapters
-> can be added later behind a stable contract.
+> **Status: PR-A implemented; live adapters still design-only.** The pure
+> `deriveVsmFromEvents` engine and the file-based CSV/JSON adapters now ship and
+> are tested (`src/utils/import/`, wired via `vsmIOStore.importEventLog`). The
+> live Jira/GitHub/CI adapters remain design-only — they need external systems
+> and credentials not reachable in the build sandbox — and plug into the same
+> `WorkItemEvent` contract described below.
 
 ## Intent
 
