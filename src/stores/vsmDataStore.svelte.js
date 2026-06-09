@@ -8,6 +8,7 @@
 import { createStep } from '../models/StepFactory.js'
 import { createConnection } from '../models/ConnectionFactory.js'
 import { calculateMetrics } from '../utils/calculations/metrics.js'
+import { calculateCdReadiness } from '../utils/calculations/cdReadiness.js'
 import { sanitizeVSMData, validateVSMData } from '../utils/validation/vsmValidator.js'
 import { autoPositionStep } from '../utils/ui/autoPositionStep.js'
 import { vsmLocalStorageRepo } from '../infrastructure/VsmLocalStorageRepository.js'
@@ -51,6 +52,9 @@ function createVsmDataStore(repository = vsmLocalStorageRepo) {
   // Cached metrics — only recomputed when steps or connections change
   let cachedMetrics = $derived(calculateMetrics(steps, connections))
 
+  // CD readiness scorecard — derived from steps/connections (overrides added in Slice 4)
+  let cachedCdReadiness = $derived(calculateCdReadiness(steps, connections))
+
   // Persist current state via repository
   function persist() {
     repository.save({
@@ -91,6 +95,11 @@ function createVsmDataStore(repository = vsmLocalStorageRepo) {
     // Derived metrics — cached via $derived, only recomputed when steps/connections change
     get metrics() {
       return cachedMetrics
+    },
+
+    // Derived CD readiness scorecard (13 items)
+    get cdReadiness() {
+      return cachedCdReadiness
     },
 
     // Map-level Actions

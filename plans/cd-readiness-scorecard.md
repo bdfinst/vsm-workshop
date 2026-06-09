@@ -532,9 +532,9 @@ mechanical, deterministic additions (no logic change).
   - [x] Step 2.2: Editor control for the automated flag
 
 #### Wave 2
-- [ ] Slice 3: Scorecard panel wired into the visualization area
-  - [ ] Step 3.1: Expose `cdReadiness` as derived store state
-  - [ ] Step 3.2: Scorecard panel component
+- [x] Slice 3: Scorecard panel wired into the visualization area
+  - [x] Step 3.1: Expose `cdReadiness` as derived store state
+  - [x] Step 3.2: Scorecard panel component
 
 #### Wave 3
 - [ ] Slice 4: Confirm / override / reset persisted per-map state

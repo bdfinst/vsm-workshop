@@ -7,6 +7,7 @@
 import { createStep } from '../../../src/models/StepFactory.js'
 import { createConnection } from '../../../src/models/ConnectionFactory.js'
 import { calculateMetrics } from '../../../src/utils/calculations/metrics.js'
+import { calculateCdReadiness } from '../../../src/utils/calculations/cdReadiness.js'
 import { EXAMPLE_MAP } from '../../../src/data/exampleMaps.js'
 // MAP_TEMPLATES is available if needed for template loading tests
 
@@ -21,6 +22,7 @@ function createTestVsmDataStore() {
   let connections = []
   let createdAt = null
   let updatedAt = null
+  let readinessOverrides = {}
 
   return {
     get id() {
@@ -47,6 +49,12 @@ function createTestVsmDataStore() {
     get metrics() {
       return calculateMetrics(steps, connections)
     },
+    get cdReadiness() {
+      return calculateCdReadiness(steps, connections, readinessOverrides)
+    },
+    get readinessOverrides() {
+      return readinessOverrides
+    },
 
     createNewMap(mapName) {
       const now = new Date().toISOString()
@@ -57,6 +65,21 @@ function createTestVsmDataStore() {
       connections = []
       createdAt = now
       updatedAt = now
+      readinessOverrides = {}
+    },
+
+    setReadinessOverride(itemId, status) {
+      readinessOverrides = { ...readinessOverrides, [itemId]: status }
+    },
+
+    confirmReadiness(itemId) {
+      readinessOverrides = { ...readinessOverrides, [itemId]: 'confirmed' }
+    },
+
+    resetReadiness(itemId) {
+      const next = { ...readinessOverrides }
+      delete next[itemId]
+      readinessOverrides = next
     },
 
     updateMapName(newName) {
@@ -77,6 +100,7 @@ function createTestVsmDataStore() {
       connections = mapData.connections || []
       createdAt = mapData.createdAt
       updatedAt = mapData.updatedAt
+      readinessOverrides = mapData.readinessOverrides || {}
     },
 
     clearMap() {
@@ -87,6 +111,7 @@ function createTestVsmDataStore() {
       connections = []
       createdAt = null
       updatedAt = null
+      readinessOverrides = {}
     },
 
     addStep(stepName = 'New Step', overrides = {}) {
@@ -284,6 +309,7 @@ function createTestVsmIOStore(dataStore) {
         connections: dataStore.connections,
         createdAt: dataStore.createdAt,
         updatedAt: dataStore.updatedAt,
+        readinessOverrides: dataStore.readinessOverrides,
       })
     },
 
