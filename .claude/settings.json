@@ -9,5 +9,17 @@
   },
   "enabledPlugins": {
     "agentic-dev-team@agentic-dev-team": true
+  },
+  "hooks": {
+    "SessionStart": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash \"$CLAUDE_PROJECT_DIR/.claude/install-dev-team.sh\""
+          }
+        ]
+      }
+    ]
   }
 }
