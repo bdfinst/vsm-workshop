@@ -9,6 +9,7 @@ import { createStep } from '../models/StepFactory.js'
 import { createConnection } from '../models/ConnectionFactory.js'
 import { calculateMetrics } from '../utils/calculations/metrics.js'
 import { calculateCdReadiness } from '../utils/calculations/cdReadiness.js'
+import { emptyDora } from '../utils/calculations/doraReconciliation.js'
 import { sanitizeVSMData, validateVSMData } from '../utils/validation/vsmValidator.js'
 import { autoPositionStep } from '../utils/ui/autoPositionStep.js'
 import { vsmLocalStorageRepo } from '../infrastructure/VsmLocalStorageRepository.js'
@@ -34,6 +35,7 @@ function createVsmDataStore(repository = vsmLocalStorageRepo) {
     createdAt: null,
     updatedAt: null,
     readinessOverrides: {},
+    dora: emptyDora(),
   }
 
   // Load persisted state; sanitize on read and validate to catch corrupted localStorage
@@ -51,6 +53,8 @@ function createVsmDataStore(repository = vsmLocalStorageRepo) {
   let updatedAt = $state(persisted.updatedAt)
   // User confirm/override decisions for the CD readiness scorecard, keyed by item id
   let readinessOverrides = $state(persisted.readinessOverrides || {})
+  // DORA metrics for this map (P1c)
+  let dora = $state(persisted.dora || emptyDora())
 
   // Cached metrics — only recomputed when steps or connections change
   let cachedMetrics = $derived(calculateMetrics(steps, connections))
@@ -71,6 +75,7 @@ function createVsmDataStore(repository = vsmLocalStorageRepo) {
       createdAt,
       updatedAt,
       readinessOverrides,
+      dora,
     })
   }
 
@@ -113,6 +118,11 @@ function createVsmDataStore(repository = vsmLocalStorageRepo) {
       return readinessOverrides
     },
 
+    // DORA metrics for this map
+    get dora() {
+      return dora
+    },
+
     // Map-level Actions
     createNewMap(mapName) {
       const now = new Date().toISOString()
@@ -124,6 +134,7 @@ function createVsmDataStore(repository = vsmLocalStorageRepo) {
       createdAt = now
       updatedAt = now
       readinessOverrides = {}
+      dora = emptyDora()
       persist()
     },
 
@@ -153,6 +164,7 @@ function createVsmDataStore(repository = vsmLocalStorageRepo) {
       createdAt = safe.createdAt
       updatedAt = safe.updatedAt
       readinessOverrides = safe.readinessOverrides || {}
+      dora = safe.dora || emptyDora()
       persist()
     },
 
@@ -165,6 +177,14 @@ function createVsmDataStore(repository = vsmLocalStorageRepo) {
       createdAt = null
       updatedAt = null
       readinessOverrides = {}
+      dora = emptyDora()
+      persist()
+    },
+
+    // Update this map's DORA metrics (P1c)
+    setDora(updates) {
+      dora = { ...dora, ...updates }
+      updatedAt = new Date().toISOString()
       persist()
     },
 
