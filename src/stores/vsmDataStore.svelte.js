@@ -59,6 +59,8 @@ function createVsmDataStore(repository = vsmLocalStorageRepo) {
   let dora = $state(persisted.dora || emptyDora())
   // Kaizen-burst improvement annotations for this map
   let annotations = $state(persisted.annotations || [])
+  // Captured baseline (current-state) snapshot for future-state comparison
+  let baseline = $state(persisted.baseline || null)
 
   // Cached metrics — only recomputed when steps or connections change
   let cachedMetrics = $derived(calculateMetrics(steps, connections))
@@ -81,6 +83,7 @@ function createVsmDataStore(repository = vsmLocalStorageRepo) {
       readinessOverrides,
       dora,
       annotations,
+      baseline,
     })
   }
 
@@ -133,6 +136,11 @@ function createVsmDataStore(repository = vsmLocalStorageRepo) {
       return [...annotations]
     },
 
+    // Captured baseline snapshot for current-vs-future-state comparison
+    get baseline() {
+      return baseline
+    },
+
     // Map-level Actions
     createNewMap(mapName) {
       const now = new Date().toISOString()
@@ -146,6 +154,22 @@ function createVsmDataStore(repository = vsmLocalStorageRepo) {
       readinessOverrides = {}
       dora = emptyDora()
       annotations = []
+      baseline = null
+      persist()
+    },
+
+    // Capture the live map as the baseline (current state) for comparison
+    captureBaseline() {
+      baseline = {
+        steps: steps.map((s) => ({ ...s })),
+        connections: connections.map((c) => ({ ...c })),
+        capturedAt: new Date().toISOString(),
+      }
+      persist()
+    },
+
+    clearBaseline() {
+      baseline = null
       persist()
     },
 
@@ -177,6 +201,7 @@ function createVsmDataStore(repository = vsmLocalStorageRepo) {
       readinessOverrides = safe.readinessOverrides || {}
       dora = safe.dora || emptyDora()
       annotations = safe.annotations || []
+      baseline = safe.baseline || null
       persist()
     },
 
@@ -191,6 +216,7 @@ function createVsmDataStore(repository = vsmLocalStorageRepo) {
       readinessOverrides = {}
       dora = emptyDora()
       annotations = []
+      baseline = null
       persist()
     },
 

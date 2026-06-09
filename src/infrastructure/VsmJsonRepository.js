@@ -28,6 +28,7 @@ export function serializeVsm(vsm) {
     readinessOverrides,
     dora,
     annotations,
+    baseline,
   } = vsm
   return JSON.stringify(
     {
@@ -41,6 +42,7 @@ export function serializeVsm(vsm) {
       readinessOverrides,
       dora,
       annotations,
+      baseline,
     },
     null,
     2
@@ -94,5 +96,6 @@ export function deserializeVsm(jsonString) {
         : {},
     dora: data.dora && typeof data.dora === 'object' ? data.dora : undefined,
     annotations: Array.isArray(data.annotations) ? data.annotations : undefined,
+    baseline: data.baseline && typeof data.baseline === 'object' ? data.baseline : undefined,
   }
 }

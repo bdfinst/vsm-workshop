@@ -27,6 +27,7 @@ function createTestVsmDataStore() {
   let readinessOverrides = {}
   let dora = emptyDora()
   let annotations = []
+  let baseline = null
 
   return {
     get id() {
@@ -76,6 +77,19 @@ function createTestVsmDataStore() {
     removeAnnotation(annotationId) {
       annotations = annotations.filter((a) => a.id !== annotationId)
     },
+    get baseline() {
+      return baseline
+    },
+    captureBaseline() {
+      baseline = {
+        steps: steps.map((s) => ({ ...s })),
+        connections: connections.map((c) => ({ ...c })),
+        capturedAt: new Date().toISOString(),
+      }
+    },
+    clearBaseline() {
+      baseline = null
+    },
 
     createNewMap(mapName) {
       const now = new Date().toISOString()
@@ -89,6 +103,7 @@ function createTestVsmDataStore() {
       readinessOverrides = {}
       dora = emptyDora()
       annotations = []
+      baseline = null
     },
 
     setReadinessOverride(itemId, status) {
@@ -126,6 +141,7 @@ function createTestVsmDataStore() {
       readinessOverrides = mapData.readinessOverrides || {}
       dora = mapData.dora || emptyDora()
       annotations = mapData.annotations || []
+      baseline = mapData.baseline || null
     },
 
     clearMap() {
@@ -139,6 +155,7 @@ function createTestVsmDataStore() {
       readinessOverrides = {}
       dora = emptyDora()
       annotations = []
+      baseline = null
     },
 
     addStep(stepName = 'New Step', overrides = {}) {
@@ -347,6 +364,7 @@ function createTestVsmIOStore(dataStore) {
         readinessOverrides: dataStore.readinessOverrides,
         dora: dataStore.dora,
         annotations: dataStore.annotations,
+        baseline: dataStore.baseline,
       })
     },
 

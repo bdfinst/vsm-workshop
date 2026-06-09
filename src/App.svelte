@@ -14,6 +14,7 @@
   import MonteCarloPanel from './components/metrics/MonteCarloPanel.svelte'
   import DoraPanel from './components/metrics/DoraPanel.svelte'
   import AnnotationsPanel from './components/metrics/AnnotationsPanel.svelte'
+  import FutureStatePanel from './components/metrics/FutureStatePanel.svelte'
   import WelcomeScreen from './components/ui/WelcomeScreen.svelte'
   import EditorPanel from './components/ui/EditorPanel.svelte'
   import SimulationPanel from './components/ui/SimulationPanel.svelte'
@@ -107,6 +108,7 @@
           <MonteCarloPanel />
           <DoraPanel />
           <AnnotationsPanel />
+          <FutureStatePanel />
         </main>
         <EditorPanel
           {selectedStepId}

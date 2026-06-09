@@ -133,5 +133,7 @@ export function sanitizeVSMData(data) {
         ? data.dora
         : undefined,
     annotations: Array.isArray(data.annotations) ? data.annotations : undefined,
+    baseline:
+      data.baseline && typeof data.baseline === 'object' ? data.baseline : undefined,
   }
 }
