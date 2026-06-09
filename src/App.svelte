@@ -10,6 +10,7 @@
   import CdReadinessScorecard from './components/metrics/CdReadinessScorecard.svelte'
   import WaitTimeWaterfall from './components/metrics/WaitTimeWaterfall.svelte'
   import RecommendationsPanel from './components/metrics/RecommendationsPanel.svelte'
+  import WipLeversPanel from './components/metrics/WipLeversPanel.svelte'
   import WelcomeScreen from './components/ui/WelcomeScreen.svelte'
   import EditorPanel from './components/ui/EditorPanel.svelte'
   import SimulationPanel from './components/ui/SimulationPanel.svelte'
@@ -99,6 +100,7 @@
           <WaitTimeWaterfall />
           <CdReadinessScorecard />
           <RecommendationsPanel />
+          <WipLeversPanel />
         </main>
         <EditorPanel
           {selectedStepId}
