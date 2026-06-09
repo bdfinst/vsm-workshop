@@ -10,6 +10,8 @@ import { calculateMetrics } from '../../../src/utils/calculations/metrics.js'
 import { calculateCdReadiness } from '../../../src/utils/calculations/cdReadiness.js'
 import { emptyDora } from '../../../src/utils/calculations/doraReconciliation.js'
 import { createAnnotation } from '../../../src/utils/annotations.js'
+import { deriveVsmFromEvents } from '../../../src/utils/import/deriveVsm.js'
+import { parseEventsFromCsv, parseEventsFromJson } from '../../../src/utils/import/eventAdapters.js'
 import { EXAMPLE_MAP } from '../../../src/data/exampleMaps.js'
 // MAP_TEMPLATES is available if needed for template loading tests
 
@@ -377,6 +379,24 @@ function createTestVsmIOStore(dataStore) {
         console.warn('Failed to import JSON:', e)
         return false
       }
+    },
+
+    importEventLog(rawData, format, options = {}) {
+      const events =
+        format === 'csv' ? parseEventsFromCsv(rawData) : parseEventsFromJson(rawData)
+      const { steps, connections } = deriveVsmFromEvents(events, options)
+      if (steps.length === 0) return false
+      const now = new Date().toISOString()
+      dataStore.loadMap({
+        id: crypto.randomUUID(),
+        name: options.name || 'Imported current state',
+        description: 'Derived from a real-tooling event log',
+        steps,
+        connections,
+        createdAt: now,
+        updatedAt: now,
+      })
+      return true
     },
   }
 }
