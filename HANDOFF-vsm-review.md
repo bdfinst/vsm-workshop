@@ -158,6 +158,10 @@ domains, keep default package-manager list checked, save, start a new session.)
   iterative not sequential; Phase 2 explicitly calls manual gates/handoffs waste). Added the
   **VSM-finding → MinimumCD-content mapping table** that is the engine behind every recommendation,
   and reframed P1 as a single combined "CD Readiness Diagnosis" panel.
+- **Also done 2026-06-09:** installed the `dev-team@bfinster` plugin (v6.7.0), wired the
+  `.claude/install-dev-team.sh` SessionStart hook, and corrected `.claude/settings.json` to the
+  live plugin/marketplace names. Plugin agents/skills activate on the **next** session — see
+  "Next-session kickoff" below.
 - **Top pick / next action:** draft the ATDD `.feature` file for **P1b — auto-inferred practice
   scorecard** (pre-fill the 9-practice gaps from VSM step data via the threshold table, pin each
   gap to its step, user confirms/overrides). Reuses stored data, embodies Phase-0 "map +
@@ -188,8 +192,9 @@ To kick off **P1b — CD Readiness Scorecard** next session, drive it with the p
    (these correctly target Svelte 5 + functional style; the project's local skills are stale on
    "React/PropTypes").
 
-**Known config note:** `.claude/settings.json` `enabledPlugins` still references the OLD name
-`agentic-dev-team@agentic-dev-team`; the live plugin is `dev-team@bfinster` (marketplace internal
-name `bfinster`). The SessionStart hook installs the correct one regardless, but the stale
-declarative entry may emit a "plugin not found" warning and could be cleaned up to
-`"dev-team@bfinster": true`.
+**Config status (FIXED 2026-06-09):** `.claude/settings.json` now uses the correct live names —
+`extraKnownMarketplaces` keyed `bfinster` and `enabledPlugins: { "dev-team@bfinster": true }`,
+matching the installed plugin and the marketplace's internal name (`marketplace.json` → `name:
+bfinster`). The earlier stale `agentic-dev-team@agentic-dev-team` reference has been removed. Two
+mechanisms now keep the plugin present: the declarative `enabledPlugins` entry **and** the
+fail-open `SessionStart` hook (`.claude/install-dev-team.sh`).

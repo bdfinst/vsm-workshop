@@ -1,6 +1,6 @@
 {
   "extraKnownMarketplaces": {
-    "agentic-dev-team": {
+    "bfinster": {
       "source": {
         "source": "git",
         "url": "https://github.com/bdfinst/agentic-dev-team.git"
@@ -8,7 +8,7 @@
     }
   },
   "enabledPlugins": {
-    "agentic-dev-team@agentic-dev-team": true
+    "dev-team@bfinster": true
   },
   "hooks": {
     "SessionStart": [
