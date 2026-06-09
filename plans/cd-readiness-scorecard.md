@@ -537,9 +537,9 @@ mechanical, deterministic additions (no logic change).
   - [x] Step 3.2: Scorecard panel component
 
 #### Wave 3
-- [ ] Slice 4: Confirm / override / reset persisted per-map state
-  - [ ] Step 4.1: Per-map readiness-override state + actions
-  - [ ] Step 4.2: Confirm / override / reset controls in the panel
+- [x] Slice 4: Confirm / override / reset persisted per-map state
+  - [x] Step 4.1: Per-map readiness-override state + actions
+  - [x] Step 4.2: Confirm / override / reset controls in the panel
 
 #### Wave 4
 - [ ] Slice 5: Readiness summary roll-up

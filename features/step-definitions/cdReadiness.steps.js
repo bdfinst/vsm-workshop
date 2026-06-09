@@ -76,3 +76,53 @@ Then('the scorecard mentions no migration phase', function () {
     .join(' ')
   expect(text).to.not.match(/Phase \d/i)
 })
+
+// --- Slice 4: confirm / override / reset ---
+
+const idByLabel = (label) => vsmDataStore.cdReadiness.find((i) => i.label === label).id
+
+const SELECT_ACTIONS = {
+  'Yes, this is a gap': (id) => vsmDataStore.confirmReadiness(id),
+  'Mark as met anyway': (id) => vsmDataStore.setReadinessOverride(id, 'met'),
+  Reset: (id) => vsmDataStore.resetReadiness(id),
+}
+
+Given('the scorecard flags a {string} gap', function (label) {
+  this.vsm.createVSM('Override Map')
+  this.vsm.addStep('Development', { type: 'development', leadTime: 1200, processTime: 60 })
+  expect(itemByLabel(label).status).to.equal('gap')
+})
+
+Given('the scorecard flags a {string} gap for step {string}', function (label, stepName) {
+  this.vsm.createVSM('Override Map')
+  this.vsm.addStep(stepName, { type: 'development', leadTime: 1200, processTime: 60 })
+  expect(itemByLabel(label).status).to.equal('gap')
+})
+
+Given('I have overridden {string} to met', function (label) {
+  vsmDataStore.setReadinessOverride(idByLabel(label), 'met')
+})
+
+When('I select {string} for {string}', function (action, label) {
+  SELECT_ACTIONS[action](idByLabel(label))
+})
+
+Then('the {string} item is marked as confirmed', function (label) {
+  expect(itemByLabel(label).source).to.equal('confirmed')
+})
+
+Then('the {string} item is marked as overridden', function (label) {
+  expect(itemByLabel(label).source).to.equal('overridden')
+})
+
+Then('the {string} item is marked as inferred', function (label) {
+  expect(itemByLabel(label).source).to.equal('inferred')
+})
+
+Then('the lead time of step {string} is unchanged', function (stepName) {
+  expect(stepByName(stepName).leadTime).to.equal(1200)
+})
+
+Then('the process time of step {string} is unchanged', function (stepName) {
+  expect(stepByName(stepName).processTime).to.equal(60)
+})

@@ -39,3 +39,41 @@ Feature: CD Readiness Scorecard
     Given a value stream whose "Development" step has a lead time of 1200 minutes
     When I open the CD readiness scorecard
     Then the scorecard mentions no migration phase
+
+  Scenario: Confirming an inferred gap keeps it flagged
+    Given the scorecard flags a "Work Decomposition" gap
+    When I select "Yes, this is a gap" for "Work Decomposition"
+    Then the "Work Decomposition" item shows a gap
+    And the "Work Decomposition" item is marked as confirmed
+
+  Scenario: Overriding an inferred gap marks the item met
+    Given the scorecard flags a "Work Decomposition" gap
+    When I select "Mark as met anyway" for "Work Decomposition"
+    Then the "Work Decomposition" item shows the status text "met"
+    And the "Work Decomposition" item is marked as overridden
+
+  Scenario: Resetting returns an item to its inferred status
+    Given the scorecard flags a "Work Decomposition" gap
+    And I have overridden "Work Decomposition" to met
+    When I select "Reset" for "Work Decomposition"
+    Then the "Work Decomposition" item shows a gap
+    And the "Work Decomposition" item is marked as inferred
+
+  Scenario: Decisions persist across save and reload
+    Given the scorecard flags a "Work Decomposition" gap
+    And I have overridden "Work Decomposition" to met
+    When the map is saved and reloaded
+    Then the "Work Decomposition" item shows the status text "met"
+    And the "Work Decomposition" item is marked as overridden
+
+  Scenario: An override survives a change elsewhere in the map
+    Given the scorecard flags a "Work Decomposition" gap
+    And I have overridden "Work Decomposition" to met
+    When I add a step named "Monitoring"
+    Then the "Work Decomposition" item shows the status text "met"
+
+  Scenario: Overriding an item does not change the underlying step
+    Given the scorecard flags a "Work Decomposition" gap for step "Development"
+    When I select "Mark as met anyway" for "Work Decomposition"
+    Then the lead time of step "Development" is unchanged
+    And the process time of step "Development" is unchanged

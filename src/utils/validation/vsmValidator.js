@@ -112,6 +112,7 @@ export function sanitizeVSMData(data) {
       connections: [],
       createdAt: null,
       updatedAt: null,
+      readinessOverrides: {},
     }
   }
 
@@ -123,5 +124,9 @@ export function sanitizeVSMData(data) {
     connections: Array.isArray(data.connections) ? data.connections : [],
     createdAt: data.createdAt || null,
     updatedAt: data.updatedAt || null,
+    readinessOverrides:
+      data.readinessOverrides && typeof data.readinessOverrides === 'object'
+        ? data.readinessOverrides
+        : {},
   }
 }

@@ -23,6 +23,15 @@
   function stepName(stepId) {
     return steps.find((s) => s.id === stepId)?.name
   }
+
+  // Contextual control visibility, so an untouched row carries at most the relevant action.
+  const canConfirm = (item) => item.source === 'inferred' && item.status === 'gap'
+  const canOverride = (item) =>
+    item.source === 'inferred' && (item.status === 'gap' || item.status === 'needs-review')
+  const canReset = (item) => item.source === 'confirmed' || item.source === 'overridden'
+
+  const btn =
+    'rounded border px-2 py-0.5 text-xs font-medium hover:bg-white/60 focus:outline-none focus:ring-2 focus:ring-blue-500'
 </script>
 
 {#snippet itemRow(item)}
@@ -60,6 +69,41 @@
       >
         Learn more
       </a>
+      <div class="mt-2 flex flex-wrap gap-2">
+        {#if canConfirm(item)}
+          <button
+            type="button"
+            class={btn}
+            aria-label="Confirm gap for {item.label}"
+            data-testid="cd-readiness-confirm-{item.id}"
+            onclick={() => vsmDataStore.confirmReadiness(item.id)}
+          >
+            Yes, this is a gap
+          </button>
+        {/if}
+        {#if canOverride(item)}
+          <button
+            type="button"
+            class={btn}
+            aria-label="Mark {item.label} as met"
+            data-testid="cd-readiness-override-{item.id}"
+            onclick={() => vsmDataStore.setReadinessOverride(item.id, 'met')}
+          >
+            Mark as met anyway
+          </button>
+        {/if}
+        {#if canReset(item)}
+          <button
+            type="button"
+            class={btn}
+            aria-label="Reset {item.label} to the inferred status"
+            data-testid="cd-readiness-reset-{item.id}"
+            onclick={() => vsmDataStore.resetReadiness(item.id)}
+          >
+            Reset
+          </button>
+        {/if}
+      </div>
     </div>
   </li>
 {/snippet}
