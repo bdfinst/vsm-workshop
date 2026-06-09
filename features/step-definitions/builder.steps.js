@@ -1,6 +1,7 @@
 import { Given, When, Then } from '@cucumber/cucumber'
 import { expect } from 'chai'
-import { vsmDataStore, vsmUIStore } from './helpers/testStores.js'
+import { vsmDataStore, vsmUIStore, vsmIOStore } from './helpers/testStores.js'
+import { isAutomated } from '../../src/models/StepFactory.js'
 
 // Helpers to access state
 const findStepByName = (name) => vsmDataStore.steps.find((s) => s.name === name)
@@ -385,4 +386,76 @@ Then('the connection should be removed', function () {
 
 Then('no new connection should be created', function () {
   expect(this.duplicateAttempt).to.be.true
+})
+
+// --- Automated step flag (CD readiness) ---
+
+Given('a deployment step {string}', function (name) {
+  if (!vsmDataStore.id) this.vsm.createVSM('Test Map')
+  this.vsm.addStep(name, { type: 'deployment' })
+})
+
+Given('a value stream with a manual deployment step {string}', function (name) {
+  this.vsm.createVSM('Test Map')
+  this.vsm.addStep(name, { type: 'deployment', automated: false })
+})
+
+Given('a saved map whose step {string} has no automated property', function (name) {
+  const legacyStep = {
+    id: crypto.randomUUID(),
+    name,
+    type: 'deployment',
+    processTime: 30,
+    leadTime: 120,
+    percentCompleteAccurate: 100,
+    queueSize: 0,
+    batchSize: 1,
+    position: { x: 50, y: 150 },
+  }
+  this.savedMap = {
+    id: crypto.randomUUID(),
+    name: 'Legacy Map',
+    description: '',
+    steps: [legacyStep],
+    connections: [],
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+  }
+})
+
+When('I open the step editor for {string}', function (name) {
+  const step = findStepByName(name)
+  vsmUIStore.selectStep(step.id)
+  this.editingStepId = step.id
+  this.pendingAutomated = step.automated
+})
+
+When('I mark the step as not automated', function () {
+  this.pendingAutomated = false
+})
+
+When('I save the step', function () {
+  this.vsm.updateStep(this.editingStepId, { automated: this.pendingAutomated })
+})
+
+When('the map is loaded', function () {
+  vsmDataStore.loadMap(this.savedMap)
+})
+
+When('the map is saved and reloaded', function () {
+  const json = vsmIOStore.exportToJson()
+  vsmIOStore.importFromJson(json)
+})
+
+When('the map is exported and re-imported', function () {
+  const json = vsmIOStore.exportToJson()
+  vsmIOStore.importFromJson(json)
+})
+
+Then('the step {string} is automated', function (name) {
+  expect(isAutomated(findStepByName(name))).to.be.true
+})
+
+Then('the step {string} is not automated', function (name) {
+  expect(isAutomated(findStepByName(name))).to.be.false
 })

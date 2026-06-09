@@ -24,6 +24,7 @@
     queueSize: 0,
     batchSize: 1,
     peopleCount: 1,
+    automated: true,
   })
 
   // Validation errors
@@ -42,6 +43,7 @@
         queueSize: step.queueSize,
         batchSize: step.batchSize,
         peopleCount: step.peopleCount || 1,
+        automated: step.automated ?? true,
       }
     }
   })
@@ -72,6 +74,7 @@
       queueSize: Number(formData.queueSize),
       batchSize: Number(formData.batchSize),
       peopleCount: Number(formData.peopleCount),
+      automated: formData.automated,
     }))
     onClose()
   }
@@ -262,6 +265,23 @@
         {#if errors.peopleCount}
           <p class="mt-1 text-xs text-red-500">{errors.peopleCount}</p>
         {/if}
+      </div>
+
+      <div>
+        <label for="automated-input" class="flex items-center gap-2 text-sm font-medium text-gray-700">
+          <input
+            id="automated-input"
+            type="checkbox"
+            checked={formData.automated}
+            onchange={(e) => handleChange('automated', e.target.checked)}
+            class="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-2 focus:ring-blue-500"
+            data-testid="automated-input"
+          />
+          Step is automated
+        </label>
+        <p class="mt-1 text-xs text-gray-500">
+          Uncheck for manual steps such as approvals or hand-offs.
+        </p>
       </div>
 
       <div class="pt-4 flex gap-2">

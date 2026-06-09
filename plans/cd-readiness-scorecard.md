@@ -527,9 +527,9 @@ mechanical, deterministic additions (no logic change).
   - [x] Step 1.1: Reference data + threshold constants
   - [x] Step 1.2: Inference engine — signal + practice rules
   - [x] Step 1.3: Override / confirm / reset resolution
-- [ ] Slice 2: `automated` step-model field, editor control, persistence
-  - [ ] Step 2.1: Add `automated` to the step factory + `isAutomated` accessor
-  - [ ] Step 2.2: Editor control for the automated flag
+- [x] Slice 2: `automated` step-model field, editor control, persistence
+  - [x] Step 2.1: Add `automated` to the step factory + `isAutomated` accessor
+  - [x] Step 2.2: Editor control for the automated flag
 
 #### Wave 2
 - [ ] Slice 3: Scorecard panel wired into the visualization area

@@ -19,17 +19,10 @@ import {
   FIRST_PASS_YIELD_WARNING_THRESHOLD,
 } from '../../data/thresholds.js'
 import { calculateFlowEfficiency, identifyBottlenecks } from './metrics.js'
+import { isAutomated } from '../../models/StepFactory.js'
 
 const TESTING_TYPE = 'testing'
 const DEPLOYMENT_TYPE = 'deployment'
-
-/**
- * A step is automated unless explicitly marked otherwise.
- * Treating a missing flag as automated keeps legacy maps backward-compatible.
- * @param {Object} step
- * @returns {boolean}
- */
-const isStepAutomated = (step) => step.automated !== false
 
 const maxBy = (items, selector) =>
   items.reduce((best, item) => (selector(item) > selector(best) ? item : best), items[0])
@@ -93,7 +86,7 @@ function inferItem(itemId, steps, connections) {
       return needsReview()
     }
     case 'single-path-to-production': {
-      const manual = deploymentSteps.find((s) => !isStepAutomated(s))
+      const manual = deploymentSteps.find((s) => !isAutomated(s))
       if (manual) return gap(`"${manual.name}" deploys manually; automate the path to production.`, manual.id)
       if (deploymentSteps.length >= 2)
         return gap('Multiple deployment steps suggest more than one path to production.', null)
