@@ -128,5 +128,9 @@ export function sanitizeVSMData(data) {
       data.readinessOverrides && typeof data.readinessOverrides === 'object'
         ? data.readinessOverrides
         : {},
+    dora:
+      data.dora && typeof data.dora === 'object' && !Array.isArray(data.dora)
+        ? data.dora
+        : undefined,
   }
 }
