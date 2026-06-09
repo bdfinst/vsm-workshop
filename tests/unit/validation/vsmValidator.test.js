@@ -209,6 +209,7 @@ describe('sanitizeVSMData', () => {
       connections: [],
       createdAt: null,
       updatedAt: null,
+      readinessOverrides: {},
     })
   })
 
@@ -222,6 +223,7 @@ describe('sanitizeVSMData', () => {
       connections: [],
       createdAt: null,
       updatedAt: null,
+      readinessOverrides: {},
     })
   })
 
@@ -234,6 +236,7 @@ describe('sanitizeVSMData', () => {
       connections: [],
       createdAt: null,
       updatedAt: null,
+      readinessOverrides: {},
     })
   })
 
@@ -259,6 +262,7 @@ describe('sanitizeVSMData', () => {
       connections: [{ id: 'c1' }],
       createdAt: '2024-01-01',
       updatedAt: '2024-01-02',
+      readinessOverrides: {},
     }
 
     const result = sanitizeVSMData(validData)

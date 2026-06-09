@@ -8,6 +8,7 @@
 import { createStep } from '../models/StepFactory.js'
 import { createConnection } from '../models/ConnectionFactory.js'
 import { calculateMetrics } from '../utils/calculations/metrics.js'
+import { calculateCdReadiness } from '../utils/calculations/cdReadiness.js'
 import { sanitizeVSMData, validateVSMData } from '../utils/validation/vsmValidator.js'
 import { autoPositionStep } from '../utils/ui/autoPositionStep.js'
 import { vsmLocalStorageRepo } from '../infrastructure/VsmLocalStorageRepository.js'
@@ -32,6 +33,7 @@ function createVsmDataStore(repository = vsmLocalStorageRepo) {
     connections: [],
     createdAt: null,
     updatedAt: null,
+    readinessOverrides: {},
   }
 
   // Load persisted state; sanitize on read and validate to catch corrupted localStorage
@@ -47,9 +49,16 @@ function createVsmDataStore(repository = vsmLocalStorageRepo) {
   let connections = $state(persisted.connections)
   let createdAt = $state(persisted.createdAt)
   let updatedAt = $state(persisted.updatedAt)
+  // User confirm/override decisions for the CD readiness scorecard, keyed by item id
+  let readinessOverrides = $state(persisted.readinessOverrides || {})
 
   // Cached metrics — only recomputed when steps or connections change
   let cachedMetrics = $derived(calculateMetrics(steps, connections))
+
+  // CD readiness scorecard — recomputed when steps, connections, or overrides change
+  let cachedCdReadiness = $derived(
+    calculateCdReadiness(steps, connections, readinessOverrides)
+  )
 
   // Persist current state via repository
   function persist() {
@@ -61,6 +70,7 @@ function createVsmDataStore(repository = vsmLocalStorageRepo) {
       connections,
       createdAt,
       updatedAt,
+      readinessOverrides,
     })
   }
 
@@ -93,6 +103,16 @@ function createVsmDataStore(repository = vsmLocalStorageRepo) {
       return cachedMetrics
     },
 
+    // Derived CD readiness scorecard (13 items)
+    get cdReadiness() {
+      return cachedCdReadiness
+    },
+
+    // User confirm/override decisions for the readiness scorecard
+    get readinessOverrides() {
+      return readinessOverrides
+    },
+
     // Map-level Actions
     createNewMap(mapName) {
       const now = new Date().toISOString()
@@ -103,6 +123,7 @@ function createVsmDataStore(repository = vsmLocalStorageRepo) {
       connections = []
       createdAt = now
       updatedAt = now
+      readinessOverrides = {}
       persist()
     },
 
@@ -131,6 +152,7 @@ function createVsmDataStore(repository = vsmLocalStorageRepo) {
       connections = safe.connections
       createdAt = safe.createdAt
       updatedAt = safe.updatedAt
+      readinessOverrides = safe.readinessOverrides || {}
       persist()
     },
 
@@ -142,6 +164,25 @@ function createVsmDataStore(repository = vsmLocalStorageRepo) {
       connections = []
       createdAt = null
       updatedAt = null
+      readinessOverrides = {}
+      persist()
+    },
+
+    // CD readiness confirm/override/reset (per-map, never mutates steps)
+    setReadinessOverride(itemId, status) {
+      readinessOverrides = { ...readinessOverrides, [itemId]: status }
+      persist()
+    },
+
+    confirmReadiness(itemId) {
+      readinessOverrides = { ...readinessOverrides, [itemId]: 'confirmed' }
+      persist()
+    },
+
+    resetReadiness(itemId) {
+      const next = { ...readinessOverrides }
+      delete next[itemId]
+      readinessOverrides = next
       persist()
     },
 

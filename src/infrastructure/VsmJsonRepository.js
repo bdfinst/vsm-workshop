@@ -17,9 +17,9 @@
  * @returns {string} JSON string representation
  */
 export function serializeVsm(vsm) {
-  const { id, name, description, steps, connections, createdAt, updatedAt } = vsm
+  const { id, name, description, steps, connections, createdAt, updatedAt, readinessOverrides } = vsm
   return JSON.stringify(
-    { id, name, description, steps, connections, createdAt, updatedAt },
+    { id, name, description, steps, connections, createdAt, updatedAt, readinessOverrides },
     null,
     2
   )
@@ -66,5 +66,9 @@ export function deserializeVsm(jsonString) {
     connections: data.connections ?? [],
     createdAt: data.createdAt ?? null,
     updatedAt: data.updatedAt ?? null,
+    readinessOverrides:
+      data.readinessOverrides && typeof data.readinessOverrides === 'object'
+        ? data.readinessOverrides
+        : {},
   }
 }

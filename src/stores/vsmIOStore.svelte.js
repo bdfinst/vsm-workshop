@@ -111,6 +111,7 @@ function createVsmIOStore() {
         connections: vsmDataStore.connections,
         createdAt: vsmDataStore.createdAt,
         updatedAt: vsmDataStore.updatedAt,
+        readinessOverrides: vsmDataStore.readinessOverrides,
       })
     },
 

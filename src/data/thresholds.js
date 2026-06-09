@@ -28,6 +28,12 @@ export const QUEUE_WARNING_THRESHOLD = 10
 // Simulation progress multiplier
 export const PROGRESS_MULTIPLIER = 10
 
+// CD readiness inference thresholds
+// A work item should be completable within 2 work days (8h/day => 960 min).
+export const WORK_ITEM_MAX_LEAD_TIME_MINUTES = 960
+// A test step's suite should run in under 10 minutes.
+export const TEST_STEP_MAX_PROCESS_TIME_MINUTES = 10
+
 // Canvas layout constants have been moved to canvasConfig.js
 // Re-exported here for backward compatibility
 export { CANVAS_START_X, CANVAS_STEP_SPACING, CANVAS_Y } from './canvasConfig.js'
