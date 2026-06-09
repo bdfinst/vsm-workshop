@@ -4,6 +4,7 @@ import { vsmDataStore } from './helpers/testStores.js'
 import {
   groupReadinessItems,
   readinessStatusText,
+  summarizeReadiness,
 } from '../../src/utils/ui/readinessScorecard.js'
 
 const itemByLabel = (label) => vsmDataStore.cdReadiness.find((i) => i.label === label)
@@ -126,3 +127,23 @@ Then('the lead time of step {string} is unchanged', function (stepName) {
 Then('the process time of step {string} is unchanged', function (stepName) {
   expect(stepByName(stepName).processTime).to.equal(60)
 })
+
+// --- Slice 5: summary roll-up ---
+
+Given('a value stream with a single oversized work item', function () {
+  this.vsm.createVSM('Summary Map')
+  this.vsm.addStep('Big Item', {
+    type: 'development',
+    leadTime: 1200,
+    processTime: 600,
+    percentCompleteAccurate: 100,
+  })
+})
+
+Then(
+  'the readiness summary shows {int} met, {int} gap(s), and {int} needs review',
+  function (met, gap, needsReview) {
+    const summary = summarizeReadiness(vsmDataStore.cdReadiness)
+    expect(summary).to.deep.equal({ met, gap, needsReview })
+  }
+)

@@ -77,3 +77,14 @@ Feature: CD Readiness Scorecard
     When I select "Mark as met anyway" for "Work Decomposition"
     Then the lead time of step "Development" is unchanged
     And the process time of step "Development" is unchanged
+
+  Scenario: Summarises met, gap, and needs-review counts
+    Given a value stream with a single oversized work item
+    When I open the CD readiness scorecard
+    Then the readiness summary shows 3 met, 2 gaps, and 8 needs review
+
+  Scenario: Overriding a gap updates the summary counts
+    Given a value stream with a single oversized work item
+    And I have overridden "Work Decomposition" to met
+    When I open the CD readiness scorecard
+    Then the readiness summary shows 4 met, 1 gap, and 8 needs review
