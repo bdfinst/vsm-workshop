@@ -219,6 +219,10 @@
     {defaultEdgeOptions}
     fitView
     fitViewOptions={{ padding: 0.2 }}
+    minZoom={0.2}
+    maxZoom={2}
+    zoomOnPinch
+    panOnScroll={false}
     snapToGrid
     snapGrid={[10, 10]}
     onconnect={handleConnect}
@@ -231,6 +235,7 @@
     <Background color="#e5e7eb" gap={20} />
     <Controls />
     <MiniMap
+      class="!hidden sm:!block"
       nodeColor={getNodeColor}
       maskColor="rgba(0, 0, 0, 0.1)"
     />

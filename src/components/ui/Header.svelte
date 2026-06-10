@@ -7,6 +7,8 @@
   import { exportAsJson, exportAsPng, exportAsPdf } from '../../utils/export/index.js'
   import ConfirmPopover from './ConfirmPopover.svelte'
 
+  let { onMenuClick } = $props()
+
   let isEditingName = $state(false)
   let showNewMapConfirm = $state(false)
   let tempName = $state(vsmDataStore.name)
@@ -157,10 +159,22 @@
 </script>
 
 <header class="bg-white border-b border-gray-200 px-4 py-3 flex items-center justify-between">
-  <div class="flex items-center gap-4">
+  <div class="flex items-center gap-3 min-w-0">
+    {#if onMenuClick}
+      <button
+        onclick={onMenuClick}
+        class="lg:hidden -ml-1 rounded-md p-2 text-gray-600 hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
+        aria-label="Open menu"
+        data-testid="sidebar-toggle"
+      >
+        <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+          <path stroke-linecap="round" d="M4 6h16M4 12h16M4 18h16" />
+        </svg>
+      </button>
+    {/if}
     <div class="flex items-center gap-2">
       <span class="text-xl">🗺️</span>
-      <span class="font-semibold text-gray-700">VSM Workshop</span>
+      <span class="hidden sm:inline font-semibold text-gray-700">VSM Workshop</span>
     </div>
     <div class="h-6 w-px bg-gray-300"></div>
     {#if isEditingName}
@@ -177,7 +191,7 @@
       <button
         onclick={handleNameClick}
         aria-label="Edit map name"
-        class="text-lg font-medium text-gray-800 hover:text-blue-600 transition-colors"
+        class="truncate max-w-[32vw] sm:max-w-none text-lg font-medium text-gray-800 hover:text-blue-600 transition-colors"
         data-testid="map-name"
       >
         {vsmDataStore.name}
@@ -185,7 +199,7 @@
     {/if}
   </div>
 
-  <div class="flex items-center gap-2">
+  <div class="flex shrink-0 items-center gap-1 sm:gap-2">
     <button
       onclick={performUndo}
       disabled={!undoStore.canUndo}
