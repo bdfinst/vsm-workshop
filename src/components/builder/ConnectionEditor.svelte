@@ -40,20 +40,23 @@
     }
   }
 
-  function validate() {
-    const validationResult = validateConnection(formData)
-    errors = validationResult.errors
-    return validationResult.valid
+  // The rework-rate input surfaces its value as a string; coerce to a number
+  // before validating so validateConnection's numeric/type checks pass.
+  function buildPayload() {
+    return {
+      type: formData.type,
+      reworkRate: formData.type === 'rework' ? Number(formData.reworkRate) : 0,
+    }
   }
 
   function handleSubmit(e) {
     e.preventDefault()
-    if (!validate()) return
+    const payload = buildPayload()
+    const validationResult = validateConnection(payload)
+    errors = validationResult.errors
+    if (!validationResult.valid) return
 
-    withUndo(() => vsmDataStore.updateConnection(connectionId, {
-      type: formData.type,
-      reworkRate: formData.type === 'rework' ? Number(formData.reworkRate) : 0,
-    }))
+    withUndo(() => vsmDataStore.updateConnection(connectionId, payload))
     onClose()
   }
 

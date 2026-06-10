@@ -56,17 +56,11 @@
     }
   }
 
-  function validate() {
-    const validationResult = validateStep(formData)
-    errors = validationResult.errors
-    return validationResult.valid
-  }
-
-  function handleSubmit(e) {
-    e.preventDefault()
-    if (!validate()) return
-
-    withUndo(() => vsmDataStore.updateStep(stepId, {
+  // Number inputs surface values as strings; coerce to numbers before
+  // validating so domain rules (e.g. leadTime >= processTime) compare
+  // numerically rather than lexicographically ("240" < "60" is true).
+  function buildPayload() {
+    return {
       ...formData,
       processTime: Number(formData.processTime),
       leadTime: Number(formData.leadTime),
@@ -75,7 +69,17 @@
       batchSize: Number(formData.batchSize),
       peopleCount: Number(formData.peopleCount),
       automated: formData.automated,
-    }))
+    }
+  }
+
+  function handleSubmit(e) {
+    e.preventDefault()
+    const payload = buildPayload()
+    const validationResult = validateStep(payload)
+    errors = validationResult.errors
+    if (!validationResult.valid) return
+
+    withUndo(() => vsmDataStore.updateStep(stepId, payload))
     onClose()
   }
 

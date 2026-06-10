@@ -27,9 +27,13 @@ fi
 cd "${CLAUDE_PROJECT_DIR:-.}" 2>/dev/null || exit 0
 command -v npx >/dev/null 2>&1 || { log "npx not found; skipping"; exit 0; }
 
-# Already installed? (Playwright caches browsers under ~/.cache/ms-playwright)
-if ls "${HOME}/.cache/ms-playwright"/chromium-*/ >/dev/null 2>&1; then
-  log "chromium already present; nothing to do"
+# Already installed? Playwright caches browsers under ~/.cache/ms-playwright by
+# default, but PLAYWRIGHT_BROWSERS_PATH overrides that (this environment points
+# it at /opt/pw-browsers). Honor the override so the presence check is accurate
+# and we don't re-invoke install every session.
+browsers_path="${PLAYWRIGHT_BROWSERS_PATH:-${HOME}/.cache/ms-playwright}"
+if ls "${browsers_path}"/chromium-*/ >/dev/null 2>&1; then
+  log "chromium already present in ${browsers_path}; nothing to do"
   exit 0
 fi
 
