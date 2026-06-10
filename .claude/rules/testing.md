@@ -240,3 +240,26 @@ Focus on meaningful coverage:
 - Utility functions: 80%+
 
 Acceptance tests cover user-facing behavior and don't need coverage metrics.
+
+## E2E & Visual Regression (Playwright)
+
+The `tests/e2e/` suite (including `visual.spec.js`) runs in CI on every PR via
+the `e2e` job. CI runs **inside the pinned Playwright image**
+(`mcr.microsoft.com/playwright:v<version>-noble`) so browser and font rendering
+match the committed visual baselines.
+
+### Visual baselines — regenerate in the pinned image
+
+Visual snapshots are environment-sensitive. **Always regenerate baselines in the
+same Docker image CI uses**, never with a bare local `playwright test
+--update-snapshots`, or the new baselines won't match CI:
+
+```bash
+npm run test:e2e:baseline   # runs --update-snapshots inside the pinned image
+```
+
+Commit the updated `tests/e2e/**/*-snapshots/*.png` files. Keep the image tag in
+`test:e2e:baseline` and `.github/workflows/ci.yml` in sync with the
+`@playwright/test` version in `package.json`.
+
+Run the suite locally (against your own browsers) with `npm run test:e2e`.

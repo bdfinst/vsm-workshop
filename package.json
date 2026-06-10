@@ -18,6 +18,7 @@
     "test:e2e": "playwright test",
     "test:e2e:visual": "playwright test visual.spec.js",
     "test:e2e:visual:update": "playwright test visual.spec.js --update-snapshots",
+    "test:e2e:baseline": "docker run --rm --ipc=host -v \"$PWD\":/work -w /work mcr.microsoft.com/playwright:v1.58.2-noble npx playwright test --update-snapshots",
     "test:watch": "vitest"
   },
   "dependencies": {

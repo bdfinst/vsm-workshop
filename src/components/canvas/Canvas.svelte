@@ -220,6 +220,8 @@
     maxZoom={2}
     zoomOnPinch
     panOnScroll={false}
+    zoomOnScroll={false}
+    preventScrolling={false}
     snapToGrid
     snapGrid={[10, 10]}
     onconnect={handleConnect}
