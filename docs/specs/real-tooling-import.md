@@ -72,10 +72,18 @@ no network required — which is the whole point of the adapter boundary.
    `workItemId, stage, enteredAt, exitedAt`). This is the working stand-in:
    teams can export from any tool and import a real current state today, with
    zero credentials. It exercises the entire derivation pipeline.
-2. **`jiraImportAdapter` (later, needs API token + network).** Pulls issue
+2. **`azureDevOpsAdapter` (implemented; live connection optional).** Pure
+   `azureDevOpsUpdatesToEvents` maps the Work Item Updates API (`System.State`
+   changes + timestamps) → `WorkItemEvent`s, fixture-tested with no network. A
+   thin, injectable `fetchAzureDevOpsEvents` (WIQL → per-item updates) does the
+   HTTP and is opt-in: nothing runs unless org/project/PAT are supplied; the PAT
+   is used only for the request and never persisted. Wired via
+   `vsmIOStore.importFromAzureDevOps` and surfaced as an optional section of the
+   import panel.
+3. **`jiraImportAdapter` (later, needs API token + network).** Pulls issue
    changelogs; maps status transitions → `WorkItemEvent`s.
-3. **`githubImportAdapter` (later).** Issues + PR review/merge timeline events.
-4. **`ciImportAdapter` (later).** Pipeline run timestamps per stage.
+4. **`githubImportAdapter` (later).** Issues + PR review/merge timeline events.
+5. **`ciImportAdapter` (later).** Pipeline run timestamps per stage.
 
 The live adapters are **thin**: fetch + shape into `WorkItemEvent[]`. They add no
 new derivation logic, so they need only integration tests against recorded
