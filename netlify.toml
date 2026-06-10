@@ -1,0 +1,21 @@
+[build]
+  command = "npm run build"
+  publish = "dist"
+
+[build.environment]
+  NODE_VERSION = "24"
+
+# SPA fallback: serve index.html for client-side routes
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200
+
+# Deploy Previews are generated for every pull request by default.
+# This context block lets you override behavior for PR builds if needed.
+[context.deploy-preview]
+  command = "npm run build"
+
+# Production (the branch you set as "production branch" in Netlify)
+[context.production]
+  command = "npm run build"
