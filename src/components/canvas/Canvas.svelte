@@ -129,30 +129,27 @@
     })
   )
 
-  function handleConnect(event) {
-    const { source, target } = event.detail.connection
+  // @xyflow/svelte v1 passes destructured payloads directly to handlers
+  // (not CustomEvents with event.detail).
+  function handleConnect(connection) {
+    const { source, target } = connection
     withUndo(() => vsmDataStore.addConnection(source, target))
   }
 
-  function handleNodeDragStop(event) {
-    const { node } = event.detail
-    vsmDataStore.updateStepPosition(node.id, node.position)
+  function handleNodeDragStop({ targetNode, nodes }) {
+    const dragged = nodes?.length ? nodes : targetNode ? [targetNode] : []
+    dragged.forEach((node) =>
+      vsmDataStore.updateStepPosition(node.id, node.position)
+    )
   }
 
-  function handleNodeClick(event) {
-    const { node } = event.detail
+  function handleNodeClick({ node }) {
     vsmUIStore.clearConnectionSelection()
-    vsmUIStore.selectStep(node.id)
-  }
-
-  function handleNodeDoubleClick(event) {
-    const { node } = event.detail
     vsmUIStore.selectStep(node.id)
     vsmUIStore.setEditing(true)
   }
 
-  function handleEdgeClick(event) {
-    const { edge } = event.detail
+  function handleEdgeClick({ edge }) {
     vsmUIStore.selectConnection(edge.id)
   }
 
@@ -228,7 +225,6 @@
     onconnect={handleConnect}
     onnodedragstop={handleNodeDragStop}
     onnodeclick={handleNodeClick}
-    onnodedoubleclick={handleNodeDoubleClick}
     onedgeclick={handleEdgeClick}
     onpaneclick={handlePaneClick}
   >

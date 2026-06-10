@@ -67,6 +67,7 @@
       {#if canStart}
         <button
           onclick={handleStart}
+          data-testid="sim-run-button"
           class="inline-flex items-center gap-1.5 px-3 py-1.5 bg-emerald-600 text-white rounded-md hover:bg-emerald-700 transition-colors text-sm font-medium"
         >
           <Play class="w-4 h-4" />

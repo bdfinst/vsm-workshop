@@ -69,9 +69,16 @@ test.describe('Form Label Accessibility', () => {
       .locator('.svelte-flow__handle-right')
       .dragTo(stepA.locator('.svelte-flow__handle-left'))
 
-    // Click the edge to open connection editor
-    const edge = page.locator('.svelte-flow__edge').first()
-    await edge.click()
+    // Click the edge to open the connection editor. The edge is an SVG path
+    // with no real hit box, so click the centre of its bounding box directly.
+    const edgeBox = await page
+      .locator('.svelte-flow__edge-interaction')
+      .first()
+      .boundingBox()
+    await page.mouse.click(
+      edgeBox.x + edgeBox.width / 2,
+      edgeBox.y + edgeBox.height / 2
+    )
     await expect(page.getByTestId('connection-editor')).toBeVisible()
 
     // Check connection type select
@@ -132,16 +139,11 @@ test.describe('Simulation Results Accessibility', () => {
       .locator('.svelte-flow__handle-right')
       .dragTo(devNode.locator('.svelte-flow__handle-left'))
 
-    // Open simulation panel
-    await page.getByRole('button', { name: 'Simulate' }).click()
-    await expect(page.getByTestId('simulation-panel')).toBeVisible()
+    // Simulation controls are always present; choose a small batch and run
+    await page.locator('#workItems').selectOption('5')
+    await page.getByTestId('sim-run-button').click()
 
-    // Configure and run simulation
-    await page.getByTestId('work-item-count-input').fill('5')
-    await page.getByTestId('simulation-duration-input').fill('50')
-    await page.getByRole('button', { name: 'Run Simulation' }).click()
-
-    // Wait for results
+    // Wait for the animated simulation to finish and render results
     const resultsContainer = page.getByTestId('simulation-results')
     await expect(resultsContainer).toBeVisible()
 

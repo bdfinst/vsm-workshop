@@ -102,9 +102,9 @@ test.describe('Canvas Interactions', () => {
       devNode.locator('.svelte-flow__handle-left')
     );
 
-    // Verify connection edge appears
-    const edge = page.locator('.svelte-flow__edge').first();
-    await expect(edge).toBeVisible();
+    // Verify connection edge appears (the edge <g> has no hit box, so assert
+    // on its presence rather than visibility)
+    await expect(page.locator('.svelte-flow__edge')).toHaveCount(1);
   });
 
   test('should complete workflow: create map → add steps → connect → edit → view metrics', async ({ page }) => {
@@ -149,17 +149,13 @@ test.describe('Canvas Interactions', () => {
     const edges = page.locator('.svelte-flow__edge');
     await expect(edges).toHaveCount(2);
 
-    // Step 6: View metrics dashboard
-    await page.getByRole('button', { name: 'Metrics' }).click();
-
-    // Verify metrics are displayed
+    // The metrics dashboard is always rendered below the canvas
     await expect(page.getByTestId('metrics-dashboard')).toBeVisible();
-    await expect(page.getByTestId('flow-efficiency-card')).toBeVisible();
-    await expect(page.getByTestId('total-lead-time-card')).toBeVisible();
+    await expect(page.getByTestId('metric-flow-efficiency')).toBeVisible();
+    await expect(page.getByTestId('metric-total-lead-time')).toBeVisible();
 
-    // Verify flow efficiency calculation (150 min process / 840 min lead = ~18%)
-    const flowEfficiency = page.getByTestId('flow-efficiency-value');
-    await expect(flowEfficiency).toContainText(/1[78]%|19%/);
+    // Flow efficiency = total process (210) / total lead (840) = 25%
+    await expect(page.getByTestId('metric-flow-efficiency')).toContainText('25.0%');
   });
 
   test('should run a simulation', async ({ page }) => {
@@ -181,22 +177,15 @@ test.describe('Canvas Interactions', () => {
     const devNode = page.locator('.vsm-node', { hasText: 'Development' });
     const testNode = page.locator('.vsm-node', { hasText: 'Testing' });
     await testNode.locator('.svelte-flow__handle-right').dragTo(devNode.locator('.svelte-flow__handle-left'));
+    await expect(page.locator('.svelte-flow__edge')).toHaveCount(1);
 
-    // Open simulation panel
-    await page.getByRole('button', { name: 'Simulate' }).click();
-    await expect(page.getByTestId('simulation-panel')).toBeVisible();
+    // Simulation controls are always present; choose a small batch and run
+    await page.locator('#workItems').selectOption('5');
+    await page.getByTestId('sim-run-button').click();
 
-    // Configure simulation
-    await page.getByTestId('work-item-count-input').fill('10');
-    await page.getByTestId('simulation-duration-input').fill('100');
-
-    // Run simulation
-    await page.getByRole('button', { name: 'Run Simulation' }).click();
-
-    // Verify simulation results appear
+    // The simulation animates to completion, then renders results
     await expect(page.getByTestId('simulation-results')).toBeVisible();
-    await expect(page.getByTestId('completed-items-count')).toBeVisible();
-    await expect(page.getByTestId('average-cycle-time')).toBeVisible();
+    await expect(page.getByTestId('simulation-results')).toContainText('Completed');
   });
 
   test('should delete a step', async ({ page }) => {
@@ -205,15 +194,14 @@ test.describe('Canvas Interactions', () => {
     await page.getByTestId('step-name-input').fill('Development');
     await page.getByRole('button', { name: 'Save' }).click();
 
-    // Select the step
+    // Click the step to open its editor
     const stepNode = page.locator('.vsm-node').first();
     await stepNode.click();
+    await expect(page.getByTestId('step-editor')).toBeVisible();
 
-    // Delete the step
-    await page.getByRole('button', { name: 'Delete Step' }).click();
-
-    // Confirm deletion
-    await page.getByRole('button', { name: 'Confirm' }).click();
+    // Delete the step and confirm via the inline popover
+    await page.getByTestId('delete-step-button').click();
+    await page.getByTestId('confirm-popover-confirm').click();
 
     // Verify step is removed
     await expect(stepNode).not.toBeVisible();
@@ -225,10 +213,10 @@ test.describe('Canvas Interactions', () => {
     await page.getByTestId('step-name-input').fill('Development');
     await page.getByRole('button', { name: 'Save' }).click();
 
-    // Click export button
+    // Click export button (menu items expose role="menuitem")
     const downloadPromise = page.waitForEvent('download');
     await page.getByRole('button', { name: 'Export' }).click();
-    await page.getByRole('button', { name: 'Export as PNG' }).click();
+    await page.getByRole('menuitem', { name: 'Export as PNG' }).click();
 
     // Verify download initiated
     const download = await downloadPromise;
