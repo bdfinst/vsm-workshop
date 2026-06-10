@@ -74,7 +74,7 @@
 
 {#if connection}
   <div
-    class="w-80 bg-white border-l border-gray-200 p-4 overflow-y-auto"
+    class="w-full sm:w-80 bg-white border-l border-gray-200 p-4 overflow-y-auto"
     data-testid="connection-editor"
   >
     <div class="flex items-center justify-between mb-4">

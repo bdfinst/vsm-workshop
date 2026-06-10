@@ -9,6 +9,8 @@
   import { STEP_TYPE_CONFIG } from '../../data/stepTypeConfig.js'
   import { formatDuration } from '../../utils/calculations/metrics.js'
 
+  let { onNavigate } = $props()
+
   let expandedCategory = $state(null)
 
   const templatesByCategory = getTemplatesByCategory()
@@ -17,6 +19,7 @@
     const step = withUndo(() => vsmDataStore.addStep('New Step'))
     vsmUIStore.selectStep(step.id)
     vsmUIStore.setEditing(true)
+    onNavigate?.()
   }
 
   function handleAddFromTemplate(template) {
@@ -31,6 +34,7 @@
     }))
     vsmUIStore.selectStep(step.id)
     vsmUIStore.setEditing(true)
+    onNavigate?.()
   }
 
   function toggleCategory(category) {
@@ -42,7 +46,7 @@
   }
 </script>
 
-<aside class="w-64 bg-white border-r border-gray-200 p-4 overflow-y-auto flex flex-col" aria-label="Step templates and instructions">
+<aside class="h-full w-64 bg-white border-r border-gray-200 p-4 overflow-y-auto flex flex-col" aria-label="Step templates and instructions">
   <button
     onclick={handleAddStep}
     class="w-full flex items-center justify-center gap-2 px-4 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium"
