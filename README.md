@@ -1,8 +1,10 @@
-# Bifrost
+# Norn
 
-**Bifrost** maps your software delivery value stream, finds the bottleneck, and charts the path to flow — named for the rainbow bridge that connects the realms, just as a value stream connects each stage from idea to production.
+> **Weave the work into flow.**
 
-Bifrost is a digital workshop for creating, analyzing, and simulating Value Stream Maps (VSMs). Value Stream Mapping is a lean-management method for analyzing the current state and designing a future state for the series of events that take a product or service from its beginning through to the customer.
+**Norn** maps your software delivery value stream, finds the bottleneck, and weaves the work into flow — every thread, end to end. Named for the Norse weavers of fate (Urðr, Verðandi, Skuld — past, present, future), just as Norn holds your current state and future state and the threads of work running between them.
+
+Norn is a digital workshop for creating, analyzing, and simulating Value Stream Maps (VSMs). Value Stream Mapping is a lean-management method for analyzing the current state and designing a future state for the series of events that take a product or service from its beginning through to the customer.
 
 This tool lets you visually build your value stream (or import a measured current state from real delivery data), input key metrics for each step, and run simulations to identify bottlenecks and calculate overall flow efficiency.
 
@@ -30,7 +32,7 @@ This project uses `npm` as its package manager. Make sure you have Node.js and `
 2. Navigate to the project directory:
 
    ```sh
-   cd bifrost
+   cd norn
    ```
 
 3. Install the dependencies:

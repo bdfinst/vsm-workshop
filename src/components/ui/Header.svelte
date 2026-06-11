@@ -173,8 +173,8 @@
       </button>
     {/if}
     <div class="flex items-center gap-2">
-      <img src="/bifrost.svg" alt="Bifrost" class="h-7 w-7 rounded-md" />
-      <span class="hidden sm:inline font-semibold text-gray-700">Bifrost</span>
+      <img src="/norn.svg" alt="Norn" class="h-7 w-7 rounded-md" />
+      <span class="hidden sm:inline font-semibold text-gray-700">Norn</span>
     </div>
     <div class="h-6 w-px bg-gray-300"></div>
     {#if isEditingName}
