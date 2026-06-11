@@ -1,8 +1,10 @@
-# VSM Workshop
+# Bifrost
 
-This application is a digital workshop for creating, analyzing, and simulating Value Stream Maps (VSMs). Value Stream Mapping is a lean-management method for analyzing the current state and designing a future state for the series of events that take a product or service from its beginning through to the customer.
+**Bifrost** maps your software delivery value stream, finds the bottleneck, and charts the path to flow — named for the rainbow bridge that connects the realms, just as a value stream connects each stage from idea to production.
 
-This tool allows you to visually build your value stream, input key metrics for each step, and run simulations to identify bottlenecks and calculate overall flow efficiency.
+Bifrost is a digital workshop for creating, analyzing, and simulating Value Stream Maps (VSMs). Value Stream Mapping is a lean-management method for analyzing the current state and designing a future state for the series of events that take a product or service from its beginning through to the customer.
+
+This tool lets you visually build your value stream (or import a measured current state from real delivery data), input key metrics for each step, and run simulations to identify bottlenecks and calculate overall flow efficiency.
 
 ![](value-stream-workshop.png)
 
@@ -28,7 +30,7 @@ This project uses `npm` as its package manager. Make sure you have Node.js and `
 2. Navigate to the project directory:
 
    ```sh
-   cd vsm-workshop
+   cd bifrost
    ```
 
 3. Install the dependencies:

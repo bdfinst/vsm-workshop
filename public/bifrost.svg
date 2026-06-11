@@ -1,0 +1,43 @@
+<svg width="64" height="64" viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Bifrost">
+  <defs>
+    <linearGradient id="bf-sky" x1="0" y1="0" x2="0" y2="64" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#221c54"/>
+      <stop offset="1" stop-color="#0b1024"/>
+    </linearGradient>
+    <linearGradient id="bf-rainbow" x1="10" y1="0" x2="54" y2="0" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#a855f7"/>
+      <stop offset="0.25" stop-color="#3b82f6"/>
+      <stop offset="0.5" stop-color="#06b6d4"/>
+      <stop offset="0.72" stop-color="#22c55e"/>
+      <stop offset="0.86" stop-color="#eab308"/>
+      <stop offset="1" stop-color="#ef4444"/>
+    </linearGradient>
+    <radialGradient id="bf-glow" cx="0.5" cy="0.42" r="0.6">
+      <stop offset="0" stop-color="#5b6cff" stop-opacity="0.45"/>
+      <stop offset="1" stop-color="#5b6cff" stop-opacity="0"/>
+    </radialGradient>
+  </defs>
+
+  <!-- night-sky tile -->
+  <rect width="64" height="64" rx="14" fill="url(#bf-sky)"/>
+  <rect width="64" height="64" rx="14" fill="url(#bf-glow)"/>
+
+  <!-- distant realms (stars) -->
+  <circle cx="13" cy="15" r="1.1" fill="#ffffff" opacity="0.85"/>
+  <circle cx="52" cy="12" r="0.9" fill="#ffffff" opacity="0.7"/>
+  <circle cx="44" cy="20" r="0.7" fill="#ffffff" opacity="0.55"/>
+  <circle cx="22" cy="11" r="0.7" fill="#ffffff" opacity="0.55"/>
+
+  <!-- the rainbow bridge -->
+  <path d="M11 49 A 21 21 0 0 1 53 49" stroke="#ffffff" stroke-opacity="0.18" stroke-width="9" fill="none" stroke-linecap="round"/>
+  <path d="M11 49 A 21 21 0 0 1 53 49" stroke="url(#bf-rainbow)" stroke-width="6.5" fill="none" stroke-linecap="round"/>
+  <path d="M11 49 A 21 21 0 0 1 53 49" stroke="#ffffff" stroke-opacity="0.35" stroke-width="1.4" fill="none" stroke-linecap="round" transform="translate(0,-2.6)"/>
+
+  <!-- the two realms it connects (value-stream steps) -->
+  <circle cx="11" cy="49" r="4.4" fill="#0b1024"/>
+  <circle cx="11" cy="49" r="4.4" fill="#a855f7"/>
+  <circle cx="11" cy="49" r="1.8" fill="#ffffff"/>
+  <circle cx="53" cy="49" r="4.4" fill="#0b1024"/>
+  <circle cx="53" cy="49" r="4.4" fill="#ef4444"/>
+  <circle cx="53" cy="49" r="1.8" fill="#ffffff"/>
+</svg>

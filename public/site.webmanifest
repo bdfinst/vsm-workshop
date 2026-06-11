@@ -1,0 +1,14 @@
+{
+  "name": "Bifrost — Value Stream Diagnosis",
+  "short_name": "Bifrost",
+  "description": "Map your software delivery value stream, find the bottleneck, and chart the path to flow.",
+  "icons": [
+    { "src": "/bifrost.svg", "type": "image/svg+xml", "sizes": "any" },
+    { "src": "/icon-192.png", "type": "image/png", "sizes": "192x192" },
+    { "src": "/icon-512.png", "type": "image/png", "sizes": "512x512" }
+  ],
+  "theme_color": "#0b1024",
+  "background_color": "#0b1024",
+  "display": "standalone",
+  "start_url": "/"
+}
