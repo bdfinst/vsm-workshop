@@ -56,7 +56,7 @@ Feature: {Feature Name}
 
 ## VSM-Specific Scenarios
 
-When writing features for VSM Workshop, consider these common patterns:
+When writing features for Norn, consider these common patterns:
 
 ### Builder Features
 ```gherkin

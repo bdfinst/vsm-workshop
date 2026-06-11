@@ -1,4 +1,4 @@
-# VSM Workshop - Feature Roadmap
+# Norn - Feature Roadmap
 
 ## MVP (Minimum Viable Product)
 

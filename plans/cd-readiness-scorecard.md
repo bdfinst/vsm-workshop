@@ -7,7 +7,7 @@
 
 ## Goal
 
-Turn the VSM Workshop from a value-stream *modeler* into a value-stream *diagnoser* by adding an
+Turn the Norn from a value-stream *modeler* into a value-stream *diagnoser* by adding an
 auto-inferred CD readiness scorecard. It scores **13 readiness items** for the open map — the **9
 MinimumCD core practices** plus **4 VSM-derived flow readiness signals** — pre-filling likely gaps
 from data the app already stores per step (lead time, process time, %C&A, queue size, step type,

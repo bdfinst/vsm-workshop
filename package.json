@@ -1,5 +1,5 @@
 {
-  "name": "norn",
+  "name": "@bdfinst/norn",
   "version": "0.0.1",
   "type": "module",
   "scripts": {

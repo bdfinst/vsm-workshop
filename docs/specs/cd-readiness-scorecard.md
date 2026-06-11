@@ -16,7 +16,7 @@
 
 ## Intent Description
 
-Today the VSM Workshop is a strong generic value-stream *modeler* but it does not *diagnose a
+Today the Norn is a strong generic value-stream *modeler* but it does not *diagnose a
 software-delivery process*. The CD Readiness Scorecard closes that gap. It is the first slice of
 the "CD Readiness Diagnosis" capability and embodies the MinimumCD Phase-0 "Assess" idea that a
 team should map its value stream **and** self-assess its practices **together** to find its
