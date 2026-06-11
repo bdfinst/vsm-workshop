@@ -57,11 +57,16 @@
 <div class="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center p-8">
   <div class="max-w-lg w-full">
     <div class="text-center mb-8">
-      <span class="text-6xl mb-4 block" aria-hidden="true">🗺️</span>
-      <h1 class="text-3xl font-bold text-gray-800 mb-2">VSM Workshop</h1>
-      <p class="text-gray-600">
-        Create value stream maps to visualize and improve your delivery
-        process
+      <img
+        src="/norn.svg"
+        alt="Norn"
+        class="mx-auto mb-4 h-20 w-20 rounded-2xl shadow-lg"
+      />
+      <h1 class="text-3xl font-bold text-gray-800 mb-2">Norn</h1>
+      <p class="text-lg font-medium text-gray-700">Weave the work into flow.</p>
+      <p class="mt-1 text-gray-600">
+        Map your software delivery value stream and find the bottleneck — every
+        thread, end to end.
       </p>
     </div>
 

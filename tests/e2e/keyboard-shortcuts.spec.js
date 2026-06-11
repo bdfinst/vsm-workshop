@@ -41,8 +41,8 @@ test.describe('Keyboard Shortcuts Overlay', () => {
   })
 
   test('overlay can also be opened from welcome screen', async ({ page }) => {
-    // Click somewhere that is not an input to ensure body focus
-    await page.click('body')
+    // Click a non-input element (the heading) to ensure focus is not in a field
+    await page.getByRole('heading', { name: 'Norn' }).click()
 
     await page.keyboard.press('?')
 

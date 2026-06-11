@@ -1,4 +1,4 @@
-# Quick Start - VSM Workshop Development
+# Quick Start - Norn Development
 
 **5-minute guide to start contributing effectively.**
 

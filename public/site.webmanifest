@@ -1,0 +1,14 @@
+{
+  "name": "Norn — Value Stream Diagnosis",
+  "short_name": "Norn",
+  "description": "Weave the work into flow. Map your software delivery value stream, find the bottleneck, every thread end to end.",
+  "icons": [
+    { "src": "/norn.svg", "type": "image/svg+xml", "sizes": "any" },
+    { "src": "/icon-192.png", "type": "image/png", "sizes": "192x192" },
+    { "src": "/icon-512.png", "type": "image/png", "sizes": "512x512" }
+  ],
+  "theme_color": "#0a0a1f",
+  "background_color": "#0a0a1f",
+  "display": "standalone",
+  "start_url": "/"
+}
