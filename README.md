@@ -8,7 +8,16 @@ Norn is a digital workshop for creating, analyzing, and simulating Value Stream 
 
 This tool lets you visually build your value stream (or import a measured current state from real delivery data), input key metrics for each step, and run simulations to identify bottlenecks and calculate overall flow efficiency.
 
-![](value-stream-workshop.png)
+![Norn — an example software-delivery value stream with live flow metrics](docs/norn.png)
+
+## What you can do
+
+- **Map your value stream** — drag, connect, and edit steps on a canvas, with process time, lead time, %C&A, queue size, batch size, and rework loops.
+- **Import a measured current state** — derive a value stream from a real event log (CSV/JSON), or, optionally, straight from Azure DevOps work-item history. Measured maps replace guesses with actual timestamps.
+- **See the flow metrics** — total lead time, total process time, **flow efficiency**, first-pass yield, queue load, and rework impact, updated live as you edit.
+- **Diagnose CD readiness** — a scorecard of continuous-delivery practices and signals, a **wait-time waterfall**, and DORA-metric reconciliation.
+- **Get countermeasures** — the constraint is highlighted and paired with concrete recommendations; WIP and batch levers are modeled with Little's Law.
+- **Simulate the flow** — run a real-time work-item simulation to watch items move, surface bottlenecks, and compare a **current state vs. a future state** (including a Monte-Carlo lead-time forecast).
 
 ## Getting Started
 
@@ -79,12 +88,21 @@ To run these tests in interactive watch mode, use:
 npm run test:watch
 ```
 
-### End-to-End Tests (Playwright)
+### End-to-End & Visual Regression Tests (Playwright)
 
 To run the end-to-end tests that simulate real user interactions in a browser, use:
 
 ```sh
 npm run test:e2e
+```
+
+These include visual-regression snapshots. CI runs the whole suite on every PR
+inside the pinned Playwright Docker image so rendering matches the committed
+baselines. Visual snapshots are environment-sensitive, so **regenerate baselines
+in that same image** rather than with a bare local update:
+
+```sh
+npm run test:e2e:baseline   # runs --update-snapshots inside the pinned image
 ```
 
 ### Acceptance Tests (Cucumber)
@@ -93,4 +111,10 @@ To run the behavior-driven development (BDD) acceptance tests, use:
 
 ```sh
 npm run test:acceptance
+```
+
+### Everything at once
+
+```sh
+npm test && npm run build && npm run lint
 ```
