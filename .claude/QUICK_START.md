@@ -1,4 +1,4 @@
-# Quick Start - Norn Development
+# Quick Start - Total Perspective Vortex Development
 
 **5-minute guide to start contributing effectively.**
 

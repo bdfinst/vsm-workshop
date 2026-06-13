@@ -1,14 +1,16 @@
-# Norn
+# Total Perspective Vortex
 
-> **Weave the work into flow.**
+> **You are here.**
 
-**Norn** maps your software delivery value stream, finds the bottleneck, and weaves the work into flow — every thread, end to end. Named for the Norse weavers of fate (Urðr, Verðandi, Skuld — past, present, future), just as Norn holds your current state and future state and the threads of work running between them.
+> _"It is in theory possible to extrapolate the whole of creation — every Galaxy, every sun, every planet, their orbits, their composition, and their economic and social history from, say, one small piece of fairy cake."_ — The Hitchhiker's Guide to the Galaxy
 
-Norn is a digital workshop for creating, analyzing, and simulating Value Stream Maps (VSMs). Value Stream Mapping is a lean-management method for analyzing the current state and designing a future state for the series of events that take a product or service from its beginning through to the customer.
+**Total Perspective Vortex** does the same for software delivery: from a single value stream — one small slice of how work actually flows — it extrapolates the health of your whole system, then shows you exactly where you are in it. (No fairy cake required.)
+
+It's a digital workshop for creating, analyzing, and simulating Value Stream Maps (VSMs). Value Stream Mapping is a lean-management method for analyzing the current state and designing a future state for the series of events that take a product or service from its beginning through to the customer.
 
 This tool lets you visually build your value stream (or import a measured current state from real delivery data), input key metrics for each step, and run simulations to identify bottlenecks and calculate overall flow efficiency.
 
-![Norn — an example software-delivery value stream with live flow metrics](docs/norn.png)
+![Total Perspective Vortex — an example software-delivery value stream with live flow metrics](docs/tpv.png)
 
 ## What you can do
 
@@ -41,7 +43,7 @@ This project uses `npm` as its package manager. Make sure you have Node.js and `
 2. Navigate to the project directory:
 
    ```sh
-   cd norn
+   cd total-perspective-vortex
    ```
 
 3. Install the dependencies:

@@ -1,4 +1,4 @@
-# Handoff: Norn — Delivery-Problem-Finding Feature Review
+# Handoff: Total Perspective Vortex — Delivery-Problem-Finding Feature Review
 
 > **Purpose of this file:** A durable handoff so a fresh Claude Code session can resume
 > this work with full context. Read this top-to-bottom, then continue from
@@ -6,7 +6,7 @@
 
 ## The task
 
-Review the Norn's current capabilities and suggest **missing features that would
+Review the Total Perspective Vortex's current capabilities and suggest **missing features that would
 help teams find problems in their software delivery process**, using
 [beyond.minimumcd.org](https://beyond.minimumcd.org/) (the MinimumCD Practice Guide) as the
 reference frame for improvements.

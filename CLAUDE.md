@@ -1,4 +1,4 @@
-# Norn - Claude Development Guide
+# Total Perspective Vortex - Claude Development Guide
 
 > **📌 This file has been reorganized for better modularity and easier navigation.**
 >

@@ -58,15 +58,17 @@
   <div class="max-w-lg w-full">
     <div class="text-center mb-8">
       <img
-        src="/norn.svg"
-        alt="Norn"
+        src="/tpv.svg"
+        alt="Total Perspective Vortex"
         class="mx-auto mb-4 h-20 w-20 rounded-2xl shadow-lg"
       />
-      <h1 class="text-3xl font-bold text-gray-800 mb-2">Norn</h1>
-      <p class="text-lg font-medium text-gray-700">Weave the work into flow.</p>
+      <h1 class="text-3xl font-bold text-gray-800 mb-2">
+        Total Perspective Vortex
+      </h1>
+      <p class="text-lg font-medium text-gray-700">You are here.</p>
       <p class="mt-1 text-gray-600">
-        Map your software delivery value stream and find the bottleneck — every
-        thread, end to end.
+        Map your software delivery value stream and extrapolate the health of
+        your whole system from a single slice.
       </p>
     </div>
 

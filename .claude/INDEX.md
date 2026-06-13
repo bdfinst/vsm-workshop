@@ -1,4 +1,4 @@
-# Norn - Claude Development Guide
+# Total Perspective Vortex - Claude Development Guide
 
 ## 🚀 Quick Navigation
 
@@ -12,7 +12,7 @@
 
 ## 📋 Project Overview
 
-**Norn** is a Value Stream Mapping tool for visualizing and optimizing software delivery processes. This interactive web application helps teams create comprehensive value stream maps, simulate work flow, identify bottlenecks, and prioritize improvements.
+**Total Perspective Vortex** is a Value Stream Mapping tool for visualizing and optimizing software delivery processes. This interactive web application helps teams create comprehensive value stream maps, simulate work flow, identify bottlenecks, and prioritize improvements.
 
 ### Technology Stack
 

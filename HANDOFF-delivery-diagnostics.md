@@ -7,7 +7,7 @@
 
 ## TL;DR
 
-The Norn has grown from a generic value-stream *modeler* into a value-stream
+The Total Perspective Vortex has grown from a generic value-stream *modeler* into a value-stream
 *diagnoser*. The entire **CD Readiness Diagnosis roadmap** (P1a–P3 from
 `HANDOFF-vsm-review.md`) is now shipped to `master`, plus a current-state **importer**,
 an optional **Azure DevOps** source, and a **mobile/tablet UX** overhaul. Three PRs are

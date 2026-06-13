@@ -1,6 +1,6 @@
 # Project Structure Guide
 
-**Directory layout and file organization for Norn.**
+**Directory layout and file organization for Total Perspective Vortex.**
 
 ---
 
