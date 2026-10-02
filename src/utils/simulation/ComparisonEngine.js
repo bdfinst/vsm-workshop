@@ -37,7 +37,11 @@ export const createComparisonEngine = (workItemCount) => {
       ...initialState,
       workItems: generateWorkItems(workItemCount, steps[0]?.id),
     }
-    const finalState = runSimulationToCompletion(stateWithItems, steps, connections)
+    const finalState = runSimulationToCompletion(
+      stateWithItems,
+      steps,
+      connections
+    )
     return finalState.results
   }
 

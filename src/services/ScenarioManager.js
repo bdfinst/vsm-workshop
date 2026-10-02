@@ -13,9 +13,18 @@ const SCENARIO_NAME_PREFIX = 'Scenario'
 const runSimulationForScenario = (vsmState, scenario, workItemCount) => {
   const engine = createComparisonEngine(workItemCount)
 
-  const baselineResults = engine.runBaseline(vsmState.steps, vsmState.connections)
-  const scenarioResults = engine.runScenario(scenario.steps, scenario.connections)
-  const improvements = engine.calculateImprovements(baselineResults, scenarioResults)
+  const baselineResults = engine.runBaseline(
+    vsmState.steps,
+    vsmState.connections
+  )
+  const scenarioResults = engine.runScenario(
+    scenario.steps,
+    scenario.connections
+  )
+  const improvements = engine.calculateImprovements(
+    baselineResults,
+    scenarioResults
+  )
 
   return {
     baseline: baselineResults,

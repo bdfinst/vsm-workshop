@@ -9,5 +9,18 @@
   },
   "enabledPlugins": {
     "agentic-dev-team@agentic-dev-team": true
+  },
+  "hooks": {
+    "PostToolUse": [
+      {
+        "matcher": "Edit|Write",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "f=$(jq -r '.tool_input.file_path // empty'); case \"$f\" in *.js|*.svelte|*.json|*.css|*.md) npx --no-install prettier --write \"$f\" >/dev/null 2>&1; case \"$f\" in *.js|*.svelte) npx --no-install eslint --fix \"$f\" >/dev/null 2>&1;; esac;; esac; exit 0"
+          }
+        ]
+      }
+    ]
   }
 }

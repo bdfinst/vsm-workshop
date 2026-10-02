@@ -34,3 +34,17 @@ coverage
 # OS
 .DS_Store
 Thumbs.db
+
+# dev-team workflow runtime artifacts (.claude/-scoped + .dev-team-reports/, #1406) v2 (regeneratable; not deliverables — issues #1101, #1377, #1406, #1412)
+.claude/memory/
+.claude/metrics/
+.claude/plans/
+/.dev-team-reports/*
+!/.dev-team-reports/test-improve/
+memory/
+reports/
+metrics/
+.pr-review-passed
+
+# dev-team hygiene — machine-specific MCP config (absolute-path pollution — issues #1376, #1416)
+.mcp.json

@@ -10,6 +10,10 @@ export default defineConfig({
       },
     }),
   ],
+  // Vitest resolves 'svelte' to its server build unless told otherwise, which has
+  // no effects and a no-op flushSync. The browser build makes runes react in tests.
+  // Verified needed: without it tests/unit/v2/runeLoader.test.js fails (runes do not react).
+  resolve: process.env.VITEST ? { conditions: ['browser'] } : {},
   optimizeDeps: {
     // Include @xyflow/svelte for proper dependency optimization
     include: ['@xyflow/svelte'],
@@ -19,6 +23,11 @@ export default defineConfig({
     globals: true,
     setupFiles: ['./tests/setup.js'],
     exclude: ['**/node_modules/**', '**/tests/e2e/**'],
+    coverage: {
+      provider: 'v8',
+      reporter: ['text', 'json-summary'],
+      include: ['src/**/*.{js,svelte}'],
+    },
   },
   build: {
     rollupOptions: {

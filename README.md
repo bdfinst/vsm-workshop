@@ -83,10 +83,20 @@ To run the end-to-end tests that simulate real user interactions in a browser, u
 npm run test:e2e
 ```
 
-### Acceptance Tests (Cucumber)
+### Acceptance Tests (Playwright)
 
-To run the behavior-driven development (BDD) acceptance tests, use:
+To run the acceptance tests (Playwright specs in `tests/e2e/`; this builds the app first), use:
 
 ```sh
 npm run test:acceptance
 ```
+
+To run the unit tests and the acceptance tests together, use:
+
+```sh
+npm run test:all
+```
+
+## CodeGraph
+
+This repository uses [CodeGraph](https://github.com/colbymchenry/codegraph) for semantic code intelligence.

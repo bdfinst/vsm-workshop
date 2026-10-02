@@ -17,7 +17,8 @@
  * @returns {string} JSON string representation
  */
 export function serializeVsm(vsm) {
-  const { id, name, description, steps, connections, createdAt, updatedAt } = vsm
+  const { id, name, description, steps, connections, createdAt, updatedAt } =
+    vsm
   return JSON.stringify(
     { id, name, description, steps, connections, createdAt, updatedAt },
     null,
@@ -31,7 +32,11 @@ export function serializeVsm(vsm) {
  * @returns {Object} VSM domain object with defaults applied
  * @throws {Error} If JSON parsing fails
  */
-const PROTOTYPE_POLLUTION_KEYS = new Set(['__proto__', 'constructor', 'prototype'])
+const PROTOTYPE_POLLUTION_KEYS = new Set([
+  '__proto__',
+  'constructor',
+  'prototype',
+])
 
 /**
  * JSON reviver that strips prototype-pollution keys

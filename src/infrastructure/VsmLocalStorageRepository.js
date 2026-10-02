@@ -45,4 +45,5 @@ export const createVsmLocalStorageRepository = (storageKey) => {
 }
 
 /** Default singleton repository for the VSM data store */
-export const vsmLocalStorageRepo = createVsmLocalStorageRepository('vsm-data-storage')
+export const vsmLocalStorageRepo =
+  createVsmLocalStorageRepository('vsm-data-storage')

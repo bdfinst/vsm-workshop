@@ -1,0 +1,8 @@
+{
+  "detected": "2026-09-30",
+  "stacks": ["javascript", "node"],
+  "frameworks": ["svelte", "vitest", "playwright", "cucumber"],
+  "packageManager": "npm",
+  "hasDocker": false,
+  "indicators": { "package.json": true, "tsconfig.json": false, "jsconfig.json": true }
+}

@@ -8,7 +8,10 @@
 import { createStep } from '../models/StepFactory.js'
 import { createConnection } from '../models/ConnectionFactory.js'
 import { calculateMetrics } from '../utils/calculations/metrics.js'
-import { sanitizeVSMData, validateVSMData } from '../utils/validation/vsmValidator.js'
+import {
+  sanitizeVSMData,
+  validateVSMData,
+} from '../utils/validation/vsmValidator.js'
 import { autoPositionStep } from '../utils/ui/autoPositionStep.js'
 import { vsmLocalStorageRepo } from '../infrastructure/VsmLocalStorageRepository.js'
 
@@ -122,7 +125,10 @@ function createVsmDataStore(repository = vsmLocalStorageRepo) {
       const safe = sanitizeVSMData(mapData)
       const validation = validateVSMData(safe)
       if (!validation.valid) {
-        console.warn('loadMap: data failed validation, loading with safe defaults', validation.errors)
+        console.warn(
+          'loadMap: data failed validation, loading with safe defaults',
+          validation.errors
+        )
       }
       id = safe.id
       name = safe.name

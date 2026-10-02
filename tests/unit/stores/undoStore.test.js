@@ -1,5 +1,8 @@
-import { describe, it, expect, beforeEach } from 'vitest'
-import { undoStore } from '../../../src/stores/undoStore.svelte.js'
+import { describe, it, expect, beforeEach, vi } from 'vitest'
+import {
+  createUndoStore,
+  undoStore,
+} from '../../../src/stores/undoStore.svelte.js'
 
 describe('undoStore', () => {
   beforeEach(() => {
@@ -24,7 +27,7 @@ describe('undoStore', () => {
       expect(undoStore.canUndo).toBe(true)
     })
 
-    it('enforces max depth of 20 entries', () => {
+    it('enforces max depth of 20 entries, dropping the oldest', () => {
       for (let i = 0; i < 25; i++) {
         undoStore.pushSnapshot({
           steps: [{ id: String(i), name: `Step ${i}` }],
@@ -32,14 +35,17 @@ describe('undoStore', () => {
         })
       }
 
-      // Undo 20 times should work, 21st should return null
-      let count = 0
+      const undone = []
       let result = undoStore.undo({ steps: [], connections: [] })
       while (result !== null) {
-        count++
+        undone.push(result.steps[0].id)
         result = undoStore.undo({ steps: [], connections: [] })
       }
-      expect(count).toBe(20)
+
+      // Newest first; ids 0 to 4 fell off the bottom.
+      expect(undone).toEqual(
+        Array.from({ length: 20 }, (_, i) => String(24 - i))
+      )
     })
 
     it('clears redo stack when new snapshot is pushed', () => {
@@ -226,5 +232,49 @@ describe('undoStore', () => {
       const result = undoStore.undo({ steps: [], connections: [] })
       expect(result.steps[0].name).toBe('Dev')
     })
+  })
+})
+
+describe('createUndoStore', () => {
+  // Stacks hold $state proxies, which structuredClone refuses.
+  const copy = (x) => JSON.parse(JSON.stringify(x))
+
+  it('refuses to be built without a clone function', () => {
+    expect(() => createUndoStore()).toThrow(TypeError)
+  })
+
+  it('copies every snapshot with the clone it was given', () => {
+    const clone = vi.fn(copy)
+    const history = createUndoStore(clone)
+
+    history.pushSnapshot({ n: 1 })
+    expect(clone).toHaveBeenCalledTimes(1)
+
+    history.undo({ n: 2 })
+    expect(clone).toHaveBeenCalledTimes(3)
+  })
+
+  it('keeps separate histories per instance', () => {
+    const a = createUndoStore(copy)
+    const b = createUndoStore(copy)
+
+    a.pushSnapshot({ n: 1 })
+
+    expect(a.canUndo).toBe(true)
+    expect(b.canUndo).toBe(false)
+  })
+
+  it('peeks at the next undo and redo without moving them', () => {
+    const history = createUndoStore(copy)
+    history.pushSnapshot({ n: 1 })
+
+    expect(history.peekUndo()).toEqual({ n: 1 })
+    expect(history.peekRedo()).toBeNull()
+    expect(history.canUndo).toBe(true)
+
+    history.undo({ n: 2 })
+
+    expect(history.peekUndo()).toBeNull()
+    expect(history.peekRedo()).toEqual({ n: 2 })
   })
 })

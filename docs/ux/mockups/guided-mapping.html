@@ -1,0 +1,734 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>VSM Workshop</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:ital,wght@0,400;0,500;0,600;0,700;1,400&family=IBM+Plex+Mono:wght@400;500;600&display=swap">
+<style>
+/* layout concept: the time ladder IS the map — steps sit on a track, wait
+   rises above it and process sinks below it, so the shape of the ladder
+   shows flow efficiency before a single number is read. everything else
+   (summary strip, rework loops, defect trend) reads off that same ladder. */
+:root{
+  --bg:#f5f4f0; --surface:#ffffff; --surface-2:#eeece5;
+  --ink:#1c2127; --ink-soft:#5b6472; --line:#dcdad2;
+  --accent:#2e5eaa; --accent-soft:#e7edf7;
+  --good:#2f8f5b; --good-bg:#e8f5ee;
+  --warn:#c77d12; --warn-bg:#faf0dd;
+  --crit:#c23b34; --crit-bg:#fbe9e7;
+  --neutral:#5b6472; --neutral-bg:#eeece5;
+  font-family:'IBM Plex Sans',system-ui,sans-serif;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#15181d; --surface:#1d2128; --surface-2:#252a32;
+    --ink:#eceef1; --ink-soft:#9aa3b0; --line:#343a44;
+    --accent:#7ba3e0; --accent-soft:#223350;
+    --good:#5fc98c; --good-bg:#16291f;
+    --warn:#e3a53f; --warn-bg:#332507;
+    --crit:#e8695f; --crit-bg:#331815;
+    --neutral:#9aa3b0; --neutral-bg:#252a32;
+    color-scheme:dark;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#15181d; --surface:#1d2128; --surface-2:#252a32;
+  --ink:#eceef1; --ink-soft:#9aa3b0; --line:#343a44;
+  --accent:#7ba3e0; --accent-soft:#223350;
+  --good:#5fc98c; --good-bg:#16291f;
+  --warn:#e3a53f; --warn-bg:#332507;
+  --crit:#e8695f; --crit-bg:#331815;
+  --neutral:#9aa3b0; --neutral-bg:#252a32;
+  color-scheme:dark;
+}
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--ink);margin:0;padding-inline:0;line-height:1.45}
+.mono{font-family:'IBM Plex Mono',ui-monospace,monospace}
+.tab-num{font-variant-numeric:tabular-nums}
+h1,h2,h3{font-weight:600;text-wrap:balance;margin:0}
+.shell{max-width:1180px;margin:0 auto;padding:20px 16px 56px}
+
+/* top bar */
+.topbar{display:flex;align-items:baseline;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:6px}
+.brand{display:flex;align-items:baseline;gap:10px}
+.brand .mark{width:10px;height:10px;border-radius:2px;background:var(--accent);display:inline-block;transform:rotate(45deg)}
+.brand h1{font-size:19px;letter-spacing:.2px}
+.brand small{color:var(--ink-soft);font-size:12px}
+.crumb{color:var(--ink-soft);font-size:12px}
+.crumb b{color:var(--ink);font-weight:600}
+
+/* nav tabs */
+nav.tabs{display:flex;gap:4px;overflow-x:auto;border-bottom:1px solid var(--line);margin:18px 0 22px;padding-bottom:0}
+nav.tabs button{
+  font:inherit;font-size:13px;font-weight:500;color:var(--ink-soft);background:none;border:none;
+  padding:10px 14px;cursor:pointer;white-space:nowrap;border-bottom:2px solid transparent;margin-bottom:-1px;
+}
+nav.tabs button:hover{color:var(--ink)}
+nav.tabs button[aria-selected="true"]{color:var(--accent);border-bottom-color:var(--accent)}
+nav.tabs button .n{display:inline-block;width:18px;height:18px;border-radius:50%;background:var(--surface-2);color:var(--ink-soft);
+  font-size:10px;line-height:18px;text-align:center;margin-right:6px}
+nav.tabs button[aria-selected="true"] .n{background:var(--accent);color:var(--surface)}
+
+.panel{display:none}
+.panel[data-active="true"]{display:block;animation:fade .25s ease}
+@keyframes fade{from{opacity:0;transform:translateY(3px)}to{opacity:1;transform:none}}
+
+.card{background:var(--surface);border:1px solid var(--line);border-radius:10px}
+.pad{padding:18px}
+.kicker{font-size:11px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--accent)}
+.lede{color:var(--ink-soft);font-size:13.5px;max-width:62ch;margin-top:4px}
+.section-head{display:flex;justify-content:space-between;align-items:flex-start;gap:16px;flex-wrap:wrap;margin-bottom:14px}
+
+/* ===== Guided workflow ===== */
+.stage-rail{display:flex;gap:2px;margin-bottom:18px;border:1px solid var(--line);border-radius:10px;overflow:hidden;background:var(--surface-2)}
+.stage-rail .stg{flex:1;min-width:0;padding:9px 8px 8px;text-align:center;background:var(--surface);border-right:1px solid var(--line);position:relative}
+.stage-rail .stg:last-child{border-right:none}
+.stage-rail .stg .dot{width:20px;height:20px;border-radius:50%;margin:0 auto 5px;display:flex;align-items:center;justify-content:center;
+  font-size:10px;font-weight:600;background:var(--surface-2);color:var(--ink-soft);border:1px solid var(--line)}
+.stage-rail .stg.done .dot{background:var(--good);color:#fff;border-color:var(--good)}
+.stage-rail .stg.active{background:var(--accent-soft)}
+.stage-rail .stg.active .dot{background:var(--accent);color:#fff;border-color:var(--accent)}
+.stage-rail .stg .lbl{font-size:10.5px;color:var(--ink-soft);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.stage-rail .stg.active .lbl{color:var(--ink);font-weight:600}
+
+.workflow-grid{display:grid;grid-template-columns:1.1fr 1.4fr;gap:16px}
+@media (max-width:760px){.workflow-grid{grid-template-columns:1fr}}
+.prompt-card{padding:20px}
+.prompt-card .q{font-size:17px;font-weight:600;margin-bottom:6px}
+.prompt-card .example{margin-top:14px;padding:10px 12px;background:var(--surface-2);border-radius:8px;font-size:12.5px;color:var(--ink-soft)}
+.prompt-card .example b{color:var(--ink)}
+
+.field-row{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;align-items:end;padding:12px;border:1px solid var(--line);border-radius:8px;margin-bottom:10px}
+.field-row.header{background:var(--surface-2);padding:6px 12px;border:none}
+.field-row.header span{font-size:10.5px;text-transform:uppercase;letter-spacing:.05em;color:var(--ink-soft)}
+.field-row label{font-size:11px;color:var(--ink-soft);display:block;margin-bottom:3px}
+.field-row input,.field-row select{width:100%;font:inherit;font-size:13px;padding:6px 8px;border:1px solid var(--line);border-radius:6px;background:var(--surface);color:var(--ink)}
+.field-row .step-name{font-weight:600;font-size:13.5px}
+.chip{display:inline-block;font-size:10px;font-weight:600;padding:2px 7px;border-radius:99px;letter-spacing:.02em}
+.chip.est{background:var(--warn-bg);color:var(--warn)}
+.chip.meas{background:var(--good-bg);color:var(--good)}
+
+.btn{font:inherit;font-size:13px;font-weight:600;padding:9px 18px;border-radius:7px;border:1px solid transparent;cursor:pointer}
+.btn.primary{background:var(--accent);color:#fff}
+.btn.primary:disabled{background:var(--surface-2);color:var(--ink-soft);cursor:not-allowed}
+.btn.ghost{background:none;border-color:var(--line);color:var(--ink)}
+.row{display:flex;gap:10px;align-items:center}
+.between{justify-content:space-between}
+.mini-ladder-label{font-size:11px;color:var(--ink-soft);margin:14px 0 6px;display:flex;justify-content:space-between}
+
+/* ===== live map / ladder ===== */
+.map-toolbar{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:12px}
+.segctl{display:inline-flex;border:1px solid var(--line);border-radius:7px;overflow:hidden}
+.segctl button{font:inherit;font-size:12px;padding:6px 12px;background:var(--surface);color:var(--ink-soft);border:none;cursor:pointer}
+.segctl button[aria-pressed="true"]{background:var(--accent);color:#fff}
+.flagline{display:flex;gap:16px;flex-wrap:wrap;margin-top:10px;font-size:12px;color:var(--ink-soft)}
+.flagline .flag{display:flex;align-items:center;gap:6px}
+.flagline .swatch{width:9px;height:9px;border-radius:2px}
+.ladder-wrap{overflow-x:auto;padding-bottom:6px}
+.legend-note{font-size:11.5px;color:var(--ink-soft);margin-top:10px}
+table.step-table{width:100%;border-collapse:collapse;font-size:12.5px}
+table.step-table th{text-align:left;font-size:10.5px;text-transform:uppercase;letter-spacing:.04em;color:var(--ink-soft);padding:6px 10px;border-bottom:1px solid var(--line)}
+table.step-table td{padding:8px 10px;border-bottom:1px solid var(--line)}
+table.step-table tr:last-child td{border-bottom:none}
+.pill{display:inline-block;padding:2px 8px;border-radius:99px;font-size:11px;font-weight:600}
+.pill.good{background:var(--good-bg);color:var(--good)}
+.pill.warn{background:var(--warn-bg);color:var(--warn)}
+.pill.crit{background:var(--crit-bg);color:var(--crit)}
+
+/* ===== metrics strip ===== */
+.hero-metric{display:flex;align-items:flex-end;gap:22px;flex-wrap:wrap}
+.hero-metric .num{font-size:52px;font-weight:600;line-height:1}
+.hero-metric .num small{font-size:20px;font-weight:500;color:var(--ink-soft)}
+.hero-metric .cap{color:var(--ink-soft);font-size:13px;max-width:34ch}
+.stat-row{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-top:18px}
+@media (max-width:700px){.stat-row{grid-template-columns:repeat(2,1fr)}}
+.stat{padding:12px 14px;border:1px solid var(--line);border-radius:9px;background:var(--surface)}
+.stat .lbl{font-size:11px;color:var(--ink-soft);text-transform:uppercase;letter-spacing:.03em}
+.stat .val{font-size:20px;font-weight:600;margin-top:3px}
+.compare-pair{display:flex;gap:0;margin-top:18px;border:1px solid var(--line);border-radius:10px;overflow:hidden}
+.compare-pair{flex-wrap:wrap}.compare-pair>div{flex:1;min-width:170px;padding:14px 16px}
+.compare-pair>div:first-child{border-right:1px solid var(--line)}
+.compare-pair .t{font-size:11px;color:var(--ink-soft);text-transform:uppercase;letter-spacing:.03em}
+.compare-pair .v{font-size:24px;font-weight:600;margin-top:2px}
+.compare-pair .d{font-size:12px;color:var(--ink-soft);margin-top:2px}
+.callout-pair{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:18px}
+@media (max-width:700px){.callout-pair{grid-template-columns:1fr}}
+.callout{display:flex;gap:10px;padding:12px 14px;border-radius:9px;align-items:flex-start}
+.callout.warn{background:var(--warn-bg)}
+.callout.crit{background:var(--crit-bg)}
+.callout .ic{font-family:'IBM Plex Mono';font-weight:600;font-size:11px;padding:2px 6px;border-radius:5px;background:var(--surface)}
+.callout .tx b{display:block;font-size:13px}
+.callout .tx span{font-size:12px;color:var(--ink-soft)}
+
+/* ===== rework table ===== */
+table.rework-table{width:100%;border-collapse:collapse;font-size:12.5px;margin-top:14px}
+table.rework-table th{text-align:left;font-size:10.5px;text-transform:uppercase;letter-spacing:.04em;color:var(--ink-soft);padding:7px 10px;border-bottom:1px solid var(--line)}
+table.rework-table td{padding:9px 10px;border-bottom:1px solid var(--line);vertical-align:middle}
+.depth-tag{display:inline-flex;align-items:center;gap:6px;font-weight:600}
+.depth-tag .dot{width:8px;height:8px;border-radius:50%}
+
+/* ===== defects ===== */
+.defect-head{display:flex;justify-content:space-between;gap:20px;flex-wrap:wrap;align-items:flex-start}
+.kpi-col{display:grid;gap:10px;min-width:150px}
+.kpi{font-size:11px;color:var(--ink-soft)}
+.kpi b{display:block;font-size:19px;color:var(--ink);font-weight:600}
+.kpi .delta.good{color:var(--good)}
+.legend-sev{display:flex;gap:14px;font-size:11.5px;color:var(--ink-soft);margin-top:10px;flex-wrap:wrap}
+.legend-sev .sw{display:inline-block;width:9px;height:9px;border-radius:2px;margin-right:5px}
+.filters{display:flex;gap:8px;margin-top:14px;flex-wrap:wrap}
+.filters .f{font-size:11.5px;padding:5px 11px;border-radius:99px;border:1px solid var(--line);color:var(--ink-soft)}
+.filters .f.on{background:var(--accent-soft);color:var(--accent);border-color:var(--accent)}
+
+/* ===== future compare ===== */
+.cf-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+@media (max-width:760px){.cf-grid{grid-template-columns:1fr}}
+.cf-col .tag{font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.04em;color:var(--ink-soft);margin-bottom:8px}
+.cf-col.future .tag{color:var(--accent)}
+.delta-row{display:grid;grid-template-columns:repeat(5,1fr);gap:10px;margin-top:18px}
+@media (max-width:700px){.delta-row{grid-template-columns:repeat(2,1fr)}}
+.delta-row .d{padding:10px 12px;border:1px solid var(--line);border-radius:9px;text-align:center}
+.delta-row .d .lbl{font-size:10.5px;color:var(--ink-soft);text-transform:uppercase}
+.delta-row .d .v{font-size:16px;font-weight:600;margin-top:4px;color:var(--good)}
+.strike{text-decoration:line-through;opacity:.5}
+.newtag{background:var(--accent);color:#fff;font-size:9px;padding:1px 5px;border-radius:4px;vertical-align:middle;margin-left:4px}
+
+/* ===== step list ===== */
+.sl-head,.sl-row{display:grid;grid-template-columns:28px 1fr 120px 150px;gap:12px;align-items:center}
+.sl-head{padding:0 12px 6px;font-size:10.5px;text-transform:uppercase;letter-spacing:.05em;color:var(--ink-soft)}
+.sl-row{padding:10px 12px;border:1px solid var(--line);border-radius:8px;margin-bottom:6px;background:var(--surface)}
+.sl-row.locked{background:var(--surface-2)}
+.sl-row.outside{border:1.5px dashed var(--ink-soft);background-image:repeating-linear-gradient(45deg,transparent 0 10px,var(--surface-2) 10px 13px)}
+.sl-row.editing{box-shadow:0 0 0 3px var(--accent-soft)}
+.sl-num{font-family:'IBM Plex Mono',monospace;font-size:12px;color:var(--ink-soft);text-align:center}
+.sl-main{min-width:0;display:grid;gap:4px}
+.sl-name{font-weight:600;font-size:13.5px}
+.sl-desc{font-size:12px;color:var(--ink-soft)}
+.sl-who{font-size:12.5px}
+.sl-kind{font-size:12px;color:var(--ink-soft)}
+.sl-input{width:100%;font:inherit;font-size:13px;padding:6px 8px;border:1px solid var(--line);border-radius:6px;background:var(--surface);color:var(--ink);resize:vertical}
+.sl-seg button{padding:5px 9px;font-size:11.5px}
+.sl-insert{text-align:center;font-size:11px;color:var(--accent);border-top:1px dashed var(--accent);margin:2px 40px 8px;padding-top:2px}
+.sl-add{width:100%;font:inherit;font-size:13px;font-weight:600;color:var(--accent);background:none;border:1.5px dashed var(--accent);border-radius:8px;padding:10px;cursor:pointer}
+@media (max-width:640px){.sl-head{display:none}.sl-row{grid-template-columns:24px 1fr}.sl-who,.sl-kind,.sl-seg{grid-column:2}}
+/* ===== walk backward ===== */
+.bw-chain{display:flex;align-items:stretch;gap:8px;justify-content:flex-end;min-width:max-content}
+.bw-node{display:flex;flex-direction:column;gap:2px;padding:10px 12px;border:1px solid var(--line);border-radius:8px;background:var(--surface);min-width:118px}
+.bw-node b{font-size:13px}
+.bw-k{font-size:9.5px;text-transform:uppercase;letter-spacing:.05em;color:var(--ink-soft);font-family:'IBM Plex Mono',monospace}
+.bw-s{font-size:11px;color:var(--ink-soft)}
+.bw-node.handoff{border-color:var(--accent);border-width:1.5px}
+.bw-node.end{background:var(--good-bg);border-color:var(--good)}
+.bw-node.end .bw-k{color:var(--good)}
+.bw-node.focus{border:1.5px dashed var(--accent);background:var(--accent-soft)}
+.bw-node.focus b{color:var(--accent);font-size:18px}
+.bw-node.trigger{opacity:.5;border-style:dashed}
+.bw-arrow,.bw-gap{align-self:center;color:var(--ink-soft);font-size:14px}
+.bw-form{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+@media (max-width:500px){.bw-form{grid-template-columns:1fr}}
+.bw-form label{font-size:11px;color:var(--ink-soft);display:block;margin-bottom:3px}
+.bw-form input{width:100%;font:inherit;font-size:13px;padding:7px 9px;border:1px solid var(--line);border-radius:6px;background:var(--surface);color:var(--ink)}
+.gap-pair{display:flex;align-items:center;gap:12px;flex-wrap:wrap;padding:10px 12px;border:1px solid var(--line);border-radius:8px;font-size:13px;font-weight:600}
+.gap-q{font-weight:400;font-size:11.5px;color:var(--accent);border-top:1px dashed var(--accent);padding:0 10px}
+footer.foot{margin-top:40px;padding-top:16px;border-top:1px solid var(--line);font-size:11.5px;color:var(--ink-soft);display:flex;justify-content:space-between;flex-wrap:wrap;gap:8px}
+</style>
+</head>
+<body>
+
+
+<div class="shell">
+  <div class="topbar">
+    <div class="brand"><span class="mark"></span><h1>VSM Workshop</h1><small class="mono">UX redesign — walkthrough</small></div>
+    <div class="crumb">Value stream: <b>Checkout Service Delivery</b> · Facilitator view</div>
+  </div>
+
+  <nav class="tabs" role="tablist" aria-label="Screens">
+    <button role="tab" aria-selected="true" data-panel="p0"><span class="n">1</span>List steps</button>
+    <button role="tab" aria-selected="false" data-panel="p1"><span class="n">2</span>Time steps</button>
+    <button role="tab" aria-selected="false" data-panel="p2"><span class="n">3</span>Live map</button>
+    <button role="tab" aria-selected="false" data-panel="p3"><span class="n">4</span>Rework loops</button>
+    <button role="tab" aria-selected="false" data-panel="p4"><span class="n">5</span>Summary strip</button>
+    <button role="tab" aria-selected="false" data-panel="p6"><span class="n">6</span>Current vs future</button>
+  </nav>
+
+  <!-- ============ PANEL 0: LIST STEPS ============ -->
+  <section class="panel" data-active="true" id="p0">
+    <div class="kicker">Stage 2 of 7</div>
+    <h2 style="font-size:20px;margin-top:4px">List the steps, starting at Intake</h2>
+    <p class="lede">Intake is always first. Add as many steps as the stream really has, give each a name and a short description, and mark the ones another team does out of your sight.</p>
+
+    <div class="stage-rail" aria-hidden="true">
+      <div class="stg done"><div class="dot">✓</div><div class="lbl">Scope</div></div>
+      <div class="stg active"><div class="dot">2</div><div class="lbl">Steps</div></div>
+      <div class="stg"><div class="dot">3</div><div class="lbl">Time</div></div>
+      <div class="stg"><div class="dot">4</div><div class="lbl">Quality</div></div>
+      <div class="stg"><div class="dot">5</div><div class="lbl">Rework</div></div>
+      <div class="stg"><div class="dot">6</div><div class="lbl">Review</div></div>
+      <div class="stg"><div class="dot">7</div><div class="lbl">Future</div></div>
+    </div>
+
+    <div class="workflow-grid" style="grid-template-columns:1.6fr 1fr">
+      <div class="card pad">
+        <div class="sl-head"><span></span><span>Step</span><span>Who does it</span><span>Kind</span></div>
+
+        <div class="sl-row locked">
+          <span class="sl-num">1</span>
+          <div class="sl-main"><div class="sl-name">Intake <span class="chip" style="background:var(--surface-2);color:var(--ink-soft)">always first</span></div><div class="sl-desc">Request is logged and accepted into the team's backlog</div></div>
+          <span class="sl-who">Product owner</span>
+          <span class="sl-kind">Our team</span>
+        </div>
+        <div class="sl-row">
+          <span class="sl-num">2</span>
+          <div class="sl-main"><div class="sl-name">Refinement</div><div class="sl-desc">Story split, acceptance criteria written, sized</div></div>
+          <span class="sl-who">Dev team</span>
+          <span class="sl-kind">Our team</span>
+        </div>
+        <div class="sl-row">
+          <span class="sl-num">3</span>
+          <div class="sl-main"><div class="sl-name">Development</div><div class="sl-desc">Code and unit tests on a short-lived branch</div></div>
+          <span class="sl-who">Dev team</span>
+          <span class="sl-kind">Our team</span>
+        </div>
+        <div class="sl-insert">+ insert step here</div>
+        <div class="sl-row">
+          <span class="sl-num">4</span>
+          <div class="sl-main"><div class="sl-name">Code review</div><div class="sl-desc">Second developer reviews the pull request</div></div>
+          <span class="sl-who">Dev team</span>
+          <span class="sl-kind">Our team</span>
+        </div>
+        <div class="sl-row outside editing">
+          <span class="sl-num">5</span>
+          <div class="sl-main">
+            <input class="sl-input" id="sl-name" value="Security review" aria-label="Step name">
+            <textarea class="sl-input" id="sl-desc" rows="2" aria-label="Description">Ticket filed with InfoSec; we get an approve or reject back. We can't see when they start working on it.</textarea>
+          </div>
+          <input class="sl-input" id="sl-who" value="InfoSec" aria-label="Who does it">
+          <div class="segctl sl-seg"><button aria-pressed="false">Our team</button><button aria-pressed="true">Outside</button></div>
+        </div>
+        <div class="sl-row">
+          <span class="sl-num">6</span>
+          <div class="sl-main"><div class="sl-name">Deploy</div><div class="sl-desc">Pipeline promotes the build to production</div></div>
+          <span class="sl-who">SRE</span>
+          <span class="sl-kind">Our team</span>
+        </div>
+        <button class="sl-add">+ Add step after Deploy</button>
+        <p class="legend-note" style="margin-top:10px">Drag a row to reorder. No limit on the number of steps; the map scrolls sideways past about ten.</p>
+      </div>
+
+      <div class="card prompt-card">
+        <div class="q">What happens after Deploy? Who does it?</div>
+        <p style="color:var(--ink-soft);font-size:13px;margin:0">Keep going until work reaches the end point you set in Scope: <b style="color:var(--ink)">live in production and validated</b>.</p>
+        <div class="example"><b>Outside team step:</b> use it when another team does the work and you only see it leave and come back. You'll enter one elapsed time for it instead of splitting work time from wait time.</div>
+        <div class="row between" style="margin-top:20px">
+          <button class="btn ghost">← Scope</button>
+          <button class="btn primary">Continue to Time →</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="card pad" style="margin-top:16px">
+      <div class="section-head" style="margin-bottom:6px">
+        <div><div style="font-size:14px;font-weight:600">How an outside-team step shows on the map</div>
+        <p class="lede" style="margin-top:2px">One hatched block across the track, because nobody can say how much of it is work and how much is waiting.</p></div>
+      </div>
+      <div class="ladder-wrap">
+        <svg viewBox="0 0 900 130" width="900" height="130" role="img" aria-label="Ladder with an outside-team step drawn as a hatched block">
+          <defs><pattern id="hatch" width="7" height="7" patternUnits="userSpaceOnUse" patternTransform="rotate(45)"><rect width="7" height="7" fill="var(--surface-2)"/><line x1="0" y1="0" x2="0" y2="7" stroke="var(--ink-soft)" stroke-width="2" opacity=".45"/></pattern></defs>
+          <line x1="10" y1="70" x2="890" y2="70" stroke="var(--line)" stroke-width="2"/>
+          <rect x="10" y="20" width="200" height="50" fill="var(--neutral-bg)"/><rect x="210" y="70" width="6" height="14" fill="var(--accent)"/>
+          <rect x="216" y="50" width="40" height="20" fill="var(--neutral-bg)"/><rect x="256" y="70" width="20" height="18" fill="var(--accent)"/>
+          <rect x="276" y="44" width="80" height="26" fill="var(--neutral-bg)"/><rect x="356" y="70" width="40" height="26" fill="var(--accent)"/>
+          <rect x="396" y="14" width="240" height="56" fill="var(--neutral-bg)"/><rect x="636" y="70" width="6" height="10" fill="var(--accent)"/>
+          <rect x="642" y="34" width="120" height="72" fill="url(#hatch)" stroke="var(--ink-soft)" stroke-dasharray="4 3"/>
+          <text x="702" y="28" text-anchor="middle" font-size="10.5" font-weight="600" fill="var(--ink)" font-family="IBM Plex Mono">Security review</text>
+          <text x="702" y="122" text-anchor="middle" font-size="10" fill="var(--ink-soft)" font-family="IBM Plex Mono">3d elapsed · split unknown</text>
+          <rect x="762" y="58" width="100" height="12" fill="var(--neutral-bg)"/><rect x="862" y="70" width="4" height="8" fill="var(--accent)"/>
+          <text x="110" y="50" text-anchor="middle" font-size="10" fill="var(--ink-soft)" font-family="IBM Plex Mono">Intake</text>
+          <text x="516" y="46" text-anchor="middle" font-size="10" fill="var(--ink-soft)" font-family="IBM Plex Mono">Code review</text>
+          <text x="812" y="52" text-anchor="middle" font-size="10" fill="var(--ink-soft)" font-family="IBM Plex Mono">Deploy</text>
+        </svg>
+      </div>
+      <div class="callout-pair" style="margin-top:10px">
+        <div class="callout" style="background:var(--surface-2)">
+          <span class="ic mono">FE</span>
+          <div class="tx"><b class="mono">8.3% – 22.1%</b><span>Flow efficiency becomes a range: the low end counts the outside step as all wait, the high end as all work.</span></div>
+        </div>
+        <div class="callout" style="background:var(--surface-2)">
+          <span class="ic mono">LT</span>
+          <div class="tx"><b class="mono">21.8 days</b><span>Lead time stays exact. Elapsed time is known even when the split isn't.</span></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ PANEL 1: GUIDED SESSION ============ -->
+  <section class="panel" id="p1">
+    <div class="kicker">Stage 3 of 7</div>
+    <h2 style="font-size:20px;margin-top:4px">Time each step</h2>
+    <p class="lede">Replaces a blank canvas with one question at a time. The team can't get lost, and the map behind them is already taking shape.</p>
+
+    <div class="stage-rail" aria-hidden="true">
+      <div class="stg done"><div class="dot">✓</div><div class="lbl">Scope</div></div>
+      <div class="stg done"><div class="dot">✓</div><div class="lbl">Steps</div></div>
+      <div class="stg active"><div class="dot">3</div><div class="lbl">Time</div></div>
+      <div class="stg"><div class="dot">4</div><div class="lbl">Quality</div></div>
+      <div class="stg"><div class="dot">5</div><div class="lbl">Rework</div></div>
+      <div class="stg"><div class="dot">6</div><div class="lbl">Review</div></div>
+      <div class="stg"><div class="dot">7</div><div class="lbl">Future</div></div>
+    </div>
+
+    <div class="workflow-grid">
+      <div class="card prompt-card">
+        <div class="q">How long does each step actually take?</div>
+        <p style="color:var(--ink-soft);font-size:13px;margin:0">Process time is hands-on work. Wait time is how long it typically sits before someone starts. Enter a typical value — min/max are optional.</p>
+        <div class="example"><b>Example:</b> "Code review" might have 20 min of actual reviewing (process) but sit in someone's queue for 2 days first (wait).</div>
+        <div class="row between" style="margin-top:20px">
+          <button class="btn ghost">← Back to Steps</button>
+          <button class="btn primary">Continue to Quality →</button>
+        </div>
+        <p style="font-size:11px;color:var(--ink-soft);margin-top:8px">Next unlocks once every step has a process time and a wait time.</p>
+      </div>
+
+      <div class="card pad">
+        <div class="field-row header"><span>Step</span><span>Process time (typ)</span><span>Wait time (typ)</span><span>Source</span></div>
+
+        <div class="field-row">
+          <div><span class="step-name">Intake</span></div>
+          <div><label>minutes</label><input value="60"></div>
+          <div><label>minutes</label><input value="2400"></div>
+          <div><span class="chip meas">Measured</span></div>
+        </div>
+        <div class="field-row">
+          <div><span class="step-name">Refinement</span></div>
+          <div><label>minutes</label><input value="240"></div>
+          <div><label>minutes</label><input value="480"></div>
+          <div><span class="chip meas">Measured</span></div>
+        </div>
+        <div class="field-row">
+          <div><span class="step-name">Development</span></div>
+          <div><label>minutes</label><input value="480"></div>
+          <div><label>minutes</label><input value="960"></div>
+          <div><span class="chip meas">Measured</span></div>
+        </div>
+        <div class="field-row" style="border-color:var(--accent);background:var(--accent-soft)">
+          <div><span class="step-name">Code review</span></div>
+          <div><label>minutes</label><input value="60"></div>
+          <div><label>minutes</label><input value=""></div>
+          <div><span class="chip est">Estimate</span></div>
+        </div>
+        <div class="field-row">
+          <div><span class="step-name">Security review</span><div style="font-size:10.5px;color:var(--ink-soft)">InfoSec · outside</div></div>
+          <div style="grid-column:span 2"><label>elapsed, submitted → returned</label><input value="1440" style="background-image:repeating-linear-gradient(45deg,transparent 0 6px,var(--surface-2) 6px 9px)"></div>
+          <div><span class="chip meas">Measured</span></div>
+        </div>
+        <div class="field-row" style="opacity:.55">
+          <div><span class="step-name">Deploy</span></div>
+          <div><label>minutes</label><input value=""></div>
+          <div><label>minutes</label><input value=""></div>
+          <div><span class="chip est">Estimate</span></div>
+        </div>
+
+        <div class="mini-ladder-label"><span>Map redraws live as you type</span><span class="mono">Flow efficiency so far: 11.1%</span></div>
+        <svg viewBox="0 0 900 46" width="100%" height="46" role="img" aria-label="Partial time ladder preview">
+          <line x1="0" y1="30" x2="900" y2="30" stroke="var(--line)" stroke-width="2"/>
+          <rect x="0" y="6" width="239" height="24" fill="var(--neutral-bg)"/>
+          <rect x="239" y="24" width="6" height="12" fill="var(--accent)"/>
+          <rect x="245" y="14" width="48" height="16" fill="var(--neutral-bg)"/>
+          <rect x="293" y="24" width="24" height="12" fill="var(--accent)"/>
+          <rect x="317" y="14" width="96" height="16" fill="var(--neutral-bg)"/>
+          <rect x="413" y="24" width="48" height="12" fill="var(--accent)"/>
+          <rect x="461" y="20" width="14" height="10" stroke-dasharray="3 2" stroke="var(--ink-soft)" fill="none"/>
+          <rect x="475" y="20" width="425" height="10" fill="none"/>
+          <text x="700" y="15" font-size="10" fill="var(--ink-soft)" font-family="IBM Plex Mono">— awaiting Deploy —</text>
+        </svg>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ PANEL 2: LIVE MAP ============ -->
+  <section class="panel" id="p2">
+    <div class="kicker">Current state · live map</div>
+    <h2 style="font-size:20px;margin-top:4px">One ladder, drawn to scale</h2>
+    <p class="lede">Wait rises above the track, process sinks below it. Rework loops hang underneath, each labelled with the share of items that go around it. The shape tells the story before any number does: this stream is almost all wait.</p>
+
+    <div class="card pad">
+      <div class="map-toolbar">
+        <div class="segctl"><button aria-pressed="true">Map</button><button aria-pressed="false">Table</button></div>
+        <div class="segctl"><button aria-pressed="true">Scaled</button><button aria-pressed="false">Equal width</button></div>
+      </div>
+
+      <div class="ladder-wrap">
+        <svg viewBox="0 0 980 250" width="980" height="250" role="img" aria-label="Time ladder for Checkout Service Delivery with rework loop">
+          <!-- baseline -->
+          <line x1="20" y1="120" x2="960" y2="120" stroke="var(--line)" stroke-width="2"/>
+          <!-- step 1 Intake -->
+          <g>
+            <rect x="20" y="60" width="255" height="60" fill="var(--neutral-bg)"/>
+            <rect x="275" y="104" width="6" height="16" fill="var(--accent)"/>
+            <text x="147" y="90" text-anchor="middle" font-size="11" fill="var(--ink-soft)" font-family="IBM Plex Mono">wait 40h</text>
+            <rect x="20" y="130" width="80" height="34" rx="6" fill="var(--surface)" stroke="var(--line)"/>
+            <text x="60" y="144" text-anchor="middle" font-size="11" font-weight="600" fill="var(--ink)">Intake</text>
+            <text x="60" y="158" text-anchor="middle" font-size="9.5" fill="var(--ink-soft)" font-family="IBM Plex Mono">PT 1h · 100%</text>
+          </g>
+          <!-- step 2 Refinement -->
+          <g>
+            <rect x="281" y="96" width="51" height="24" fill="var(--neutral-bg)"/>
+            <rect x="332" y="96" width="26" height="24" fill="var(--accent)"/>
+            <rect x="110" y="130" width="90" height="34" rx="6" fill="var(--surface)" stroke="var(--line)"/>
+            <text x="155" y="144" text-anchor="middle" font-size="11" font-weight="600">Refinement</text>
+            <text x="155" y="158" text-anchor="middle" font-size="9.5" fill="var(--ink-soft)" font-family="IBM Plex Mono">PT 4h · 100%</text>
+          </g>
+          <!-- step 3 Development -->
+          <g>
+            <rect x="358" y="88" width="102" height="32" fill="var(--neutral-bg)"/>
+            <rect x="460" y="88" width="51" height="32" fill="var(--accent)"/>
+            <rect x="225" y="130" width="100" height="34" rx="6" fill="var(--surface)" stroke="var(--line)"/>
+            <text x="275" y="144" text-anchor="middle" font-size="11" font-weight="600">Development</text>
+            <text x="275" y="158" text-anchor="middle" font-size="9.5" fill="var(--ink-soft)" font-family="IBM Plex Mono">PT 8h · 100%</text>
+          </g>
+          <!-- step 4 Code review — flagged: largest wait + lowest CA -->
+          <g>
+            <rect x="511" y="50" width="307" height="70" fill="var(--warn-bg)"/>
+            <rect x="818" y="112" width="6" height="8" fill="var(--accent)"/>
+            <text x="664" y="75" text-anchor="middle" font-size="11" font-weight="600" fill="var(--warn)" font-family="IBM Plex Mono">⚑ largest wait · 48h</text>
+            <rect x="345" y="130" width="120" height="34" rx="6" fill="var(--warn-bg)" stroke="var(--warn)" stroke-width="1.5"/>
+            <text x="405" y="144" text-anchor="middle" font-size="11" font-weight="600">Code review</text>
+            <text x="405" y="158" text-anchor="middle" font-size="9.5" fill="var(--warn)" font-family="IBM Plex Mono">PT 1h · ⚑ 80%</text>
+          </g>
+          <!-- step 5 Deploy -->
+          <g>
+            <rect x="824" y="106" width="127" height="14" fill="var(--neutral-bg)"/>
+            <rect x="951" y="106" width="9" height="14" fill="var(--accent)"/>
+            <rect x="485" y="130" width="80" height="34" rx="6" fill="var(--surface)" stroke="var(--accent)" stroke-width="1.5" stroke-dasharray="4 3"/>
+            <text x="525" y="144" text-anchor="middle" font-size="11" font-weight="600">Deploy</text>
+            <text x="525" y="158" text-anchor="middle" font-size="9.5" fill="var(--ink-soft)" font-family="IBM Plex Mono">handoff · SRE</text>
+          </g>
+          <!-- rework loop: Code review -> Intake -->
+          <defs><marker id="arrow-map" markerWidth="8" markerHeight="8" refX="4" refY="4" orient="auto"><path d="M0,0 L8,4 L0,8 z" fill="var(--warn)"/></marker></defs>
+          <path d="M 405 164 C 405 238, 60 238, 60 170" fill="none" stroke="var(--warn)" stroke-width="2.5" marker-end="url(#arrow-map)"/>
+          <circle cx="405" cy="164" r="3" fill="var(--warn)"/>
+          <rect x="142" y="208" width="186" height="34" rx="7" fill="var(--surface)" stroke="var(--warn)"/>
+          <text x="235" y="222" text-anchor="middle" font-size="10.5" font-weight="600" fill="var(--warn)" font-family="IBM Plex Mono">depth 3 · 20% of items</text>
+          <text x="235" y="235" text-anchor="middle" font-size="10" fill="var(--ink-soft)" font-family="IBM Plex Mono">+1.9d avg per item</text>
+        </svg>
+      </div>
+
+      <div class="flagline">
+        <div class="flag"><span class="swatch" style="background:var(--neutral-bg);border:1px solid var(--line)"></span>waiting</div>
+        <div class="flag"><span class="swatch" style="background:var(--accent)"></span>process</div>
+        <div class="flag"><span class="swatch" style="background:var(--warn-bg);border:1px solid var(--warn)"></span>flagged step</div>
+        <div class="flag"><span class="swatch" style="background:var(--warn);height:3px"></span>rework loop · % of items that take it</div>
+        <div class="flag" style="border-left:1px solid var(--line);padding-left:16px">Accent outline = handoff to another team</div>
+        <div class="flag">Dashed outline = incomplete field</div>
+      </div>
+      <p class="legend-note">Every box and label above also exists as a plain row in <b>Table view</b> — same data, same edits, no drawing required. Streams past ~10 steps scroll horizontally with this toolbar pinned.</p>
+    </div>
+  </section>
+
+  <!-- ============ PANEL 3: REWORK LOOPS ============ -->
+  <section class="panel" id="p3">
+    <div class="kicker">Rework · current state</div>
+    <h2 style="font-size:20px;margin-top:4px">Where failure sends work backward</h2>
+    <p class="lede">Loops drop under the same ladder so the team reads distance and cost together — how far back, and how much time that trip actually adds.</p>
+
+    <div class="card pad">
+      <div class="map-toolbar">
+        <div class="row" style="gap:14px;font-size:12px;color:var(--ink-soft)">
+          <span class="row" style="gap:6px"><span style="width:8px;height:8px;border-radius:50%;background:var(--neutral);display:inline-block"></span>depth 1</span>
+          <span class="row" style="gap:6px"><span style="width:8px;height:8px;border-radius:50%;background:var(--warn);display:inline-block"></span>depth 2–3</span>
+          <span class="row" style="gap:6px"><span style="width:8px;height:8px;border-radius:50%;background:var(--crit);display:inline-block"></span>depth 4+</span>
+        </div>
+        <label class="row" style="gap:6px;font-size:12px;color:var(--ink-soft)"><input type="checkbox" checked style="accent-color:var(--accent)">Shade ladder under loop</label>
+      </div>
+
+      <div class="ladder-wrap">
+        <svg viewBox="0 0 980 220" width="980" height="220" role="img" aria-label="Rework loop from Code review back to Intake">
+          <line x1="20" y1="120" x2="960" y2="120" stroke="var(--line)" stroke-width="2"/>
+          <rect x="20" y="130" width="80" height="34" rx="6" fill="var(--surface)" stroke="var(--line)"/>
+          <text x="60" y="144" text-anchor="middle" font-size="11" font-weight="600">Intake</text>
+          <text x="60" y="158" text-anchor="middle" font-size="9" fill="var(--ink-soft)" font-family="IBM Plex Mono">reject 0%</text>
+          <rect x="110" y="130" width="90" height="34" rx="6" fill="var(--surface)" stroke="var(--line)"/>
+          <text x="155" y="144" text-anchor="middle" font-size="11" font-weight="600">Refinement</text>
+          <text x="155" y="158" text-anchor="middle" font-size="9" fill="var(--ink-soft)" font-family="IBM Plex Mono">reject 0%</text>
+          <rect x="225" y="130" width="100" height="34" rx="6" fill="var(--surface)" stroke="var(--line)"/>
+          <text x="275" y="144" text-anchor="middle" font-size="11" font-weight="600">Development</text>
+          <text x="275" y="158" text-anchor="middle" font-size="9" fill="var(--ink-soft)" font-family="IBM Plex Mono">reject 0%</text>
+          <rect x="345" y="130" width="120" height="34" rx="6" fill="var(--warn-bg)" stroke="var(--warn)" stroke-width="1.5"/>
+          <text x="405" y="144" text-anchor="middle" font-size="11" font-weight="600">Code review</text>
+          <text x="405" y="158" text-anchor="middle" font-size="9" fill="var(--warn)" font-family="IBM Plex Mono">reject 20%</text>
+          <rect x="485" y="130" width="80" height="34" rx="6" fill="var(--surface)" stroke="var(--line)"/>
+          <text x="525" y="144" text-anchor="middle" font-size="11" font-weight="600">Deploy</text>
+
+          <!-- shaded ladder span the loop repeats -->
+          <rect x="20" y="130" width="325" height="34" fill="var(--warn)" opacity=".08"/>
+
+          <!-- loop arc depth 3 -->
+          <path d="M 405 130 C 405 40, 60 40, 60 130" fill="none" stroke="var(--warn)" stroke-width="2.5" marker-end="url(#arrow)"/>
+          <circle cx="405" cy="130" r="3" fill="var(--warn)"/>
+          <rect x="150" y="34" width="180" height="34" rx="7" fill="var(--surface)" stroke="var(--warn)"/>
+          <text x="240" y="48" text-anchor="middle" font-size="10.5" font-weight="600" fill="var(--warn)" font-family="IBM Plex Mono">depth 3 · 20% of items</text>
+          <text x="240" y="61" text-anchor="middle" font-size="10" fill="var(--ink-soft)" font-family="IBM Plex Mono">R 9.6d · +1.9d avg/item</text>
+          <defs><marker id="arrow" markerWidth="8" markerHeight="8" refX="4" refY="4" orient="auto"><path d="M0,0 L8,4 L0,8 z" fill="var(--warn)"/></marker></defs>
+        </svg>
+      </div>
+
+      <table class="rework-table">
+        <thead><tr><th>Path</th><th>Depth</th><th>Items that take it</th><th>Share of rejects</th><th>Rework time R</th><th>Added per item</th></tr></thead>
+        <tbody>
+          <tr>
+            <td>Code review → Intake</td>
+            <td><span class="depth-tag"><span class="dot" style="background:var(--warn)"></span>3</span></td>
+            <td class="mono">20%</td>
+            <td class="mono">100%</td>
+            <td class="mono">9.6 days</td>
+            <td class="mono" style="color:var(--warn);font-weight:600">+1.9 days</td>
+          </tr>
+        </tbody>
+      </table>
+      <p class="legend-note">Sorted worst-first — this is the order the team should attack loops in. Rolled %C/A for the stream: <b class="mono">80.0%</b>.</p>
+    </div>
+  </section>
+
+  <!-- ============ PANEL 4: SUMMARY STRIP ============ -->
+  <section class="panel" id="p4">
+    <div class="kicker">Summary strip</div>
+    <h2 style="font-size:20px;margin-top:4px">One strip under the map, not eight equal tiles</h2>
+    <p class="lede">The old dashboard gave every number the same weight, so nothing stood out. This strip leads with the one metric the team is here for, and puts the rest in order of how they'd ask for it out loud.</p>
+
+    <div class="card pad">
+      <div class="hero-metric">
+        <div class="num">9.6<small>%</small></div>
+        <div class="cap"><b style="color:var(--ink)">Flow efficiency</b> — 14.5h of hands-on work inside an 18.8 working-day lead time. Above 25% is healthy; this stream is mostly waiting.</div>
+      </div>
+
+      <div class="stat-row">
+        <div class="stat"><div class="lbl">Lead time</div><div class="val mono">18.8 <span style="font-size:12px;color:var(--ink-soft)">days</span></div></div>
+        <div class="stat"><div class="lbl">Process time</div><div class="val mono">1.8 <span style="font-size:12px;color:var(--ink-soft)">days</span></div></div>
+        <div class="stat"><div class="lbl">Rolled %C/A</div><div class="val mono">80.0%</div></div>
+        <div class="stat"><div class="lbl">Handoffs</div><div class="val mono">1</div></div>
+      </div>
+
+      <div class="compare-pair">
+        <div><div class="t">First-pass lead time</div><div class="v mono">18.8 days</div><div class="d">if nothing were ever sent back</div></div>
+        <div style="border-right:1px solid var(--line)"><div class="t">Time on rework</div><div class="v mono" style="color:var(--warn)">+1.9 days</div><div class="d">average per item, all loops</div></div>
+        <div><div class="t">Rework-adjusted lead time</div><div class="v mono" style="color:var(--warn)">20.7 days</div><div class="d">what the team actually feels</div></div>
+      </div>
+      <p class="legend-note">Assumes no single rework loop is repeated more than once for an individual work item. Time on rework = Σ (share of items taking the loop × loop time); here 20% × 9.6 days.</p>
+
+      <div class="callout-pair">
+        <div class="callout warn">
+          <span class="ic mono">⚑ WAIT</span>
+          <div class="tx"><b>Code review — 48h wait</b><span>The single largest wait in the stream</span></div>
+        </div>
+        <div class="callout warn">
+          <span class="ic mono">⚑ %C/A</span>
+          <div class="tx"><b>Code review — 80%</b><span>The lowest quality score; feeds the rework loop on the previous tab</span></div>
+        </div>
+      </div>
+      <p class="legend-note">Both flags point at the same step the map and the rework table already flagged — the three views never disagree about where the problem is.</p>
+    </div>
+  </section>
+
+  <!-- ============ PANEL 6: CURRENT VS FUTURE ============ -->
+  <section class="panel" id="p6">
+    <div class="kicker">Current vs future</div>
+    <h2 style="font-size:20px;margin-top:4px">Same scale, side by side</h2>
+    <p class="lede">The future state is a copy of the current one with the two changes the team chose in Review — struck-through steps removed, new ones marked, both ladders on the same time axis.</p>
+
+    <div class="cf-grid">
+      <div class="card pad cf-col">
+        <div class="tag">Current state</div>
+        <svg viewBox="0 0 460 90" width="100%" height="90" role="img" aria-label="Current state ladder">
+          <line x1="10" y1="60" x2="450" y2="60" stroke="var(--line)" stroke-width="2"/>
+          <rect x="10" y="30" width="118" height="30" fill="var(--neutral-bg)"/>
+          <rect x="128" y="24" width="24" height="12" fill="var(--neutral-bg)"/>
+          <rect x="152" y="16" width="47" height="20" fill="var(--neutral-bg)"/>
+          <rect x="199" y="22" width="141" height="32" fill="var(--warn-bg)"/>
+          <rect x="340" y="46" width="66" height="8" fill="var(--neutral-bg)"/>
+          <text x="69" y="48" text-anchor="middle" font-size="9" fill="var(--ink-soft)">Intake</text>
+          <text x="270" y="42" text-anchor="middle" font-size="9" font-weight="600" fill="var(--warn)">Code review · 80%</text>
+        </svg>
+        <div class="stat-row" style="grid-template-columns:repeat(2,1fr)">
+          <div class="stat"><div class="lbl">Lead time</div><div class="val mono">18.8d</div></div>
+          <div class="stat"><div class="lbl">Rolled %C/A</div><div class="val mono">80.0%</div></div>
+        </div>
+      </div>
+
+      <div class="card pad cf-col future">
+        <div class="tag">Future state — "90-day target"</div>
+        <svg viewBox="0 0 460 90" width="100%" height="90" role="img" aria-label="Future state ladder">
+          <line x1="10" y1="60" x2="450" y2="60" stroke="var(--line)" stroke-width="2"/>
+          <rect x="10" y="38" width="66" height="22" fill="var(--neutral-bg)"/>
+          <rect x="76" y="24" width="24" height="12" fill="var(--neutral-bg)"/>
+          <rect x="100" y="16" width="47" height="20" fill="var(--neutral-bg)"/>
+          <rect x="147" y="40" width="70" height="20" fill="var(--good-bg)"/>
+          <rect x="217" y="46" width="70" height="8" fill="var(--accent-soft)" stroke="var(--accent)" stroke-dasharray="3 2"/>
+          <rect x="287" y="46" width="60" height="8" fill="var(--neutral-bg)"/>
+          <text x="43" y="52" text-anchor="middle" font-size="9" fill="var(--ink-soft)">Intake</text>
+          <text x="182" y="36" text-anchor="middle" font-size="9" font-weight="600" fill="var(--good)">Code review · 95%</text>
+          <text x="252" y="40" text-anchor="middle" font-size="8.5" fill="var(--accent)">Auto regression<tspan dx="2" font-size="7">NEW</tspan></text>
+        </svg>
+        <div class="stat-row" style="grid-template-columns:repeat(2,1fr)">
+          <div class="stat"><div class="lbl">Lead time</div><div class="val mono" style="color:var(--good)">12.8d</div></div>
+          <div class="stat"><div class="lbl">Rolled %C/A</div><div class="val mono" style="color:var(--good)">95.0%</div></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="card pad" style="margin-top:16px">
+      <div style="font-size:12px;color:var(--ink-soft);margin-bottom:4px">Removed: <span class="strike">manual regression pass</span> · Added: <span class="newtag">NEW</span> Automated regression (SRE)</div>
+      <div class="delta-row">
+        <div class="d"><div class="lbl">Lead time</div><div class="v">−32%</div></div>
+        <div class="d"><div class="lbl">Flow efficiency</div><div class="v">+6.4pt</div></div>
+        <div class="d"><div class="lbl">Rolled %C/A</div><div class="v">+15pt</div></div>
+        <div class="d"><div class="lbl">Rework-adjusted LT</div><div class="v">−28%</div></div>
+        <div class="d"><div class="lbl">Handoffs</div><div class="v">−1</div></div>
+      </div>
+    </div>
+  </section>
+
+  <footer class="foot">
+    <span>VSM Workshop — UX redesign mockup. Static mockup, no live data. See docs/ux/guided-mapping-ux.md</span>
+    <span class="mono">Reference figures verify against the spec's own acceptance criteria (LT 9,030 min · FE 9.6% · rolled %C/A 80.0%)</span>
+  </footer>
+</div>
+
+<script>
+(function(){
+  var tabs = document.querySelectorAll('nav.tabs button');
+  var panels = document.querySelectorAll('.panel');
+  tabs.forEach(function(t){
+    t.addEventListener('click', function(){
+      tabs.forEach(function(x){ x.setAttribute('aria-selected','false') });
+      t.setAttribute('aria-selected','true');
+      panels.forEach(function(p){ p.removeAttribute('data-active') });
+      document.getElementById(t.dataset.panel).setAttribute('data-active','true');
+    });
+  });
+  // cosmetic segmented-control toggles (non-functional beyond visual state)
+  document.querySelectorAll('.segctl').forEach(function(g){
+    g.querySelectorAll('button').forEach(function(b){
+      b.addEventListener('click', function(){
+        g.querySelectorAll('button').forEach(function(x){ x.setAttribute('aria-pressed','false') });
+        b.setAttribute('aria-pressed','true');
+      });
+    });
+  });
+  // keep the backward chain anchored on the end point when it overflows
+  document.querySelectorAll('.bw-chain').forEach(function(c){
+    var w = c.parentElement; w.scrollLeft = w.scrollWidth;
+  });
+  document.querySelectorAll('.filters').forEach(function(g){
+    g.querySelectorAll('.f').forEach(function(b){
+      b.addEventListener('click', function(){
+        g.querySelectorAll('.f').forEach(function(x){ x.classList.remove('on') });
+        b.classList.add('on');
+      });
+    });
+  });
+})();
+</script>
+
+</body>
+</html>

@@ -5,7 +5,11 @@
  * Steps are placed right-to-left to encourage the canonical VSM practice
  * of starting from production/delivery and mapping backwards.
  */
-import { CANVAS_RIGHT_X, CANVAS_STEP_SPACING, CANVAS_Y } from '../../data/canvasConfig.js'
+import {
+  CANVAS_RIGHT_X,
+  CANVAS_STEP_SPACING,
+  CANVAS_Y,
+} from '../../data/canvasConfig.js'
 
 /**
  * Calculate the default canvas position for a new step

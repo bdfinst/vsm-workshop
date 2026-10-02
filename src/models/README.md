@@ -7,6 +7,7 @@ Factory functions for creating domain objects.
 This project uses **functional programming** exclusively - NO ES6 classes allowed.
 
 Factory functions provide:
+
 - Encapsulation via closures
 - No `this` binding issues
 - Easy composition
@@ -26,7 +27,7 @@ import { createStep } from './models/StepFactory'
 const step = createStep({
   name: 'Development',
   processTime: 60,
-  leadTime: 240
+  leadTime: 240,
 })
 // Returns: { id: 'generated', name: 'Development', processTime: 60, ... }
 ```
@@ -40,7 +41,7 @@ export const createEntity = ({
   // Required params
   requiredField,
   // Optional params with defaults
-  optionalField = defaultValue
+  optionalField = defaultValue,
 }) => ({
   // Generate unique ID
   id: generateId(),
@@ -48,7 +49,7 @@ export const createEntity = ({
   requiredField,
   optionalField,
   // Add computed fields
-  createdAt: Date.now()
+  createdAt: Date.now(),
 })
 ```
 
@@ -57,6 +58,7 @@ export const createEntity = ({
 All models follow VSM domain rules (see `.claude/rules/vsm-domain.md`):
 
 ### Step Object
+
 ```javascript
 {
   id: string,              // Auto-generated unique ID
@@ -74,6 +76,7 @@ All models follow VSM domain rules (see `.claude/rules/vsm-domain.md`):
 ```
 
 ### Connection Object
+
 ```javascript
 {
   id: string,              // Auto-generated unique ID
