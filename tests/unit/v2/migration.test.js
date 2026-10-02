@@ -3,7 +3,10 @@ import { migrateV1ToV2 } from '../../../src/utils/migration/v1ToV2.js'
 import { loadWorkspace } from '../../../src/utils/migration/loadWorkspace.js'
 import { vsmLocalStorageRepo } from '../../../src/infrastructure/VsmLocalStorageRepository.js'
 import { createMemoryWorkspaceRepository } from '../../../src/persistence/v2/memoryWorkspaceRepository.js'
-import { serializeWorkspace } from '../../../src/persistence/v2/workspaceCodec.js'
+import {
+  parseWorkspace,
+  serializeWorkspace,
+} from '../../../src/persistence/v2/workspaceCodec.js'
 import { createWorkspace } from '../../../src/models/v2/workspace.js'
 import {
   exportValueStream,
@@ -599,7 +602,9 @@ describe('Loading the saved map', () => {
 
     const result = await loadWorkspace(repo, vsmLocalStorageRepo)
 
-    expect(result.unreadable).toEqual(anyReason)
+    expect(result.unreadable).toEqual({
+      reason: 'This file was made by a newer version of the app',
+    })
     expect(await repo.load()).toBe(raw)
     expect(await repo.loadBackup()).toBe(raw)
   })
@@ -684,6 +689,17 @@ describe('Loading the saved map', () => {
 // The workspace the import scenarios start from: one stream, "Checkout".
 const checkout = () => referenceStream({ name: 'Checkout' })
 
+// The streams read back from a workspace file holding the existing stream and
+// the imported one. A duplicate id would make the file unreadable.
+const savedStreamsAfterImport = (existing, imported) => {
+  const text = serializeWorkspace(
+    createWorkspace({ streams: [existing, imported] })
+  )
+  const reread = parseWorkspace(text)
+  expect(reread.ok).toBe(true)
+  return reread.workspace.streams
+}
+
 describe('Importing a value stream file', () => {
   it('Import a v1 JSON file', () => {
     const existing = checkout()
@@ -699,7 +715,7 @@ describe('Importing a value stream file', () => {
     expect(
       calculateTotals(currentVersion(result.stream).steps).leadTime.typ
     ).toBe(240)
-    expect(result.stream.id).not.toBe(existing.id)
+    expect(savedStreamsAfterImport(existing, result.stream)).toHaveLength(2)
     expect(existing).toEqual(before)
   })
 
@@ -710,7 +726,9 @@ describe('Importing a value stream file', () => {
     const result = importValueStream(exportValueStream(existing), [existing.id])
 
     expect(result.ok).toBe(true)
-    expect(result.stream.id).not.toBe(existing.id)
+    const streams = savedStreamsAfterImport(existing, result.stream)
+    expect(streams).toHaveLength(2)
+    expect(new Set(streams.map((s) => s.id)).size).toBe(2)
     expect({ ...result.stream, id: existing.id }).toEqual(existing)
     expect(existing).toEqual(before)
   })
@@ -739,6 +757,24 @@ describe('Importing a value stream file', () => {
       expect(existing).toEqual(before)
     }
   )
+
+  it.each([
+    ['is missing', undefined],
+    ['is 0', 0],
+    ['is negative', -8],
+    ['is not finite', null], // JSON writes Infinity and NaN as null
+    ['is text', '8'],
+  ])('rejects a v2 file whose workdayHours %s', (_problem, hours) => {
+    const existing = checkout()
+    const file = JSON.stringify({ ...checkout(), workdayHours: hours })
+
+    const result = importValueStream(file, [existing.id])
+
+    expect(result).toEqual({
+      ok: false,
+      error: "This isn't a VSM value stream file",
+    })
+  })
 
   it('JSON v2 export round-trips', () => {
     const exported = withFutureState(checkout())

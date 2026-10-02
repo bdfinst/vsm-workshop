@@ -19,6 +19,9 @@ export const NOT_A_WORKSPACE_MESSAGE = "This isn't a VSM workspace file"
 
 const STREAM_SCHEMA_VERSION = 2
 
+const isPositiveNumber = (value) =>
+  typeof value === 'number' && Number.isFinite(value) && value > 0
+
 const isValidVersions = (versions, activeVersionId) =>
   Array.isArray(versions) &&
   versions.length > 0 &&
@@ -39,6 +42,7 @@ export const isValidStream = (stream) =>
   stream.schemaVersion === STREAM_SCHEMA_VERSION &&
   typeof stream.id === 'string' &&
   typeof stream.name === 'string' &&
+  isPositiveNumber(stream.workdayHours) &&
   isRecord(stream.session) &&
   isValidVersions(stream.versions, stream.activeVersionId)
 

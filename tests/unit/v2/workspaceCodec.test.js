@@ -12,7 +12,6 @@ import {
   referenceReworkStream,
   referenceSteps,
   referenceStream,
-  refused,
   streamOf,
   versionOf,
   withFutureState,
@@ -20,6 +19,12 @@ import {
 } from './fixtures.js'
 
 const withoutSavedAt = ({ savedAt: _savedAt, ...rest }) => rest
+
+// The words the plan's "Workspace file is refused" scenarios quote.
+const INVALID_JSON = "This file isn't valid JSON"
+const NOT_A_WORKSPACE = "This isn't a VSM workspace file"
+const NEWER_VERSION = 'This file was made by a newer version of the app'
+const refusedWith = (error) => ({ ok: false, error })
 
 describe('Workspace file round-trips', () => {
   it('Workspace file round-trips', () => {
@@ -66,34 +71,44 @@ describe('Workspace file round-trips', () => {
 
 describe('Workspace file is refused', () => {
   it.each([
-    ['is not valid JSON', 'not json {'],
-    ['is empty', ''],
-    ['is valid JSON but not a workspace', JSON.stringify({ hello: 'world' })],
-    ['is a JSON list', '[]'],
-    ['is JSON null', 'null'],
+    ['is not valid JSON', 'not json {', INVALID_JSON],
+    ['is empty', '', INVALID_JSON],
+    [
+      'is valid JSON but not a workspace',
+      JSON.stringify({ hello: 'world' }),
+      NOT_A_WORKSPACE,
+    ],
+    ['is a JSON list', '[]', NOT_A_WORKSPACE],
+    ['is JSON null', 'null', NOT_A_WORKSPACE],
     [
       'has workspace schemaVersion 9',
       JSON.stringify({ ...workspaceOf([]), schemaVersion: 9 }),
+      NEWER_VERSION,
     ],
     [
       'has workspace schemaVersion 0',
       JSON.stringify({ ...workspaceOf([]), schemaVersion: 0 }),
+      NOT_A_WORKSPACE,
     ],
     [
       'has another format',
       JSON.stringify({ ...workspaceOf([]), format: 'something-else' }),
+      NOT_A_WORKSPACE,
     ],
     [
       'has no stream list',
       JSON.stringify({ ...workspaceOf([]), streams: undefined }),
+      NOT_A_WORKSPACE,
     ],
     [
       'has a non-numeric revision',
       JSON.stringify({ ...workspaceOf([]), revision: 'three' }),
+      NOT_A_WORKSPACE,
     ],
     [
       'has an active stream id that is not text',
       JSON.stringify({ ...workspaceOf([]), activeStreamId: 7 }),
+      NOT_A_WORKSPACE,
     ],
     [
       'has an active stream id that matches no stream',
@@ -101,13 +116,26 @@ describe('Workspace file is refused', () => {
         ...workspaceOf([referenceStream()]),
         activeStreamId: 'missing',
       }),
+      NOT_A_WORKSPACE,
     ],
     [
       'has an active stream id but no streams',
       JSON.stringify({ ...workspaceOf([]), activeStreamId: 'a' }),
+      NOT_A_WORKSPACE,
     ],
-  ])('%s', (_problem, text) => {
-    expect(parseWorkspace(text)).toEqual(refused)
+  ])('%s', (_problem, text, message) => {
+    expect(parseWorkspace(text)).toEqual(refusedWith(message))
+  })
+
+  it('reports a newer workspace version before judging anything else about it', () => {
+    const text = JSON.stringify({
+      ...workspaceOf([]),
+      schemaVersion: 9,
+      streams: 'unreadable by this version',
+      revision: 'three',
+    })
+
+    expect(parseWorkspace(text)).toEqual(refusedWith(NEWER_VERSION))
   })
 
   it('A workspace with one invalid value stream is refused whole', () => {
@@ -122,7 +150,7 @@ describe('Workspace file is refused', () => {
       serializeWorkspace(workspaceOf([alpha, beta]))
     )
 
-    expect(result).toEqual(refused)
+    expect(result).toEqual(refusedWith(NOT_A_WORKSPACE))
     expect(result.workspace).toBeUndefined()
   })
 
@@ -182,7 +210,23 @@ describe('Workspace file is refused', () => {
       JSON.stringify(workspaceOf([referenceStream({ name: 'Ok' }), broken]))
     )
 
-    expect(result).toEqual(refused)
+    expect(result).toEqual(refusedWith(NOT_A_WORKSPACE))
+  })
+
+  it.each([
+    ['is missing', undefined],
+    ['is 0', 0],
+    ['is negative', -8],
+    ['is not finite', null], // JSON writes Infinity and NaN as null
+    ['is text', '8'],
+  ])('is refused whole when a stream workdayHours %s', (_problem, hours) => {
+    const broken = { ...referenceStream(), workdayHours: hours }
+
+    const result = parseWorkspace(
+      JSON.stringify(workspaceOf([referenceStream({ name: 'Ok' }), broken]))
+    )
+
+    expect(result).toEqual(refusedWith(NOT_A_WORKSPACE))
   })
 
   it('is refused when two streams share an id', () => {

@@ -3,7 +3,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { createIndexedDbWorkspaceRepository } from '../../../src/persistence/v2/indexedDbWorkspaceRepository.js'
 import { createMemoryWorkspaceRepository } from '../../../src/persistence/v2/memoryWorkspaceRepository.js'
 import { parseWorkspace } from '../../../src/persistence/v2/workspaceCodec.js'
-import { referenceStream, refused, workspaceOf } from './fixtures.js'
+import { referenceStream, workspaceOf } from './fixtures.js'
 
 const DB_NAME = 'vsm-workshop-test'
 
@@ -290,7 +290,10 @@ describe('IndexedDB workspace repository', () => {
         expect(await repository.isAvailable()).toBe(true)
         const text = await repository.load()
 
-        expect(parseWorkspace(text)).toEqual(refused)
+        expect(parseWorkspace(text)).toEqual({
+          ok: false,
+          error: 'This file was made by a newer version of the app',
+        })
       }
     )
 

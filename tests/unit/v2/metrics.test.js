@@ -19,6 +19,7 @@ import {
   team,
   versionOf,
   withStep,
+  withWait,
   withoutWait,
 } from './fixtures.js'
 
@@ -259,6 +260,22 @@ describe('Feature: Value stream metrics', () => {
       })
     })
 
+    it('never renders a range from high to low', () => {
+      const steps = withWait([team('Build', 60, 100)], 'Build', {
+        typ: 100,
+        min: 40,
+        max: 400,
+      })
+      const metrics = calculateMetrics(versionOf(steps))
+
+      expect(formatPercentRange(metrics.flowEfficiency, ratio)).toBe(
+        '13.0%–60.0%'
+      )
+      expect(formatPercentRange(metrics.waitShareOfLeadTime, ratio)).toBe(
+        '40.0%–87.0%'
+      )
+    })
+
     it('rolls %C/A over team steps when an outside step has none', () => {
       const steps = insertAfter(
         reworkSteps(),
@@ -284,8 +301,11 @@ describe('Feature: Value stream metrics', () => {
         high: 11106,
       })
       expect(metrics.adjustedFlowEfficiency.typ).toBeCloseTo(870 / 9954)
-      expect(metrics.adjustedFlowEfficiency.low).toBeCloseTo(870 / 9378)
-      expect(metrics.adjustedFlowEfficiency.high).toBeCloseTo(870 / 11106)
+      expect(metrics.adjustedFlowEfficiency.low).toBeCloseTo(870 / 11106)
+      expect(metrics.adjustedFlowEfficiency.high).toBeCloseTo(870 / 9378)
+      expect(formatPercentRange(metrics.adjustedFlowEfficiency, ratio)).toBe(
+        '7.8%–9.3%'
+      )
     })
   })
 })

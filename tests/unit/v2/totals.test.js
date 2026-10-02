@@ -10,6 +10,7 @@ import {
   referenceSteps,
   team,
   withStep,
+  withWait,
   withoutWait,
 } from './fixtures.js'
 
@@ -24,6 +25,18 @@ describe('Value stream totals', () => {
     expect(totals.processTime.typ).toBe(870)
     expect(asPercent(efficiency.typ)).toBe(9.6)
     expect(totals.handoffCount).toBe(0)
+  })
+
+  it('keeps the range ascending when the shortest lead time is not the least waiting', () => {
+    const steps = withWait([team('Build', 60, 100)], 'Build', {
+      typ: 100,
+      min: 40,
+      max: 400,
+    })
+    const efficiency = calculateFlowEfficiency(calculateTotals(steps))
+
+    expect(asPercent(efficiency.low)).toBe(13)
+    expect(asPercent(efficiency.high)).toBe(60)
   })
 
   it('Outside step makes flow efficiency a range', () => {

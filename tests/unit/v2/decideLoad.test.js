@@ -200,7 +200,12 @@ describe('decideLoad', () => {
         schemaVersion: 9,
       })
 
-      expect(decideLoad(newer, null)).toEqual(unreadable)
+      expect(decideLoad(newer, null)).toEqual({
+        ...unreadable,
+        unreadable: {
+          reason: 'This file was made by a newer version of the app',
+        },
+      })
     })
 
     it('does not migrate the v1 map', () => {
