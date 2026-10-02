@@ -335,14 +335,10 @@ test.describe('Stage rail and header scenarios (step 5.4)', () => {
   })
 
   // The hours in each row's title are the Examples values.
-  const WORKING_DAYS = [
-    ['0', false],
-    ['1', true],
-    ['7.5', true],
-    ['24', true],
-    ['25', false],
-  ]
-  for (const [hours, valid] of WORKING_DAYS) {
+  const INVALID_WORKING_DAYS = ['0', '25']
+  const VALID_WORKING_DAYS = ['1', '7.5', '24']
+
+  for (const hours of INVALID_WORKING_DAYS) {
     test(`Working day must be between 1 and 24 hours: ${hours}`, async ({
       page,
       seed,
@@ -353,12 +349,24 @@ test.describe('Stage rail and header scenarios (step 5.4)', () => {
       await workingDay.fill(hours)
       await workingDay.press('Tab')
 
-      const error = page.getByTestId('working-day-error')
-      if (!valid) {
-        await expect(error).toContainText(/between 1 and 24/)
-        return
-      }
-      await expect(error).toHaveCount(0)
+      await expect(page.getByTestId('working-day-error')).toContainText(
+        /between 1 and 24/
+      )
+    })
+  }
+
+  for (const hours of VALID_WORKING_DAYS) {
+    test(`Working day must be between 1 and 24 hours: ${hours}`, async ({
+      page,
+      seed,
+    }) => {
+      await seed(workspaceAtStage(1))
+      const workingDay = field(page, 'Working day (hours)')
+
+      await workingDay.fill(hours)
+      await workingDay.press('Tab')
+
+      await expect(page.getByTestId('working-day-error')).toHaveCount(0)
       await expect
         .poll(async () => (await savedWorkspace(page))?.streams[0].workdayHours)
         .toBe(Number(hours))
@@ -923,12 +931,14 @@ test.describe('Unreadable data that could not be backed up (data safety)', () =>
 
     await expect(importButton).toHaveAttribute('aria-disabled', 'true')
     await expect(importButton).toHaveAccessibleDescription(/\S/)
-    const opened = page.waitForEvent('filechooser', { timeout: 500 }).then(
-      () => true,
-      () => false
-    )
+    let chooserOpened = false
+    page.on('filechooser', () => {
+      chooserOpened = true
+    })
     await importButton.click({ force: true })
-    expect(await opened).toBe(false)
+    // A page round trip: any chooser the click opened has been reported by now.
+    await page.evaluate(() => null)
+    expect(chooserOpened).toBe(false)
 
     await page.getByTestId('import-value-stream-input').setInputFiles({
       name: 'stream.json',

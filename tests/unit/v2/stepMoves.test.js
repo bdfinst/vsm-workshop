@@ -17,12 +17,23 @@ describe('moveBlockReason', () => {
   })
 
   it.each([
-    [2, 4, MOVE_UP],
-    [1, 4, MOVE_DOWN],
-    [2, 4, MOVE_DOWN],
-    [3, 4, MOVE_UP],
-  ])('allows a move from index %i of %i, direction %i', (index, count, dir) => {
-    expect(moveBlockReason(index, count, dir)).toBeNull()
+    ['up', 2, 4, MOVE_UP],
+    ['down', 1, 4, MOVE_DOWN],
+    ['down', 2, 4, MOVE_DOWN],
+    ['up', 3, 4, MOVE_UP],
+  ])(
+    'allows moving %s from index %i of %i steps',
+    (_, index, count, direction) => {
+      expect(moveBlockReason(index, count, direction)).toBeNull()
+    }
+  )
+
+  it('blocks moving Intake itself up, naming Intake', () => {
+    expect(moveBlockReason(0, 4, MOVE_UP)).toBe('Intake is always first')
+  })
+
+  it('blocks moving a list of one step down', () => {
+    expect(moveBlockReason(0, 1, MOVE_DOWN)).toBe('This is the last step')
   })
 
   it('blocks moving the only step after Intake in either direction', () => {
@@ -34,6 +45,12 @@ describe('moveBlockReason', () => {
 describe('movedAnnouncement', () => {
   it('names the step and its 1-based position', () => {
     expect(movedAnnouncement('Development', 2)).toBe(
+      'Development moved to position 3'
+    )
+  })
+
+  it('trims a padded name', () => {
+    expect(movedAnnouncement('  Development ', 2)).toBe(
       'Development moved to position 3'
     )
   })

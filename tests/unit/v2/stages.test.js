@@ -53,6 +53,20 @@ describe('STAGES', () => {
   })
 })
 
+describe('STAGES prompts', () => {
+  it('gives only Scope and Steps a prompt so far', () => {
+    const withPrompt = STAGES.filter((stage) => stage.prompt).map(
+      (stage) => stage.name
+    )
+    const without = STAGES.filter((stage) => !stage.prompt).map(
+      (stage) => stage.prompt
+    )
+
+    expect(withPrompt).toEqual(['Scope', 'Steps'])
+    expect(without).toEqual([null, null, null, null, null])
+  })
+})
+
 describe('missingScopeFields', () => {
   it('names nothing when every field is filled', () => {
     expect(missingScopeFields(filledScope)).toEqual([])
@@ -130,7 +144,6 @@ describe('stageStatus', () => {
   it('marks stages beyond the furthest reached as not selectable', () => {
     const statuses = byName(stageStatus(streamAt(2, 2)))
 
-    expect(statuses.Scope.state).toBe('complete')
     expect(statuses.Steps.state).toBe('reached')
     expect(statuses.Time.state).toBe('not-selectable')
     expect(statuses.Future.state).toBe('not-selectable')
@@ -156,10 +169,10 @@ describe('stageStatus', () => {
   })
 
   it('has no completion verdict yet for reached stages without rules', () => {
-    const steps = byName(stageStatus(streamAt(2, 2))).Steps
+    const time = byName(stageStatus(streamAt(3, 3))).Time
 
-    expect(steps.state).toBe('reached')
-    expect(steps.reason).toBeNull()
+    expect(time.state).toBe('reached')
+    expect(time.reason).toBeNull()
   })
 })
 

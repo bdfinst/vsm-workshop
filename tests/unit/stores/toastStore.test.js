@@ -216,6 +216,7 @@ describe('toastStore', () => {
       store.dismiss(id)
       store.resume(id)
 
+      expect(vi.getTimerCount()).toBe(0)
       vi.advanceTimersByTime(60000)
       expect(store.messages).toHaveLength(0)
     })
@@ -227,8 +228,12 @@ describe('toastStore', () => {
       vi.advanceTimersByTime(5000)
       store.resume(id)
 
+      expect(vi.getTimerCount()).toBe(1)
       vi.advanceTimersByTime(9999)
       expect(store.messages).toHaveLength(1)
+
+      vi.advanceTimersByTime(1)
+      expect(store.messages).toHaveLength(0)
     })
   })
 
@@ -244,6 +249,7 @@ describe('toastStore', () => {
       expect(store.messages).toEqual([])
 
       store.resume(id)
+      expect(vi.getTimerCount()).toBe(0)
       vi.advanceTimersByTime(60000)
       expect(store.messages).toEqual([])
     })

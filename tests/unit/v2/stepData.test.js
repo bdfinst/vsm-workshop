@@ -71,6 +71,7 @@ describe('hasStepData', () => {
     ['a performer', { performedBy: 'Dev team' }],
     ['notes', { notes: 'Waits on legal' }],
     ['a %C/A', { pctCA: 80 }],
+    ['a %C/A of 0', { pctCA: 0 }],
     ['a process time', { processTime: { typ: 60 } }],
   ])('is true with %s', (_, fields) => {
     expect(hasStepData({ ...blankTeamRow, ...fields })).toBe(true)
@@ -98,6 +99,15 @@ describe('countReworkPathsOf', () => {
 
   it('is 0 for a step no path touches', () => {
     expect(countReworkPathsOf(paths, 'z')).toBe(0)
+  })
+
+  it('is 0 when there are no paths', () => {
+    expect(countReworkPathsOf([], 'a')).toBe(0)
+  })
+
+  it('counts a path that starts and ends at the step once', () => {
+    const loop = [{ fromStepId: 'a', toStepId: 'a' }]
+    expect(countReworkPathsOf(loop, 'a')).toBe(1)
   })
 })
 

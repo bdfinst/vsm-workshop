@@ -1,4 +1,4 @@
-import { describe, it, expect, afterEach } from 'vitest'
+import { describe, it, expect, afterEach, vi } from 'vitest'
 import { isToastHeld } from '../../../src/utils/ui/toastHold.js'
 
 const toastWithButtons = () => {
@@ -23,6 +23,15 @@ describe('isToastHeld', () => {
     const outside = document.body.appendChild(document.createElement('input'))
 
     expect(isToastHeld(toast, outside)).toBe(false)
+  })
+
+  it('holds while the pointer is over the toast, wherever focus is', () => {
+    const { toast } = toastWithButtons()
+    vi.spyOn(toast, 'matches').mockImplementation(
+      (selector) => selector === ':hover'
+    )
+
+    expect(isToastHeld(toast, null)).toBe(true)
   })
 
   it('releases when focus leaves the page', () => {
