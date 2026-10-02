@@ -4,6 +4,7 @@
   "type": "module",
   "scripts": {
     "build": "vite build",
+    "build:standalone": "vite build --config vite.standalone.config.js",
     "check": "svelte-check --tsconfig ./jsconfig.json",
     "dev": "vite",
     "format": "prettier --write .",
@@ -12,14 +13,16 @@
     "preview": "vite preview",
     "start": "npm run dev",
     "test": "vitest run",
-    "test:acceptance": "cucumber-js",
+    "pretest:acceptance": "npm run build && npm run build:standalone",
+    "test:acceptance": "playwright test",
     "test:all": "npm test && npm run test:acceptance",
     "test:coverage": "vitest run --coverage",
     "test:e2e": "playwright test",
     "test:e2e:visual": "playwright test visual.spec.js",
     "test:e2e:visual:update": "playwright test visual.spec.js --update-snapshots",
     "test:e2e:baseline": "docker run --rm --ipc=host -v \"$PWD\":/work -w /work mcr.microsoft.com/playwright:v1.58.2-noble npx playwright test --update-snapshots",
-    "test:watch": "vitest"
+    "test:watch": "vitest",
+    "test:bdd": "cucumber-js"
   },
   "dependencies": {
     "@xyflow/svelte": "^1.5.0",
@@ -30,18 +33,24 @@
     "svelte": "^5.16.0"
   },
   "devDependencies": {
-    "@cucumber/cucumber": "^12.6.0",
+    "@axe-core/playwright": "^4.13.0",
+    "@cucumber/cucumber": "^12.9.0",
     "@eslint/js": "^9.39.2",
+    "@fontsource/ibm-plex-mono": "^5.3.0",
+    "@fontsource/ibm-plex-sans": "^5.3.0",
     "@playwright/test": "^1.58.0",
+    "@stryker-mutator/core": "^10.0.0",
+    "@stryker-mutator/vitest-runner": "^10.0.0",
     "@sveltejs/vite-plugin-svelte": "^6.2.4",
     "@tailwindcss/postcss": "^4.1.18",
     "@testing-library/jest-dom": "^6.9.1",
     "@testing-library/svelte": "^5.2.7",
+    "@vitest/coverage-v8": "^4.1.11",
     "autoprefixer": "^10.4.23",
-    "chai": "^6.2.2",
     "d3-scale": "^4.0.2",
     "eslint": "^9.39.2",
     "eslint-plugin-svelte": "^3.3.3",
+    "fake-indexeddb": "^6.2.5",
     "globals": "^17.1.0",
     "husky": "^9.1.7",
     "jsdom": "^27.4.0",
@@ -52,6 +61,7 @@
     "svelte-check": "^4.1.4",
     "tailwindcss": "^4.1.18",
     "vite": "^7.3.1",
+    "vite-plugin-singlefile": "^2.3.3",
     "vitest": "^4.0.18"
   }
 }

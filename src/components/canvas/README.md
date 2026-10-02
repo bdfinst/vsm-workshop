@@ -35,11 +35,11 @@ User actions update vsmDataStore
 2. **Canvas.svelte** maps steps to SvelteFlow nodes via `$derived`:
    ```javascript
    let nodes = $derived(
-     vsmDataStore.steps.map(step => ({
+     vsmDataStore.steps.map((step) => ({
        id: step.id,
        type: 'stepNode',
        data: step,
-       position: step.position
+       position: step.position,
      }))
    )
    ```
@@ -60,7 +60,7 @@ User actions update vsmDataStore
    ```javascript
    const nodeTypes = {
      stepNode: StepNode,
-     myNode: MyNode
+     myNode: MyNode,
    }
    ```
 3. Add Tailwind styling inside the component

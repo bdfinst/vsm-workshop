@@ -13,13 +13,13 @@ The MVP enables a single user to create a basic value stream map, visualize it, 
 #### 1.1 Project Setup
 - [ ] Initialize Vite + React project
 - [ ] Configure Tailwind CSS
-- [ ] Set up Vitest and Cucumber.js
+- [ ] Set up Vitest and Playwright
 - [ ] Configure ESLint
 - [ ] Configure Prettier (single quotes, no semicolons)
 - [ ] Create base folder structure
 
 #### 1.2 Create Empty VSM
-**Feature File: `features/builder/create-vsm.feature`**
+**Scenarios: create-vsm** (spec text; implemented as Vitest or Playwright tests)
 ```gherkin
 Feature: Create Value Stream Map
   As a team facilitator
@@ -40,7 +40,7 @@ Feature: Create Value Stream Map
 ```
 
 #### 1.3 Add Process Step
-**Feature File: `features/builder/add-step.feature`**
+**Scenarios: add-step** (spec text; implemented as Vitest or Playwright tests)
 ```gherkin
 Feature: Add Process Step
   As a team facilitator
@@ -69,7 +69,7 @@ Feature: Add Process Step
 ```
 
 #### 1.4 Edit Process Step
-**Feature File: `features/builder/edit-step.feature`**
+**Scenarios: edit-step** (spec text; implemented as Vitest or Playwright tests)
 ```gherkin
 Feature: Edit Process Step
   As a team facilitator
@@ -98,7 +98,7 @@ Feature: Edit Process Step
 ```
 
 #### 1.5 Delete Process Step
-**Feature File: `features/builder/delete-step.feature`**
+**Scenarios: delete-step** (spec text; implemented as Vitest or Playwright tests)
 ```gherkin
 Feature: Delete Process Step
   As a team facilitator
@@ -120,7 +120,7 @@ Feature: Delete Process Step
 ```
 
 #### 1.6 Connect Steps
-**Feature File: `features/builder/connect-steps.feature`**
+**Scenarios: connect-steps** (spec text; implemented as Vitest or Playwright tests)
 ```gherkin
 Feature: Connect Process Steps
   As a team facilitator
@@ -141,7 +141,7 @@ Feature: Connect Process Steps
 ```
 
 #### 1.7 Canvas Visualization
-**Feature File: `features/visualization/canvas-display.feature`**
+**Scenarios: canvas-display** (spec text; implemented as Vitest or Playwright tests)
 ```gherkin
 Feature: Canvas Visualization
   As a team facilitator
@@ -166,7 +166,7 @@ Feature: Canvas Visualization
 ```
 
 #### 1.8 Basic Metrics Dashboard
-**Feature File: `features/visualization/basic-metrics.feature`**
+**Scenarios: basic-metrics** (spec text; implemented as Vitest or Playwright tests)
 ```gherkin
 Feature: Basic Metrics Dashboard
   As a team facilitator
@@ -207,7 +207,7 @@ Feature: Basic Metrics Dashboard
 ```
 
 #### 1.9 Save and Load Map
-**Feature File: `features/data/save-load.feature`**
+**Scenarios: save-load** (spec text; implemented as Vitest or Playwright tests)
 ```gherkin
 Feature: Save and Load Map
   As a team facilitator
@@ -238,7 +238,7 @@ Feature: Save and Load Map
 ```
 
 #### 1.10 Export Map as Image
-**Feature File: `features/data/export-image.feature`**
+**Scenarios: export-image** (spec text; implemented as Vitest or Playwright tests)
 ```gherkin
 Feature: Export Map as Image
   As a team facilitator
@@ -264,7 +264,7 @@ Feature: Export Map as Image
 ### Phase 2: Enhanced Mapping
 
 #### 2.1 Step Templates
-**Feature File: `features/builder/step-templates.feature`**
+**Scenarios: step-templates** (spec text; implemented as Vitest or Playwright tests)
 ```gherkin
 Feature: Step Templates
   As a team facilitator
@@ -284,7 +284,7 @@ Feature: Step Templates
 ```
 
 #### 2.2 Rework Loops
-**Feature File: `features/builder/rework-loops.feature`**
+**Scenarios: rework-loops** (spec text; implemented as Vitest or Playwright tests)
 ```gherkin
 Feature: Rework Loops
   As a team facilitator
@@ -307,7 +307,7 @@ Feature: Rework Loops
 ```
 
 #### 2.3 Queue Visualization
-**Feature File: `features/visualization/queue-display.feature`**
+**Scenarios: queue-display** (spec text; implemented as Vitest or Playwright tests)
 ```gherkin
 Feature: Queue Visualization
   As a team facilitator
@@ -326,7 +326,7 @@ Feature: Queue Visualization
 ```
 
 #### 2.4 Batch Size Display
-**Feature File: `features/visualization/batch-size.feature`**
+**Scenarios: batch-size** (spec text; implemented as Vitest or Playwright tests)
 ```gherkin
 Feature: Batch Size Display
   As a team facilitator
@@ -344,7 +344,7 @@ Feature: Batch Size Display
 ```
 
 #### 2.5 Additional Metrics
-**Feature File: `features/visualization/advanced-metrics.feature`**
+**Scenarios: advanced-metrics** (spec text; implemented as Vitest or Playwright tests)
 ```gherkin
 Feature: Advanced Metrics
   As a team facilitator
@@ -368,7 +368,7 @@ Feature: Advanced Metrics
 ### Phase 3: Simulation
 
 #### 3.1 Basic Flow Simulation
-**Feature File: `features/simulation/basic-flow.feature`**
+**Scenarios: basic-flow** (spec text; implemented as Vitest or Playwright tests)
 ```gherkin
 Feature: Basic Flow Simulation
   As a team facilitator
@@ -396,7 +396,7 @@ Feature: Basic Flow Simulation
 ```
 
 #### 3.2 Bottleneck Detection
-**Feature File: `features/simulation/bottleneck-detection.feature`**
+**Scenarios: bottleneck-detection** (spec text; implemented as Vitest or Playwright tests)
 ```gherkin
 Feature: Bottleneck Detection
   As a team facilitator
@@ -417,7 +417,7 @@ Feature: Bottleneck Detection
 ```
 
 #### 3.3 What-If Scenarios
-**Feature File: `features/simulation/what-if.feature`**
+**Scenarios: what-if** (spec text; implemented as Vitest or Playwright tests)
 ```gherkin
 Feature: What-If Scenarios
   As a team facilitator
@@ -443,7 +443,7 @@ Feature: What-If Scenarios
 ### Phase 4: Analysis & Recommendations
 
 #### 4.1 Improvement Suggestions
-**Feature File: `features/analysis/improvement-suggestions.feature`**
+**Scenarios: improvement-suggestions** (spec text; implemented as Vitest or Playwright tests)
 ```gherkin
 Feature: Improvement Suggestions
   As a team facilitator
@@ -466,7 +466,7 @@ Feature: Improvement Suggestions
 ```
 
 #### 4.2 Constraint Identification
-**Feature File: `features/analysis/constraint-identification.feature`**
+**Scenarios: constraint-identification** (spec text; implemented as Vitest or Playwright tests)
 ```gherkin
 Feature: Constraint Identification
   As a team facilitator

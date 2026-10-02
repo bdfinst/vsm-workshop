@@ -68,7 +68,13 @@ export function generateWorkItems(count, firstStepId) {
 /**
  * Process a single work item for one tick
  */
-function processWorkItem(item, step, tickDuration, newElapsedTime, connections) {
+function processWorkItem(
+  item,
+  step,
+  tickDuration,
+  newElapsedTime,
+  connections
+) {
   const newProgress = item.progress + tickDuration * PROGRESS_MULTIPLIER
 
   // Check if step is complete
@@ -317,9 +323,7 @@ export function routeWorkItem(currentStep, connections, isRework = false) {
  * @returns {boolean} True if rework connection exists
  */
 export function hasReworkPath(step, connections) {
-  return connections.some(
-    (c) => c.source === step.id && c.type === 'rework'
-  )
+  return connections.some((c) => c.source === step.id && c.type === 'rework')
 }
 
 /**
@@ -355,7 +359,11 @@ export function shouldRework(step, connections, randomFn = Math.random) {
  * Detect bottleneck steps based on queue sizes
  * Identifies steps with queues exceeding the threshold
  */
-export function detectBottlenecks(steps, queueSizesByStepId, threshold = BOTTLENECK_QUEUE_THRESHOLD) {
+export function detectBottlenecks(
+  steps,
+  queueSizesByStepId,
+  threshold = BOTTLENECK_QUEUE_THRESHOLD
+) {
   return steps
     .filter((step) => (queueSizesByStepId[step.id] || 0) >= threshold)
     .map((step) => step.id)
@@ -370,8 +378,13 @@ export function detectBottlenecks(steps, queueSizesByStepId, threshold = BOTTLEN
  * Computes final metrics including lead time, throughput, and bottlenecks
  */
 export function calculateResults(state, steps) {
-  const { workItems, workItemCount, completedCount, elapsedTime, queueHistory } =
-    state
+  const {
+    workItems,
+    workItemCount,
+    completedCount,
+    elapsedTime,
+    queueHistory,
+  } = state
 
   const stepNameMap = new Map(steps.map((s) => [s.id, s.name]))
 

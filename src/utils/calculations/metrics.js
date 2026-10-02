@@ -319,8 +319,13 @@ export function identifyBottlenecks(steps) {
   const stepsWithQueue = steps.filter((s) => (s.queueSize || 0) > 0)
   if (stepsWithQueue.length === 0) return []
 
-  const avgQueue = stepsWithQueue.reduce((sum, s) => sum + s.queueSize, 0) / stepsWithQueue.length
-  const threshold = Math.max(avgQueue * BOTTLENECK_QUEUE_MULTIPLIER, BOTTLENECK_QUEUE_THRESHOLD)
+  const avgQueue =
+    stepsWithQueue.reduce((sum, s) => sum + s.queueSize, 0) /
+    stepsWithQueue.length
+  const threshold = Math.max(
+    avgQueue * BOTTLENECK_QUEUE_MULTIPLIER,
+    BOTTLENECK_QUEUE_THRESHOLD
+  )
 
   return steps.filter((s) => (s.queueSize || 0) > threshold).map((s) => s.id)
 }

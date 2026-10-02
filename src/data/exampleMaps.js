@@ -1,6 +1,7 @@
 export const EXAMPLE_MAP = {
   name: 'Software Delivery Example',
-  description: 'A typical software delivery value stream from backlog to production',
+  description:
+    'A typical software delivery value stream from backlog to production',
   steps: [
     {
       id: 'step-1',
@@ -74,11 +75,47 @@ export const EXAMPLE_MAP = {
     },
   ],
   connections: [
-    { id: 'conn-1-2', source: 'step-1', target: 'step-2', type: 'forward', reworkRate: 0 },
-    { id: 'conn-2-3', source: 'step-2', target: 'step-3', type: 'forward', reworkRate: 0 },
-    { id: 'conn-3-4', source: 'step-3', target: 'step-4', type: 'forward', reworkRate: 0 },
-    { id: 'conn-4-5', source: 'step-4', target: 'step-5', type: 'forward', reworkRate: 0 },
-    { id: 'conn-3-2', source: 'step-3', target: 'step-2', type: 'rework', reworkRate: 15 },
-    { id: 'conn-4-2', source: 'step-4', target: 'step-2', type: 'rework', reworkRate: 20 },
+    {
+      id: 'conn-1-2',
+      source: 'step-1',
+      target: 'step-2',
+      type: 'forward',
+      reworkRate: 0,
+    },
+    {
+      id: 'conn-2-3',
+      source: 'step-2',
+      target: 'step-3',
+      type: 'forward',
+      reworkRate: 0,
+    },
+    {
+      id: 'conn-3-4',
+      source: 'step-3',
+      target: 'step-4',
+      type: 'forward',
+      reworkRate: 0,
+    },
+    {
+      id: 'conn-4-5',
+      source: 'step-4',
+      target: 'step-5',
+      type: 'forward',
+      reworkRate: 0,
+    },
+    {
+      id: 'conn-3-2',
+      source: 'step-3',
+      target: 'step-2',
+      type: 'rework',
+      reworkRate: 15,
+    },
+    {
+      id: 'conn-4-2',
+      source: 'step-4',
+      target: 'step-2',
+      type: 'rework',
+      reworkRate: 20,
+    },
   ],
 }

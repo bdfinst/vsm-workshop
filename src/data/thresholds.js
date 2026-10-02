@@ -38,4 +38,8 @@ export const WAIT_DOMINATED_THRESHOLD = 50
 
 // Canvas layout constants have been moved to canvasConfig.js
 // Re-exported here for backward compatibility
-export { CANVAS_START_X, CANVAS_STEP_SPACING, CANVAS_Y } from './canvasConfig.js'
+export {
+  CANVAS_START_X,
+  CANVAS_STEP_SPACING,
+  CANVAS_Y,
+} from './canvasConfig.js'

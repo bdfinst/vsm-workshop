@@ -32,11 +32,7 @@ function sanitizeFilename(filename) {
  * @param {Object} options - Additional options for image generation
  * @returns {Promise<void>}
  */
-export async function exportAsPng(
-  element,
-  filename = 'vsm.png',
-  options = {}
-) {
+export async function exportAsPng(element, filename = 'vsm.png', options = {}) {
   if (!element) {
     throw new Error('Element not found')
   }

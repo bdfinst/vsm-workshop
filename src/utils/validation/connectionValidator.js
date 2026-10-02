@@ -13,7 +13,12 @@ export function validateConnection(connectionData) {
 
   if (connectionData.type === 'rework') {
     const rate = connectionData.reworkRate
-    if (rate === undefined || rate === null || typeof rate !== 'number' || isNaN(rate)) {
+    if (
+      rate === undefined ||
+      rate === null ||
+      typeof rate !== 'number' ||
+      isNaN(rate)
+    ) {
       errors.reworkRate = 'Rework rate is required and must be a number'
     } else if (rate < 0 || rate > 100) {
       errors.reworkRate = 'Rework rate must be between 0 and 100'

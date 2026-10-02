@@ -129,6 +129,8 @@ In addition to unit tests, run acceptance tests when working on features:
 npm run test:acceptance
 ```
 
+This builds the app, then runs the Playwright specs.
+
 **Run this when:**
 - Implementing a new feature with Gherkin scenarios
 - Making changes that affect user-facing behavior

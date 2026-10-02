@@ -105,12 +105,26 @@ in that same image** rather than with a bare local update:
 npm run test:e2e:baseline   # runs --update-snapshots inside the pinned image
 ```
 
-### Acceptance Tests (Cucumber)
+### Acceptance Tests (Playwright)
 
-To run the behavior-driven development (BDD) acceptance tests, use:
+To run the acceptance tests (Playwright specs in `tests/e2e/`; this builds the app first), use:
 
 ```sh
 npm run test:acceptance
+```
+
+To run the unit tests and the acceptance tests together, use:
+
+```sh
+npm run test:all
+```
+
+### Legacy BDD features (Cucumber)
+
+The v1 `.feature` files in `features/` run with Cucumber:
+
+```sh
+npm run test:bdd
 ```
 
 ### Everything at once
@@ -118,3 +132,7 @@ npm run test:acceptance
 ```sh
 npm test && npm run build && npm run lint
 ```
+
+## CodeGraph
+
+This repository uses [CodeGraph](https://github.com/colbymchenry/codegraph) for semantic code intelligence.

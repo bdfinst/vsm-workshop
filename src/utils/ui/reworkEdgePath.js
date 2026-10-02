@@ -28,14 +28,10 @@ const HANDLE_PADDING = 20
  * @param {number} params.targetY - Target handle Y
  * @returns {{ path: string, labelPosition: { x: number, y: number } }}
  */
-export const calculateReworkPath = ({
-  sourceX,
-  sourceY,
-  targetX,
-  targetY,
-}) => {
+export const calculateReworkPath = ({ sourceX, sourceY, targetX, targetY }) => {
   const span = Math.abs(sourceX - targetX)
-  const verticalOffset = BASE_Y_OFFSET + (span / SPAN_THRESHOLD_PX) * OFFSET_PER_SPAN
+  const verticalOffset =
+    BASE_Y_OFFSET + (span / SPAN_THRESHOLD_PX) * OFFSET_PER_SPAN
 
   // Route: source handle -> right padding -> up -> across -> down -> left padding -> target handle
   const topY = Math.min(sourceY, targetY) - verticalOffset

@@ -5,50 +5,43 @@
 **Tests come before code. Always.**
 
 1. **No implementation without tests first** - Write failing tests before any implementation code
-2. **No feature without an approved feature file** - Gherkin specifications must be reviewed and approved before coding
+2. **No feature without approved scenarios** - Gherkin scenarios are specification text and must be reviewed and approved before coding
 3. **Red-Green-Refactor** - Follow the TDD cycle strictly
 
-Every feature must start with a Gherkin specification that is reviewed and approved before any code is written.
+Scenarios live in the plan or spec as Gherkin text. Each scenario becomes one test whose title is the scenario name.
+
+## Where Scenarios Become Tests
+
+- **Logic-only scenarios** (calculations, stores, codecs, validation) are Vitest tests in `tests/unit/`.
+- **UI scenarios** are Playwright specs in `tests/e2e/`.
+- An outline becomes one test per example row, titled with the row values.
 
 ## Workflow Steps
 
-### 1. Feature File Creation
+### 1. Scenario Creation
 
 When starting any new feature:
 
-1. Create a `.feature` file in the appropriate `features/` subdirectory
-2. Write scenarios in Gherkin syntax
-3. **STOP** and present for review
-4. Wait for explicit approval before proceeding
+1. Write scenarios in Gherkin syntax in the plan or spec
+2. **STOP** and present for review
+3. Wait for explicit approval before proceeding
 
-### 2. Feature File Structure
+### 2. Scenario Structure
 
 ```gherkin
-Feature: [Clear feature name]
-  As a [role]
-  I want [capability]
-  So that [benefit]
-
-  Background:
-    Given [common setup steps]
-
-  Scenario: [Happy path description]
-    Given [precondition]
-    When [action]
-    Then [expected result]
-
-  Scenario: [Edge case or alternative path]
-    Given [precondition]
-    When [action]
-    Then [expected result]
+Scenario: [Happy path description]
+  Given [precondition]
+  When [action]
+  Then [expected result]
 ```
+
+Use `Background:` and `Scenario Outline:` with `Examples:` where they remove repetition.
 
 ### 3. Review Checklist
 
-Before presenting a feature file for review, verify:
+Before presenting scenarios for review, verify:
 
-- [ ] Feature name clearly describes the capability
-- [ ] User story captures who, what, and why
+- [ ] Capability is clearly named and the user story captures who, what, and why
 - [ ] Happy path scenario is complete
 - [ ] Key edge cases are covered
 - [ ] Steps are written from user's perspective
@@ -57,62 +50,33 @@ Before presenting a feature file for review, verify:
 
 ### 4. After Approval
 
-Once a feature file is approved:
+Once scenarios are approved:
 
-1. Create step definitions in `features/step-definitions/`
-2. Run tests (should fail - red phase)
-3. Implement minimum code to pass (green phase)
-4. Refactor while keeping tests green
+1. Write one failing test per scenario, titled with the scenario name (red phase)
+2. Implement minimum code to pass (green phase)
+3. Refactor while keeping tests green
 
-### 5. Step Definition Guidelines
+### 5. Test Guidelines
 
 ```javascript
-// features/step-definitions/builder.steps.js
+// tests/e2e/add-step.spec.js
+import { test, expect } from '@playwright/test'
 
-import { Given, When, Then } from '@cucumber/cucumber';
-import { expect } from 'chai';
+test('Add a step to the map', async ({ page }) => {
+  await page.goto('/')
+  await page.getByTestId('new-map-name-input').fill('Test Map')
+  await page.getByTestId('create-map-button').click()
+  await page.getByRole('button', { name: 'Add Step' }).click()
+  await page.getByTestId('step-name-input').fill('Development')
+  await page.getByRole('button', { name: 'Save' }).click()
 
-// Steps should be reusable across scenarios
-Given('I have an empty value stream map', function () {
-  this.vsm = { steps: [], connections: [] };
-});
-
-// Use regex for flexible matching
-When(/^I add a step named "([^"]*)"$/, function (name) {
-  // implementation
-});
-
-// Data tables for complex inputs
-Given('a value stream with the following steps:', function (dataTable) {
-  const rows = dataTable.hashes();
-  this.vsm.steps = rows.map(row => ({
-    name: row.name,
-    processTime: parseInt(row.processTime),
-    leadTime: parseInt(row.leadTime)
-  }));
-});
+  await expect(page.locator('.vsm-node')).toBeVisible()
+})
 ```
 
-## File Organization
-
-```
-features/
-├── builder/
-│   ├── add-step.feature
-│   ├── edit-step.feature
-│   └── connect-steps.feature
-├── visualization/
-│   ├── display-map.feature
-│   └── metrics-dashboard.feature
-├── simulation/
-│   ├── basic-flow.feature
-│   └── bottleneck-detection.feature
-└── step-definitions/
-    ├── builder.steps.js
-    ├── visualization.steps.js
-    ├── simulation.steps.js
-    └── common.steps.js
-```
+- Drive the page by role, label, and `data-testid`.
+- Share setup through Playwright fixtures (`test.extend`) or helper modules, not copy-paste.
+- Use retrying `expect` assertions for anything asynchronous.
 
 ## Scenario Guidelines
 
@@ -145,40 +109,25 @@ Scenario: Metrics work
 ## Running Tests
 
 ```bash
-# Run all acceptance tests
+# Run all acceptance tests (builds first)
 npm run test:acceptance
 
-# Run specific feature
-npm run test:acceptance -- features/builder/add-step.feature
+# Run one spec
+npm run test:acceptance -- tests/e2e/canvas.spec.js
 
-# Run with tags
-npm run test:acceptance -- --tags @wip
+# Filter by test title
+npm run test:acceptance -- -g "Add a step"
 
-# Watch mode during development
-npm run test:acceptance -- --watch
-```
-
-## Tags
-
-Use tags to organize and filter scenarios:
-
-```gherkin
-@wip
-Scenario: Work in progress scenario
-
-@smoke
-Scenario: Critical path scenario for smoke testing
-
-@slow
-Scenario: Performance-intensive scenario
+# Unit and acceptance together
+npm run test:all
 ```
 
 ## Definition of Done
 
 A feature is complete when:
 
-- [ ] All scenarios pass
-- [ ] No pending or skipped steps
+- [ ] Every approved scenario has a passing test
+- [ ] No skipped or `test.fixme` tests
 - [ ] Code is refactored and clean
 - [ ] Unit tests exist for complex calculations
-- [ ] Feature file serves as living documentation
+- [ ] Scenario text in the plan or spec matches the test titles

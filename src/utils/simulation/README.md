@@ -31,7 +31,7 @@ import { createSimulationEngine } from './simulationEngine'
 
 const engine = createSimulationEngine(steps, {
   workItemCount: 10,
-  maxTicks: 1000
+  maxTicks: 1000,
 })
 
 engine.start()
@@ -45,12 +45,15 @@ const results = engine.getResults()
 ## Key Concepts
 
 ### Tick-Based Simulation
+
 Each tick = 1 minute of simulated time. Work items progress through steps based on:
+
 - Process time (how long work takes)
 - Queue wait times
 - Batch processing rules
 
 ### Work Item Flow
+
 1. Items start in first step's queue
 2. When step has capacity, item begins processing
 3. After process time elapses, quality check (%C&A) applied
@@ -58,6 +61,7 @@ Each tick = 1 minute of simulated time. Work items progress through steps based 
 5. Continues until item reaches final step
 
 ### Metrics Collected
+
 - **Cycle time** - Total time per work item
 - **Throughput** - Items completed per day
 - **WIP** - Work in progress at any moment

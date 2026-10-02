@@ -55,7 +55,11 @@ export const createSimulationService = (
   storeApi = defaultStoreApi()
 ) => {
   const initializer = createSimulationStateInitializer(storeApi)
-  const orchestrator = createSimulationOrchestrator(runner, storeApi, initializer)
+  const orchestrator = createSimulationOrchestrator(
+    runner,
+    storeApi,
+    initializer
+  )
   const scenarioManager = createScenarioManager(storeApi)
 
   return {

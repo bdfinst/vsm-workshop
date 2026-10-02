@@ -11,13 +11,13 @@ When implementing any feature or bug fix:
 4. Refactor while keeping tests green
 
 This applies to:
-- **Acceptance tests** - Write feature files before any implementation
+- **Acceptance tests** - Write Gherkin scenarios (as spec text) and get them approved before any implementation
 - **Unit tests** - Write test cases before implementing functions
 - **Integration tests** - Write tests before wiring components together
 
 ## Testing Pyramid
 
-1. **Acceptance Tests** (Cucumber) - User-facing behavior
+1. **Acceptance Tests** (Playwright) - User-facing behavior
 2. **Integration Tests** - Component interactions
 3. **Unit Tests** - Utility functions and calculations
 
@@ -27,12 +27,12 @@ Acceptance tests are the primary driver of development. See `atdd-workflow.md` f
 
 ### Structure
 
+Scenarios are specification text. Each scenario becomes one Playwright spec test (UI) or one Vitest test (logic), titled with the scenario name.
+
 ```
-features/
-├── builder/           # VSM builder features
-├── visualization/     # Map display features
-├── simulation/        # Simulation features
-└── step-definitions/  # Cucumber step definitions
+tests/
+├── e2e/               # Playwright specs (acceptance)
+└── unit/              # Vitest tests
 ```
 
 ### Running Acceptance Tests
@@ -41,11 +41,14 @@ features/
 # Run all acceptance tests
 npm run test:acceptance
 
-# Run specific feature
-npm run test:acceptance -- features/builder/add-step.feature
+# Run a specific spec
+npm run test:acceptance -- tests/e2e/canvas.spec.js
 
-# Watch mode
-npm run test:acceptance -- --watch
+# Filter by test title
+npm run test:acceptance -- -g "Add a step"
+
+# Interactive UI mode
+npm run test:acceptance -- --ui
 ```
 
 ## Unit Tests

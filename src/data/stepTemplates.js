@@ -161,13 +161,29 @@ export const MAP_TEMPLATES = [
   {
     id: 'software-delivery',
     name: 'Software Delivery Pipeline',
-    description: 'A typical software delivery value stream from backlog to production',
+    description:
+      'A typical software delivery value stream from backlog to production',
     steps: [
-      { ...STEP_TEMPLATES.find((t) => t.id === 'backlog'), position: { x: CANVAS_START_X, y: CANVAS_Y } },
-      { ...STEP_TEMPLATES.find((t) => t.id === 'development'), position: { x: CANVAS_START_X + CANVAS_STEP_SPACING, y: CANVAS_Y } },
-      { ...STEP_TEMPLATES.find((t) => t.id === 'code-review'), position: { x: CANVAS_START_X + CANVAS_STEP_SPACING * 2, y: CANVAS_Y } },
-      { ...STEP_TEMPLATES.find((t) => t.id === 'testing'), position: { x: CANVAS_START_X + CANVAS_STEP_SPACING * 3, y: CANVAS_Y } },
-      { ...STEP_TEMPLATES.find((t) => t.id === 'production'), position: { x: CANVAS_START_X + CANVAS_STEP_SPACING * 4, y: CANVAS_Y } },
+      {
+        ...STEP_TEMPLATES.find((t) => t.id === 'backlog'),
+        position: { x: CANVAS_START_X, y: CANVAS_Y },
+      },
+      {
+        ...STEP_TEMPLATES.find((t) => t.id === 'development'),
+        position: { x: CANVAS_START_X + CANVAS_STEP_SPACING, y: CANVAS_Y },
+      },
+      {
+        ...STEP_TEMPLATES.find((t) => t.id === 'code-review'),
+        position: { x: CANVAS_START_X + CANVAS_STEP_SPACING * 2, y: CANVAS_Y },
+      },
+      {
+        ...STEP_TEMPLATES.find((t) => t.id === 'testing'),
+        position: { x: CANVAS_START_X + CANVAS_STEP_SPACING * 3, y: CANVAS_Y },
+      },
+      {
+        ...STEP_TEMPLATES.find((t) => t.id === 'production'),
+        position: { x: CANVAS_START_X + CANVAS_STEP_SPACING * 4, y: CANVAS_Y },
+      },
     ],
     connections: [
       { source: 0, target: 1, type: 'forward' },
@@ -183,10 +199,22 @@ export const MAP_TEMPLATES = [
     name: 'Support Ticket Flow',
     description: 'Customer support ticket handling process',
     steps: [
-      { ...STEP_TEMPLATES.find((t) => t.id === 'ticket-triage'), position: { x: CANVAS_START_X, y: CANVAS_Y } },
-      { ...STEP_TEMPLATES.find((t) => t.id === 'investigation'), position: { x: CANVAS_START_X + CANVAS_STEP_SPACING, y: CANVAS_Y } },
-      { ...STEP_TEMPLATES.find((t) => t.id === 'resolution'), position: { x: CANVAS_START_X + CANVAS_STEP_SPACING * 2, y: CANVAS_Y } },
-      { ...STEP_TEMPLATES.find((t) => t.id === 'verification'), position: { x: CANVAS_START_X + CANVAS_STEP_SPACING * 3, y: CANVAS_Y } },
+      {
+        ...STEP_TEMPLATES.find((t) => t.id === 'ticket-triage'),
+        position: { x: CANVAS_START_X, y: CANVAS_Y },
+      },
+      {
+        ...STEP_TEMPLATES.find((t) => t.id === 'investigation'),
+        position: { x: CANVAS_START_X + CANVAS_STEP_SPACING, y: CANVAS_Y },
+      },
+      {
+        ...STEP_TEMPLATES.find((t) => t.id === 'resolution'),
+        position: { x: CANVAS_START_X + CANVAS_STEP_SPACING * 2, y: CANVAS_Y },
+      },
+      {
+        ...STEP_TEMPLATES.find((t) => t.id === 'verification'),
+        position: { x: CANVAS_START_X + CANVAS_STEP_SPACING * 3, y: CANVAS_Y },
+      },
     ],
     connections: [
       { source: 0, target: 1, type: 'forward' },

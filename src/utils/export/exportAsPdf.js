@@ -35,11 +35,7 @@ function sanitizeFilename(filename) {
  * @param {Object} options - Additional options for image generation
  * @returns {Promise<void>}
  */
-export async function exportAsPdf(
-  element,
-  filename = 'vsm.pdf',
-  options = {}
-) {
+export async function exportAsPdf(element, filename = 'vsm.pdf', options = {}) {
   if (!element) {
     throw new Error('Element not found')
   }

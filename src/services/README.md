@@ -5,6 +5,7 @@ Service layer for business logic and orchestration.
 ## Purpose
 
 Services encapsulate business logic that:
+
 - Coordinates multiple operations
 - Orchestrates between stores and utilities
 - Implements complex workflows
@@ -17,12 +18,14 @@ Services encapsulate business logic that:
 ## Service vs. Utility
 
 ### Use Services When:
+
 - Coordinating multiple stores or utilities
 - Managing complex workflows with multiple steps
 - Handling side effects (network, file system)
 - Orchestrating business processes
 
 ### Use Utilities When:
+
 - Pure calculations (no side effects)
 - Single-purpose transformations
 - Stateless operations
@@ -55,7 +58,7 @@ export const createSimulationService = () => {
 
   return {
     startSimulation,
-    stopSimulation
+    stopSimulation,
   }
 }
 ```
@@ -71,7 +74,7 @@ import { getSimulationService } from './services/SimulationService.svelte.js'
 function handleStartSimulation() {
   getSimulationService().startSimulation(vsm, {
     workItemCount: 10,
-    maxTicks: 1000
+    maxTicks: 1000,
   })
 }
 ```

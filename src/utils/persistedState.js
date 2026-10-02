@@ -43,7 +43,8 @@ export function getPersistedValue(key, initialValue, sanitize) {
     }
   } catch (e) {
     // Log in all environments except test to surface data-loss issues
-    const isTest = typeof process !== 'undefined' && process.env?.NODE_ENV === 'test'
+    const isTest =
+      typeof process !== 'undefined' && process.env?.NODE_ENV === 'test'
     if (!isTest) {
       console.warn(`Failed to read ${key} from localStorage:`, e)
     }
