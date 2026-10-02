@@ -10,6 +10,13 @@ export const VERSION_KIND = Object.freeze({
   FUTURE: 'future',
 })
 
+/** What one item of work in the stream is: set on Scope, with no default. */
+export const UNIT_OF_WORK = Object.freeze({
+  STORY: 'story',
+  FEATURE: 'feature',
+  DEFECT: 'defect',
+})
+
 /** The guided session's stages in order; stage N is `STAGE_NAMES[N - 1]`. */
 export const STAGE_NAMES = Object.freeze([
   'Scope',

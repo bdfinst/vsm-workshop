@@ -10,6 +10,7 @@
 import { createUndoStore } from '../undoStore.svelte.js'
 import { calculateMetrics } from '../../utils/calculations/v2/index.js'
 import { validateVersion } from '../../utils/validation/v2/versionValidator.js'
+import { validateScope } from '../../utils/validation/v2/scopeValidator.js'
 import {
   PATH_MISSING_MESSAGE,
   STEP_MISSING_MESSAGE,
@@ -52,8 +53,18 @@ const dataOf = (stream) => {
   return data
 }
 
-const NAME_LABEL = 'map name'
-const NAME_NOT_TEXT_MESSAGE = 'Name must be text'
+// What each Scope field is called in an undo announcement.
+const SCOPE_LABELS = {
+  name: 'map name',
+  trigger: 'trigger',
+  endPoint: 'end point',
+  unitOfWork: 'unit of work',
+  workdayHours: 'working day',
+}
+const SCOPE_LABEL = 'scope'
+
+const scopeLabel = (fields) =>
+  fields.length === 1 ? (SCOPE_LABELS[fields[0]] ?? SCOPE_LABEL) : SCOPE_LABEL
 
 // `label` says what the edit was, when it is worth saying.
 const announce = (verb, stage, currentStage, label) => {
@@ -267,15 +278,23 @@ export const createValueStreamStore = ({ stream, persist }) => {
       version.focusItems = items
     })
 
-  // An empty name is allowed: a new map starts without one.
-  const setName = (name) => {
-    if (typeof name !== 'string') return refuse(NAME_NOT_TEXT_MESSAGE)
-    if (name === current.name) return { ok: true }
+  // One edit of the stream's Scope fields. Empty text is allowed: a new map
+  // starts without any, and the Next gate says what is missing.
+  const setScope = (patch) => {
+    const check = validateScope(patch)
+    if (!check.valid) return refuse(firstMessage(check))
+
+    const fields = Object.keys(patch)
+    if (fields.every((field) => patch[field] === current[field])) {
+      return { ok: true }
+    }
     const draft = $state.snapshot(current)
-    draft.name = name
-    commit(draft, { label: NAME_LABEL })
+    Object.assign(draft, patch)
+    commit(draft, { label: scopeLabel(fields) })
     return { ok: true }
   }
+
+  const setName = (name) => setScope({ name })
 
   // A canvas drag: saved, but not an undo step and not an edit that counts.
   const updateStepPosition = (stepId, position) => {
@@ -349,6 +368,7 @@ export const createValueStreamStore = ({ stream, persist }) => {
       return metrics
     },
     setName,
+    setScope,
     updateStep,
     updateStepPosition,
     addStep,

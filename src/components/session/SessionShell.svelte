@@ -3,12 +3,23 @@
   import { STAGE_NAMES } from '../../models/v2/constants.js'
   import { isTextEntry, shortcutFor } from '../../utils/ui/keymap.js'
   import PlaceholderStage from './stages/PlaceholderStage.svelte'
+  import { stageStatus } from '../../utils/session/stages.js'
+  import ScopeStage from './stages/ScopeStage.svelte'
   import SessionHeader from './SessionHeader.svelte'
+  import StageRail from './StageRail.svelte'
 
   let store = $derived(workspaceStore.activeStore)
   let stream = $derived(store?.stream)
   let stage = $derived(stream?.session.activeStage ?? 1)
   let stageName = $derived(STAGE_NAMES[stage - 1])
+  let statuses = $derived(stream ? stageStatus(stream) : [])
+
+  // On a stage change, and on opening a stream, focus moves to the heading.
+  let workRegion = $state()
+  $effect(() => {
+    void [stream?.id, stage]
+    workRegion?.querySelector('[data-testid="stage-heading"]')?.focus()
+  })
 
   // The id makes a repeated message a new node, so screen readers say it again.
   let announcement = $state({ id: 0, text: '' })
@@ -36,7 +47,7 @@
     shortcutActions[action]()
   }
 
-  // Later slices replace the placeholder with the stage's own component.
+  // Later slices replace the remaining placeholders with the stages' own components.
   function handleNext() {
     workspaceStore.activeStore.goToStage(stage + 1)
   }
@@ -58,18 +69,28 @@
     {/if}
   </header>
   <div class="flex-1 flex flex-col lg:flex-row gap-4 p-4">
-    <nav
-      class="lg:w-48"
-      aria-label="Stages"
-      data-testid="stage-rail"
-    ></nav>
+    <StageRail
+      {statuses}
+      current={stage}
+      onselect={(number) => store.goToStage(number)}
+    />
     <main class="flex-1 flex flex-col gap-4">
       <div data-testid="prompt-region"></div>
-      <div class="bg-white rounded-lg shadow-md p-4" data-testid="work-region">
-        <PlaceholderStage
-          name={stageName}
-          onnext={stage < STAGE_NAMES.length ? handleNext : null}
-        />
+      <div
+        class="bg-white rounded-lg shadow-md p-4"
+        data-testid="work-region"
+        bind:this={workRegion}
+      >
+        {#if store && stage === 1}
+          {#key stream.id}
+            <ScopeStage {store} onnext={handleNext} />
+          {/key}
+        {:else}
+          <PlaceholderStage
+            name={stageName}
+            onnext={stage < STAGE_NAMES.length ? handleNext : null}
+          />
+        {/if}
       </div>
     </main>
     <aside class="lg:w-80" aria-label="Map" data-testid="map-pane"></aside>
