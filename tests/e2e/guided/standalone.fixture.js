@@ -36,14 +36,32 @@ const defaultEngine = () => process.env.STANDALONE_ENGINE || 'chromium'
  */
 export const openStandalone = async ({
   engine = defaultEngine(),
-  userDataDir = fs.mkdtempSync(path.join(os.tmpdir(), 'vsm-standalone-')),
+  userDataDir,
   offline = false,
   search = '',
 } = {}) => {
-  const context = await ENGINES[engine].launchPersistentContext(userDataDir, {
-    offline,
-    viewport: { width: 1280, height: 720 },
-  })
+  const type = ENGINES[engine]
+  if (!type) {
+    throw new Error(
+      `Unknown engine "${engine}"; use ${Object.keys(ENGINES).join(', ')}`
+    )
+  }
+  const ownsProfile = !userDataDir
+  if (ownsProfile) {
+    userDataDir = fs.mkdtempSync(path.join(os.tmpdir(), 'vsm-standalone-'))
+  }
+  const removeOwnedProfile = () => {
+    if (ownsProfile) fs.rmSync(userDataDir, { recursive: true, force: true })
+  }
+  const context = await type
+    .launchPersistentContext(userDataDir, {
+      offline,
+      viewport: { width: 1280, height: 720 },
+    })
+    .catch((error) => {
+      removeOwnedProfile()
+      throw error
+    })
   const requests = []
   await context.route('**', (route) => {
     if (route.request().url().split('#')[0].split('?')[0] === STANDALONE_URL) {
@@ -55,14 +73,21 @@ export const openStandalone = async ({
   const page = context.pages()[0] ?? (await context.newPage())
   // Leave-page dialogs are accepted so closing never hangs.
   page.on('dialog', (dialog) => dialog.accept())
-  await page.goto(`${STANDALONE_URL}${search}`)
-  return {
+  const session = {
     page,
     context,
     requests,
     userDataDir,
     close: () => context.close(),
   }
+  try {
+    await page.goto(`${STANDALONE_URL}${search}`)
+  } catch (error) {
+    await context.close().catch(() => {})
+    removeOwnedProfile()
+    throw error
+  }
+  return session
 }
 
 /** The standalone file's text. */
@@ -84,9 +109,9 @@ export const test = base.extend({
       opened.push(session)
       return session
     })
-    for (const session of opened) {
-      await session.close().catch(() => {})
-      fs.rmSync(session.userDataDir, { recursive: true, force: true })
+    for (const session of opened) await session.close().catch(() => {})
+    for (const { userDataDir } of opened) {
+      fs.rmSync(userDataDir, { recursive: true, force: true })
     }
   },
 })

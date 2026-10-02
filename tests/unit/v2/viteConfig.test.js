@@ -20,9 +20,13 @@ describe('createBaseConfig', () => {
     expect(manualChunks(options)).toBeUndefined()
   })
 
-  it('shares one plugin list between both builds', () => {
-    const split = createBaseConfig({ splitVendorChunks: true })
-    const whole = createBaseConfig({ splitVendorChunks: false })
-    expect(whole.plugins).toHaveLength(split.plugins.length)
+  it('adds the single-file plugin without a second svelte plugin', async () => {
+    const { default: standalone } =
+      await import('../../../vite.standalone.config.js')
+    const names = standalone.plugins.flat().map((plugin) => plugin.name)
+    expect(names.filter((name) => name === 'vite-plugin-svelte')).toHaveLength(
+      1
+    )
+    expect(names).toContain('vite:singlefile')
   })
 })

@@ -2882,7 +2882,7 @@ See each step's **Complexity** line. The `complex` steps are 3.1 (migration), 4.
 
 #### Wave 5
 
-- [x] Slice 6: Single-file build (3 new tests; 1093 unit; 11 known v1 Playwright failures unchanged)
+- [x] Slice 6: Single-file build (slice review done, findings fixed; 1093 unit tests)
   - [ ] Step 6.1: Single-file build
 - [ ] Slice 7: Steps stage
   - [ ] Step 7.1: Step list, Intake lock, handoff, starter chips

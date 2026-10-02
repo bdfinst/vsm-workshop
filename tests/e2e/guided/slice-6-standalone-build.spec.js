@@ -33,26 +33,42 @@ test.describe('Standalone app in one file', () => {
     expect(requests).toEqual([])
   })
 
-  test('The file is self-contained and small', async () => {
+  test('The file is self-contained and small', async ({ standalone }) => {
     expect(standaloneSize()).toBeLessThan(5 * MB)
 
     const html = standaloneHtml()
-    const styles = [...html.matchAll(/<style\b[^>]*>([\s\S]*?)<\/style>/gi)]
-    const markup = html.replace(/<(script|style)\b[^>]*>[\s\S]*?<\/\1>/gi, '')
+    // The parsed page is the authority: bundled JS holds markup-like strings.
+    const { page } = await standalone({ offline: true })
+    const external = await page.evaluate(() =>
+      [
+        ...document.querySelectorAll(
+          'script[src], link[href], img[src], source[src], iframe[src], video[src], audio[src]'
+        ),
+      ]
+        .map((element) => element.outerHTML)
+        .filter((tag) => !/\b(src|href)=["'](data:|#)/i.test(tag))
+    )
+    expect(external).toEqual([])
 
-    const external = /\b(src|href)\s*=\s*(?!["']?(data:|#))/i
-    const tags = [
-      ...markup.matchAll(/<(script|img|link|source|iframe)\b[^>]*>/gi),
-    ]
-    expect(
-      tags.map(([tag]) => tag).filter((tag) => external.test(tag))
-    ).toEqual([])
-
-    const css = styles.map(([, body]) => body).join('\n')
+    const css = [...html.matchAll(/<style\b[^>]*>([\s\S]*?)<\/style>/gi)]
+      .map(([, body]) => body)
+      .join('\n')
     const urls = [
-      ...css.matchAll(/url\(\s*(["']?)(?!data:|#)([^)]+?)\1\s*\)/gi),
+      ...css.matchAll(/url\(\s*(?!["']?(?:data:|#))["']?([^)"']+)["']?\s*\)/gi),
     ]
-    expect(urls.map((match) => match[2])).toEqual([])
+    expect(urls.map((match) => match[1])).toEqual([])
     expect(css).not.toMatch(/@import/i)
+  })
+
+  test('The no-network check records a request the page makes', async ({
+    standalone,
+  }) => {
+    const { page, requests } = await standalone()
+
+    await page.evaluate(() =>
+      fetch('http://example.invalid/ping').catch(() => {})
+    )
+
+    expect(requests).toEqual(['http://example.invalid/ping'])
   })
 })
