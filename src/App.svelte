@@ -2,6 +2,7 @@
   import { SvelteFlowProvider } from '@xyflow/svelte'
   import { vsmDataStore } from './stores/vsmDataStore.svelte.js'
   import { vsmUIStore } from './stores/vsmUIStore.svelte.js'
+  import { sessionUIStore } from './stores/v2/sessionUIStore.svelte.js'
   import { performUndo, performRedo } from './utils/undoHelper.js'
   import Header from './components/ui/Header.svelte'
   import Canvas from './components/canvas/Canvas.svelte'
@@ -13,6 +14,9 @@
   import SimulationControls from './components/simulation/SimulationControls.svelte'
   import Toast from './components/ui/Toast.svelte'
   import KeyboardShortcutsOverlay from './components/ui/KeyboardShortcutsOverlay.svelte'
+  import GuidedRoot from './components/session/GuidedRoot.svelte'
+
+  const guided = sessionUIStore.uiMode === 'guided'
 
   // Keyboard shortcuts overlay (local state per D5)
   let showShortcuts = $state(false)
@@ -75,10 +79,13 @@
 </script>
 
 <Toast />
-<svelte:window onkeydown={handleGlobalKeyDown} />
+<!-- svelte:window cannot sit inside a block, so guided mode leaves v1's handler unattached. -->
+<svelte:window onkeydown={guided ? undefined : handleGlobalKeyDown} />
 
 <KeyboardShortcutsOverlay visible={showShortcuts} triggerRef={shortcutsTriggerRef} onclose={() => { showShortcuts = false }} />
-{#if !hasVsm}
+{#if guided}
+  <GuidedRoot />
+{:else if !hasVsm}
   <WelcomeScreen />
 {:else}
   <SvelteFlowProvider>
