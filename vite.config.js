@@ -1,7 +1,13 @@
 import { defineConfig } from 'vite'
 import { svelte } from '@sveltejs/vite-plugin-svelte'
 
-export default defineConfig({
+/**
+ * The config both builds share. The plugin list lives only here.
+ * @param {Object} options
+ * @param {boolean} options.splitVendorChunks - Split vendor code into chunks
+ * @returns {import('vite').UserConfig}
+ */
+export const createBaseConfig = ({ splitVendorChunks }) => ({
   plugins: [
     svelte({
       // Don't compile node_modules packages with runes mode
@@ -32,20 +38,27 @@ export default defineConfig({
   build: {
     rollupOptions: {
       output: {
-        manualChunks(moduleId) {
-          if (moduleId.includes('node_modules')) {
-            if (moduleId.includes('@xyflow/svelte')) {
-              return 'vendor_xyflow'
+        manualChunks: splitVendorChunks
+          ? (moduleId) => {
+              if (moduleId.includes('node_modules')) {
+                if (moduleId.includes('@xyflow/svelte')) {
+                  return 'vendor_xyflow'
+                }
+                if (
+                  moduleId.includes('layerchart') ||
+                  moduleId.includes('d3')
+                ) {
+                  return 'vendor_charts'
+                }
+                if (moduleId.includes('svelte')) {
+                  return 'vendor_svelte'
+                }
+              }
             }
-            if (moduleId.includes('layerchart') || moduleId.includes('d3')) {
-              return 'vendor_charts'
-            }
-            if (moduleId.includes('svelte')) {
-              return 'vendor_svelte'
-            }
-          }
-        },
+          : undefined,
       },
     },
   },
 })
+
+export default defineConfig(createBaseConfig({ splitVendorChunks: true }))

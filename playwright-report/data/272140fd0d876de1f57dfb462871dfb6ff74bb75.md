@@ -1,0 +1,182 @@
+# Page snapshot
+
+```yaml
+- generic [ref=e3]:
+  - banner [ref=e4]:
+    - generic [ref=e5]:
+      - generic [ref=e6]:
+        - generic [ref=e7]: 🗺️
+        - generic [ref=e8]: VSM Workshop
+      - button "Edit map name" [ref=e10]: Visual Test Map
+    - generic [ref=e11]:
+      - button "Undo" [ref=e12]:
+        - img [ref=e13]
+      - button "Redo" [disabled] [ref=e15]:
+        - img [ref=e16]
+      - button "New Map" [ref=e20]
+      - button "Import" [ref=e21]
+      - button "Export options" [ref=e23]:
+        - text: Export
+        - img [ref=e24]
+  - generic [ref=e26]:
+    - complementary "Step templates and instructions" [ref=e27]:
+      - button "+ Add Step" [ref=e28]:
+        - generic [ref=e29]: +
+        - generic [ref=e30]: Add Step
+      - generic [ref=e31]:
+        - heading "Step Templates" [level=2] [ref=e32]
+        - generic [ref=e33]:
+          - button "Software Development +" [ref=e35]:
+            - generic [ref=e36]: Software Development
+            - generic [ref=e37]: +
+          - button "Support & Service +" [ref=e39]:
+            - generic [ref=e40]: Support & Service
+            - generic [ref=e41]: +
+          - button "Manufacturing +" [ref=e43]:
+            - generic [ref=e44]: Manufacturing
+            - generic [ref=e45]: +
+      - generic [ref=e46]:
+        - heading "How to Use" [level=2] [ref=e47]
+        - generic [ref=e48]:
+          - generic [ref=e49]:
+            - term [ref=e50]: Add Step button
+            - definition [ref=e51]: Creates a new process step on the canvas
+          - generic [ref=e52]:
+            - term [ref=e53]: Click
+            - definition [ref=e54]: Select a step
+          - generic [ref=e55]:
+            - term [ref=e56]: Double-click
+            - definition [ref=e57]: Edit step properties
+          - generic [ref=e58]:
+            - term [ref=e59]: Drag handles
+            - definition [ref=e60]: Connect steps with a flow arrow
+          - generic [ref=e61]:
+            - term [ref=e62]: Delete key
+            - definition [ref=e63]: Remove the selected step
+      - generic [ref=e64]:
+        - heading "Glossary" [level=2] [ref=e65]
+        - generic [ref=e66]:
+          - generic [ref=e67]:
+            - term [ref=e68]: PT (Process Time)
+            - definition [ref=e69]: Actual hands-on work time
+          - generic [ref=e70]:
+            - term [ref=e71]: LT (Lead Time)
+            - definition [ref=e72]: Total elapsed time including wait
+          - generic [ref=e73]:
+            - term [ref=e74]: "%C&A"
+            - definition [ref=e75]: Percent Complete & Accurate - quality passing to next step
+          - generic [ref=e76]:
+            - term [ref=e77]: Flow Efficiency
+            - definition [ref=e78]: PT ÷ LT - how much time is actual work vs waiting
+      - button "Show mapping guidance" [ref=e80]:
+        - img [ref=e81]
+        - generic [ref=e83]: Help
+    - main [ref=e84]:
+      - generic [ref=e86]:
+        - generic [ref=e87]: Simulation
+        - button "Run" [ref=e89]:
+          - img [ref=e90]
+          - text: Run
+        - generic [ref=e91]:
+          - generic [ref=e92]: "Speed:"
+          - generic [ref=e93]:
+            - button "0.5x" [ref=e94]
+            - button "1x" [ref=e95]
+            - button "2x" [ref=e96]
+            - button "4x" [ref=e97]
+        - generic [ref=e98]:
+          - generic [ref=e99]: "Work Items:"
+          - combobox "Work Items:" [ref=e100]:
+            - option "5"
+            - option "10" [selected]
+            - option "20"
+            - option "50"
+            - option "100"
+        - button "New Scenario" [ref=e101]:
+          - img [ref=e102]
+          - text: New Scenario
+      - application "Value stream map canvas" [ref=e104]:
+        - application [ref=e105]:
+          - generic [ref=e107]:
+            - generic:
+              - generic:
+                - img
+              - generic:
+                - group [ref=e108]:
+                  - generic [ref=e109]:
+                    - button "Handle" [ref=e110]
+                    - generic [ref=e111]:
+                      - generic [ref=e112]: ⚙️
+                      - generic [ref=e113]: Development
+                    - generic [ref=e114]:
+                      - generic [ref=e115]:
+                        - generic "Process Time" [ref=e116]: "PT:"
+                        - generic [ref=e117]: 1h
+                      - generic [ref=e118]:
+                        - generic "Lead Time" [ref=e119]: "LT:"
+                        - generic [ref=e120]: 4h
+                      - generic [ref=e121]:
+                        - generic "Percent Complete and Accurate" [ref=e122]: "%C&A:"
+                        - generic [ref=e123]: 100%
+                    - button "Handle" [ref=e124]
+                - group [ref=e125]:
+                  - generic [ref=e126]:
+                    - button "Handle" [ref=e127]
+                    - generic [ref=e128]:
+                      - generic [ref=e129]: ⚙️
+                      - generic [ref=e130]: Testing
+                    - generic [ref=e131]:
+                      - generic [ref=e132]:
+                        - generic "Process Time" [ref=e133]: "PT:"
+                        - generic [ref=e134]: 1h
+                      - generic [ref=e135]:
+                        - generic "Lead Time" [ref=e136]: "LT:"
+                        - generic [ref=e137]: 4h
+                      - generic [ref=e138]:
+                        - generic "Percent Complete and Accurate" [ref=e139]: "%C&A:"
+                        - generic [ref=e140]: 100%
+                    - button "Handle" [ref=e141]
+          - link "Svelte Flow attribution" [ref=e143] [cursor=pointer]:
+            - /url: https://svelteflow.dev
+            - text: Svelte Flow
+          - img
+          - generic "Control Panel" [ref=e145]:
+            - button "Zoom In" [disabled]:
+              - img
+            - button "Zoom Out" [ref=e146] [cursor=pointer]:
+              - img [ref=e147]
+            - button "Fit View" [ref=e149] [cursor=pointer]:
+              - img [ref=e150]
+            - button "Toggle Interactivity" [ref=e152] [cursor=pointer]:
+              - img [ref=e153]
+          - img "Mini Map" [ref=e157]
+      - generic [ref=e161]:
+        - generic "Total time from start to finish including all wait times" [ref=e162]:
+          - heading "Total Lead Time" [level=3] [ref=e163]
+          - generic [ref=e164]: 1d
+          - paragraph [ref=e165]: End-to-end time
+        - generic "Total hands-on work time across all steps" [ref=e166]:
+          - heading "Total Process Time" [level=3] [ref=e167]
+          - generic [ref=e168]: 2h
+          - paragraph [ref=e169]: Actual work time
+        - generic "Process Time ÷ Lead Time - higher is better (>25% is good)" [ref=e170]:
+          - heading "Flow Efficiency" [level=3] [ref=e171]
+          - generic [ref=e172]: 25.0%
+          - paragraph [ref=e173]: Good!
+        - generic "Probability an item passes through without any rework" [ref=e174]:
+          - heading "First Pass Yield" [level=3] [ref=e175]
+          - generic [ref=e176]: 100.0%
+          - paragraph [ref=e177]: Items without rework
+        - generic "Total number of items waiting across all steps" [ref=e178]:
+          - heading "Total Queue" [level=3] [ref=e179]
+          - generic [ref=e180]: "0"
+          - paragraph [ref=e181]: Items waiting
+        - generic "Average process time per step - indicates work density" [ref=e182]:
+          - heading "Avg Process Time" [level=3] [ref=e183]
+          - generic [ref=e184]: 1h
+          - paragraph [ref=e185]: Per step
+        - generic "Number of steps in your value stream" [ref=e186]:
+          - heading "Steps" [level=3] [ref=e187]
+          - generic [ref=e188]: "2"
+          - paragraph [ref=e189]: Process stages
+```

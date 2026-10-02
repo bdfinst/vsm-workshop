@@ -4,6 +4,7 @@ node_modules
 # Build output
 dist
 dist-ssr
+dist-standalone
 
 # Local env files
 .env
