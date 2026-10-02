@@ -102,7 +102,7 @@
   function restoreFocus(stepId, control) {
     const onControl = `[data-control="${control}"], [data-field="${control}"]`
     listElement
-      .querySelector(`[data-step-id="${stepId}"] :is(${onControl})`)
+      .querySelector(`[data-step-id="${CSS.escape(stepId)}"] :is(${onControl})`)
       ?.focus()
   }
 

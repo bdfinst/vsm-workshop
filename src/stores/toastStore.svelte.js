@@ -59,7 +59,8 @@ export function createToastStore() {
    */
   const add = (text, type = 'info', duration, options) => {
     const action = options?.action
-    const id = `toast-${++nextId}`
+    nextId = nextId + 1
+    const id = `toast-${nextId}`
     messages = [...messages, { id, text, type, action }]
 
     if (type !== 'error') {

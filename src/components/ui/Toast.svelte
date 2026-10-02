@@ -68,7 +68,7 @@
         {/if}
         <button
           onclick={() => toastStore.dismiss(toast.id)}
-          class="flex-shrink-0 text-gray-400 hover:text-gray-600 p-0.5"
+          class="flex-shrink-0 text-gray-600 hover:text-gray-800 p-0.5"
           aria-label="Dismiss notification"
           data-testid="toast-dismiss-button"
         >

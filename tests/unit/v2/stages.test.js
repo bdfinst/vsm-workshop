@@ -114,8 +114,8 @@ describe('stageStatus', () => {
   it('marks stages beyond the furthest reached as not selectable', () => {
     const statuses = byName(stageStatus(streamAt(2, 2)))
 
-    expect(statuses.Scope.state).not.toBe('not-selectable')
-    expect(statuses.Steps.state).not.toBe('not-selectable')
+    expect(statuses.Scope.state).toBe('complete')
+    expect(statuses.Steps.state).toBe('reached')
     expect(statuses.Time.state).toBe('not-selectable')
     expect(statuses.Future.state).toBe('not-selectable')
   })
@@ -128,7 +128,7 @@ describe('stageStatus', () => {
     const statuses = byName(stageStatus(streamAt(2, 2, { trigger: ' ' })))
 
     expect(statuses.Scope.state).toBe('needs-attention')
-    expect(statuses.Scope.reason).toMatch(/trigger/)
+    expect(statuses.Scope.reason).toBe('Add a trigger')
   })
 
   it('derives completion from the data, so fixing the field clears it', () => {

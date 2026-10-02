@@ -217,4 +217,21 @@ describe('toastStore', () => {
       expect(store.messages).toHaveLength(1)
     })
   })
+
+  describe('clear', () => {
+    it('removes every message, including a paused one that is later resumed', () => {
+      store.add('Plain')
+      const id = store.add('Step deleted', 'info', undefined, {
+        action: { label: 'Undo', onclick: () => {} },
+      })
+      store.pause(id)
+
+      store.clear()
+      expect(store.messages).toEqual([])
+
+      store.resume(id)
+      vi.advanceTimersByTime(60000)
+      expect(store.messages).toEqual([])
+    })
+  })
 })
