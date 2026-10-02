@@ -7,6 +7,20 @@
   --font-mono: 'IBM Plex Mono', ui-monospace, SFMono-Regular, Menlo, monospace;
 }
 
+/* The hatch that marks work done outside the team; one token, used wherever
+   an outside step is drawn. */
+:root {
+  --hatch-outside: repeating-linear-gradient(
+    45deg,
+    #9ca3af 0 2px,
+    transparent 2px 8px
+  );
+}
+
+.hatch-outside {
+  background-image: var(--hatch-outside);
+}
+
 body {
   margin: 0;
   font-family: var(--font-sans);

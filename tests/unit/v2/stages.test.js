@@ -5,6 +5,7 @@ import {
   missingScopeFields,
   scopeReason,
   stageStatus,
+  stepsReason,
 } from '../../../src/utils/session/stages.js'
 
 const filledScope = {
@@ -143,5 +144,60 @@ describe('stageStatus', () => {
 
     expect(steps.state).toBe('reached')
     expect(steps.reason).toBeNull()
+  })
+})
+
+describe('stepsReason', () => {
+  const intake = { name: 'Intake', performedBy: 'Product owner' }
+  const refinement = { name: 'Refinement', performedBy: 'Dev team' }
+
+  it('is null when there are two steps, all named and with a performer', () => {
+    expect(stepsReason([intake, refinement])).toBeNull()
+  })
+
+  it.each([[[]], [[intake]]])('asks for a step after Intake: %j', (steps) => {
+    expect(stepsReason(steps)).toBe('Add at least one step after Intake')
+  })
+
+  it('asks for a step after Intake before anything else is missing', () => {
+    expect(stepsReason([{ name: 'Intake', performedBy: '' }])).toBe(
+      'Add at least one step after Intake'
+    )
+  })
+
+  it.each(['', '   '])('asks for a name when one is %j', (name) => {
+    expect(stepsReason([intake, { ...refinement, name }])).toBe(
+      'Name every step'
+    )
+  })
+
+  it('asks for a name before a performer', () => {
+    const steps = [
+      { ...intake, performedBy: '' },
+      { ...refinement, name: '' },
+    ]
+
+    expect(stepsReason(steps)).toBe('Name every step')
+  })
+
+  it.each(['', '  '])('names the step missing a performer: %j', (blank) => {
+    expect(stepsReason([intake, { ...refinement, performedBy: blank }])).toBe(
+      'Add who does "Refinement"'
+    )
+  })
+
+  it('names the first step missing a performer, Intake included', () => {
+    const steps = [
+      { ...intake, performedBy: '' },
+      { ...refinement, performedBy: '' },
+    ]
+
+    expect(stepsReason(steps)).toBe('Add who does "Intake"')
+  })
+
+  it('trims the name it quotes', () => {
+    const steps = [intake, { name: ' Refinement ', performedBy: '' }]
+
+    expect(stepsReason(steps)).toBe('Add who does "Refinement"')
   })
 })

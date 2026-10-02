@@ -9,6 +9,7 @@
     focusStageHeading,
   } from '../../utils/session/focus.js'
   import ScopeStage from './stages/ScopeStage.svelte'
+  import StepsStage from './stages/StepsStage.svelte'
   import SessionHeader from './SessionHeader.svelte'
   import StageRail from './StageRail.svelte'
 
@@ -95,6 +96,10 @@
         {#if store && stage === 1}
           {#key stream.id}
             <ScopeStage {store} onnext={handleNext} />
+          {/key}
+        {:else if store && stage === 2}
+          {#key stream.id}
+            <StepsStage {store} onnext={handleNext} onannounce={announce} />
           {/key}
         {:else}
           <PlaceholderStage

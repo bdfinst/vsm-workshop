@@ -100,4 +100,121 @@ describe('toastStore', () => {
       expect(store.messages).toHaveLength(0)
     })
   })
+  describe('action', () => {
+    const undo = { label: 'Undo', onclick: () => {} }
+
+    it('keeps the action on the message', () => {
+      store.add('Step deleted', 'info', undefined, { action: undo })
+      expect(store.messages[0].action).toEqual(undo)
+    })
+
+    it('returns the id of the new message', () => {
+      const id = store.add('Step deleted')
+      expect(store.messages[0].id).toBe(id)
+    })
+
+    it('stays for 10 seconds when it has an action', () => {
+      store.add('Step deleted', 'info', undefined, { action: undo })
+
+      vi.advanceTimersByTime(9999)
+      expect(store.messages).toHaveLength(1)
+
+      vi.advanceTimersByTime(1)
+      expect(store.messages).toHaveLength(0)
+    })
+
+    it('uses an explicit duration over the action default', () => {
+      store.add('Step deleted', 'info', 3000, { action: undo })
+
+      vi.advanceTimersByTime(3000)
+      expect(store.messages).toHaveLength(0)
+    })
+
+    it('tolerates a null options argument', () => {
+      store.add('Plain', 'info', undefined, null)
+      expect(store.messages[0].action).toBeUndefined()
+    })
+
+    it('leaves messages without an action at the default duration', () => {
+      store.add('Plain')
+      expect(store.messages[0].action).toBeUndefined()
+
+      vi.advanceTimersByTime(5000)
+      expect(store.messages).toHaveLength(0)
+    })
+  })
+
+  describe('pause and resume', () => {
+    const undo = { label: 'Undo', onclick: () => {} }
+    const addWithAction = () =>
+      store.add('Step deleted', 'info', undefined, { action: undo })
+
+    it('does not dismiss a paused message', () => {
+      const id = addWithAction()
+      store.pause(id)
+
+      vi.advanceTimersByTime(60000)
+      expect(store.messages).toHaveLength(1)
+    })
+
+    it('restarts the full wait on resume', () => {
+      const id = addWithAction()
+      vi.advanceTimersByTime(9000)
+      store.pause(id)
+      store.resume(id)
+
+      vi.advanceTimersByTime(9999)
+      expect(store.messages).toHaveLength(1)
+
+      vi.advanceTimersByTime(1)
+      expect(store.messages).toHaveLength(0)
+    })
+
+    it('keeps the duration it was added with', () => {
+      const id = store.add('Short', 'info', 3000)
+      store.pause(id)
+      store.resume(id)
+
+      vi.advanceTimersByTime(3000)
+      expect(store.messages).toHaveLength(0)
+    })
+
+    it('does not start a timer for an error message on resume', () => {
+      const id = store.add('Failed', 'error')
+      store.pause(id)
+      store.resume(id)
+
+      vi.advanceTimersByTime(60000)
+      expect(store.messages).toHaveLength(1)
+    })
+
+    it('ignores an unknown id', () => {
+      store.add('Only message')
+      store.pause('nonexistent-id')
+      store.resume('nonexistent-id')
+
+      vi.advanceTimersByTime(5000)
+      expect(store.messages).toHaveLength(0)
+    })
+
+    it('cannot bring back a dismissed message by resuming it', () => {
+      const id = addWithAction()
+      store.dismiss(id)
+      store.resume(id)
+
+      vi.advanceTimersByTime(60000)
+      expect(store.messages).toHaveLength(0)
+    })
+
+    it('resuming twice leaves one timer', () => {
+      const id = addWithAction()
+      store.pause(id)
+      store.resume(id)
+      vi.advanceTimersByTime(5000)
+      store.resume(id)
+
+      vi.advanceTimersByTime(9999)
+      expect(store.messages).toHaveLength(1)
+    })
+  })
 })
