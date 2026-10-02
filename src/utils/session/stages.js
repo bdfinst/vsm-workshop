@@ -3,6 +3,8 @@ import {
   STAGE_NUMBER,
   UNIT_OF_WORK,
 } from '../../models/v2/constants.js'
+import { timeFieldsOf } from '../../models/v2/step.js'
+import { stepLabelOf } from './stepData.js'
 
 /**
  * The guided session's stages: the one place their metadata lives. `prompt`
@@ -23,6 +25,13 @@ const PROMPTS = {
       'List every step in order, starting from Intake. Say who does each one and mark where work is handed to another team.',
     example:
       'Refinement: the dev team splits and sizes stories, then hands them to development.',
+  },
+  Time: {
+    question: 'How long does each step take, and how long does work wait?',
+    explanation:
+      'Enter the hands-on process time and the wait time before each step. For a step done by an outside team, enter one elapsed time from submitted to returned.',
+    example:
+      'Code review: 30 minutes of process time, 1 working day of wait time for a reviewer.',
   },
 }
 
@@ -110,6 +119,44 @@ export const stepsReason = (steps) => {
   if (steps.some((step) => isBlank(step.name))) return 'Name every step'
   const unattributed = steps.find((step) => isBlank(step.performedBy))
   return unattributed ? `Add who does "${unattributed.name.trim()}"` : null
+}
+
+// How the Time gate names each time field.
+const TIME_FIELD_NOUNS = {
+  processTime: 'process time',
+  waitTime: 'wait time',
+  elapsedTime: 'elapsed time',
+}
+
+/**
+ * The typical times still to enter. Zero counts as entered.
+ * @param {{name: string, kind: string}[]} steps - Step rows in order, Intake first
+ * @returns {{stepName: string, field: string}[]} In step order; a team step asks for process then wait time, an outside step for elapsed time
+ */
+export const missingTimeFields = (steps) =>
+  steps.flatMap((step, index) =>
+    timeFieldsOf(step.kind)
+      .filter((field) => step[field]?.typ == null)
+      .map((field) => ({
+        stepName: stepLabelOf(step.name, index + 1),
+        field: TIME_FIELD_NOUNS[field],
+      }))
+  )
+
+/**
+ * Why Next is disabled on Time: an entry that shows an error comes first, then
+ * every typical time still missing.
+ * @param {{name: string, kind: string}[]} steps - Step rows in order, Intake first
+ * @param {boolean} hasInvalid - Whether any time field shows an error
+ * @returns {?string} The reason, or null when the times are ready
+ */
+export const timeReason = (steps, hasInvalid) => {
+  if (hasInvalid) return 'Fix the times that show an error'
+  const missing = missingTimeFields(steps)
+  if (missing.length === 0) return null
+  return `Add ${joinWithAnd(
+    missing.map(({ stepName, field }) => `the ${field} for "${stepName}"`)
+  )}`
 }
 
 // A stage with no rule yet has nothing to check; later slices add theirs.

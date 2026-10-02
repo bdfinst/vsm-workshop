@@ -7,7 +7,9 @@
 
   // DurationInput props: id (prefix for the DOM ids, unique on the page),
   // testid (prefix for the data-testid attributes), label (what the time is
-  // called, for example "Process time"), value ({ typ, min?, max? } in
+  // called, for example "Process time"), fieldLabel (what the main field
+  // shows instead of the label, when it reads better; the label still names
+  // the time in error messages), value ({ typ, min?, max? } in
   // minutes, or null), workdayHours (the length of a working day),
   // positive (the time must be more than 0, not just 0 or more),
   // showRange (also show the min and max fields), oncommit(range) with the
@@ -19,6 +21,7 @@
     id,
     testid,
     label,
+    fieldLabel = label,
     value = null,
     workdayHours,
     positive = false,
@@ -120,7 +123,7 @@
 {/snippet}
 
 <div class="flex flex-wrap items-start gap-4" data-testid={testid}>
-  {@render field('typ', label, '')}
+  {@render field('typ', fieldLabel, '')}
   {#if showRange}
     {@render field('min', 'Min', '-min', label)}
     {@render field('max', 'Max', '-max', label)}

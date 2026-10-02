@@ -10,6 +10,7 @@
   } from '../../utils/session/focus.js'
   import ScopeStage from './stages/ScopeStage.svelte'
   import StepsStage from './stages/StepsStage.svelte'
+  import TimeStage from './stages/TimeStage.svelte'
   import SessionHeader from './SessionHeader.svelte'
   import StageRail from './StageRail.svelte'
 
@@ -19,6 +20,7 @@
   const STAGE_COMPONENTS = {
     [STAGE_NUMBER.SCOPE]: ScopeStage,
     [STAGE_NUMBER.STEPS]: StepsStage,
+    [STAGE_NUMBER.TIME]: TimeStage,
   }
 
   let store = $derived(workspaceStore.activeStore)

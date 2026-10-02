@@ -4,9 +4,11 @@ import { createValueStream } from '../../../src/models/v2/valueStream.js'
 import {
   STAGES,
   missingScopeFields,
+  missingTimeFields,
   scopeReason,
   stageStatus,
   stepsReason,
+  timeReason,
 } from '../../../src/utils/session/stages.js'
 
 const filledScope = {
@@ -54,7 +56,7 @@ describe('STAGES', () => {
 })
 
 describe('STAGES prompts', () => {
-  it('gives only Scope and Steps a prompt so far', () => {
+  it('gives only Scope, Steps and Time a prompt so far', () => {
     const withPrompt = STAGES.filter((stage) => stage.prompt).map(
       (stage) => stage.name
     )
@@ -62,8 +64,8 @@ describe('STAGES prompts', () => {
       (stage) => stage.prompt
     )
 
-    expect(withPrompt).toEqual(['Scope', 'Steps'])
-    expect(without).toEqual([null, null, null, null, null])
+    expect(withPrompt).toEqual(['Scope', 'Steps', 'Time'])
+    expect(without).toEqual([null, null, null, null])
   })
 })
 
@@ -228,5 +230,103 @@ describe('stepsReason', () => {
     const steps = [intake, { name: ' Refinement ', performedBy: '' }]
 
     expect(stepsReason(steps)).toBe('Add who does "Refinement"')
+  })
+})
+
+describe('missingTimeFields', () => {
+  const team = (name, process, wait) => ({
+    name,
+    kind: 'team',
+    processTime: { typ: process },
+    waitTime: { typ: wait },
+  })
+  const outside = (name, elapsed) => ({
+    name,
+    kind: 'outside',
+    elapsedTime: { typ: elapsed },
+  })
+
+  it('is empty when every typical time is entered, zero included', () => {
+    const steps = [team('Intake', 0, 0), outside('Security review', 60)]
+
+    expect(missingTimeFields(steps)).toEqual([])
+  })
+
+  it('names the step and field of each missing typical time, in step order', () => {
+    const steps = [team('Intake', null, 5), team('Deploy', 10, null)]
+
+    expect(missingTimeFields(steps)).toEqual([
+      { stepName: 'Intake', field: 'process time' },
+      { stepName: 'Deploy', field: 'wait time' },
+    ])
+  })
+
+  it('asks a team step for process time then wait time', () => {
+    expect(missingTimeFields([team('Build', null, null)])).toEqual([
+      { stepName: 'Build', field: 'process time' },
+      { stepName: 'Build', field: 'wait time' },
+    ])
+  })
+
+  it('asks an outside step for its elapsed time only', () => {
+    expect(missingTimeFields([outside('Security review', null)])).toEqual([
+      { stepName: 'Security review', field: 'elapsed time' },
+    ])
+  })
+
+  it('treats a time range that is not entered at all as missing', () => {
+    const step = {
+      name: 'Build',
+      kind: 'team',
+      processTime: null,
+      waitTime: { typ: 1 },
+    }
+
+    expect(missingTimeFields([step])).toEqual([
+      { stepName: 'Build', field: 'process time' },
+    ])
+  })
+
+  it('calls a step with no name by its position', () => {
+    expect(
+      missingTimeFields([team('Intake', 1, 1), team(' ', null, 1)])
+    ).toEqual([{ stepName: 'step 2', field: 'process time' }])
+  })
+})
+
+describe('timeReason', () => {
+  const complete = {
+    name: 'Deploy',
+    kind: 'team',
+    processTime: { typ: 0 },
+    waitTime: { typ: 0 },
+  }
+
+  it('is null when every typical time is entered and nothing is invalid', () => {
+    expect(timeReason([complete], false)).toBeNull()
+  })
+
+  it('names the one missing field', () => {
+    const steps = [{ ...complete, waitTime: { typ: null } }]
+
+    expect(timeReason(steps, false)).toBe('Add the wait time for "Deploy"')
+  })
+
+  it('names every missing field, joined like the Scope gate', () => {
+    const steps = [
+      { ...complete, name: 'Intake', processTime: { typ: null } },
+      { ...complete, name: 'Deploy', waitTime: { typ: null } },
+      { name: 'Security review', kind: 'outside', elapsedTime: { typ: null } },
+    ]
+
+    expect(timeReason(steps, false)).toBe(
+      'Add the process time for "Intake", the wait time for "Deploy" and the elapsed time for "Security review"'
+    )
+  })
+
+  it('says to fix an invalid entry before it names what is missing', () => {
+    const steps = [{ ...complete, waitTime: { typ: null } }]
+
+    expect(timeReason(steps, true)).toBe('Fix the times that show an error')
   })
 })

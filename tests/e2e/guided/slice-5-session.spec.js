@@ -29,14 +29,14 @@ test.describe('Session shell (step 5.1)', () => {
     page,
     seed,
   }) => {
-    await seed(workspaceAtStage(3))
+    await seed(workspaceAtStage(4))
 
-    await expect(page.getByRole('heading', { name: 'Time' })).toBeVisible()
+    await expect(page.getByRole('heading', { name: 'Quality' })).toBeVisible()
     await expect(page.getByText('This stage is not built yet')).toBeVisible()
     await expect(page.getByRole('button', { name: 'Next' })).toBeEnabled()
 
     await page.getByRole('button', { name: 'Next' }).click()
-    await expect(page.getByRole('heading', { name: 'Quality' })).toBeVisible()
+    await expect(page.getByRole('heading', { name: 'Rework' })).toBeVisible()
   })
 
   test('the shell has no accessibility violations', async ({ page, axe }) => {

@@ -2892,8 +2892,8 @@ See each step's **Complexity** line. The `complex` steps are 3.1 (migration), 4.
 #### Wave 6
 
 - [ ] Slice 8: Time stage
-  - [ ] Step 8.1: DurationInput
-  - [ ] Step 8.2: Time stage
+  - [x] Step 8.1: DurationInput
+  - [x] Step 8.2: Time stage
 - [ ] Slice 9: Workspace home screen
   - [ ] Step 9.1: HomeScreen, launch and screen
   - [ ] Step 9.2: Card menu, rename, duplicate and delete with undo
