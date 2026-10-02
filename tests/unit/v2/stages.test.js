@@ -1,10 +1,12 @@
 import { describe, it, expect } from 'vitest'
+import { STAGE_NUMBER } from '../../../src/models/v2/constants.js'
 import { createValueStream } from '../../../src/models/v2/valueStream.js'
 import {
   STAGES,
   missingScopeFields,
   scopeReason,
   stageStatus,
+  stepsReason,
 } from '../../../src/utils/session/stages.js'
 
 const filledScope = {
@@ -33,6 +35,35 @@ describe('STAGES', () => {
       'Future',
     ])
     expect(STAGES.map((stage) => stage.number)).toEqual([1, 2, 3, 4, 5, 6, 7])
+  })
+
+  it('numbers each stage as STAGE_NUMBER names it', () => {
+    const numberOf = (name) =>
+      STAGES.find((stage) => stage.name === name).number
+
+    expect(STAGE_NUMBER).toEqual({
+      SCOPE: numberOf('Scope'),
+      STEPS: numberOf('Steps'),
+      TIME: numberOf('Time'),
+      QUALITY: numberOf('Quality'),
+      REWORK: numberOf('Rework'),
+      REVIEW: numberOf('Review'),
+      FUTURE: numberOf('Future'),
+    })
+  })
+})
+
+describe('STAGES prompts', () => {
+  it('gives only Scope and Steps a prompt so far', () => {
+    const withPrompt = STAGES.filter((stage) => stage.prompt).map(
+      (stage) => stage.name
+    )
+    const without = STAGES.filter((stage) => !stage.prompt).map(
+      (stage) => stage.prompt
+    )
+
+    expect(withPrompt).toEqual(['Scope', 'Steps'])
+    expect(without).toEqual([null, null, null, null, null])
   })
 })
 
@@ -113,8 +144,7 @@ describe('stageStatus', () => {
   it('marks stages beyond the furthest reached as not selectable', () => {
     const statuses = byName(stageStatus(streamAt(2, 2)))
 
-    expect(statuses.Scope.state).not.toBe('not-selectable')
-    expect(statuses.Steps.state).not.toBe('not-selectable')
+    expect(statuses.Steps.state).toBe('reached')
     expect(statuses.Time.state).toBe('not-selectable')
     expect(statuses.Future.state).toBe('not-selectable')
   })
@@ -127,7 +157,7 @@ describe('stageStatus', () => {
     const statuses = byName(stageStatus(streamAt(2, 2, { trigger: ' ' })))
 
     expect(statuses.Scope.state).toBe('needs-attention')
-    expect(statuses.Scope.reason).toMatch(/trigger/)
+    expect(statuses.Scope.reason).toBe('Add a trigger')
   })
 
   it('derives completion from the data, so fixing the field clears it', () => {
@@ -139,9 +169,64 @@ describe('stageStatus', () => {
   })
 
   it('has no completion verdict yet for reached stages without rules', () => {
-    const steps = byName(stageStatus(streamAt(2, 2))).Steps
+    const time = byName(stageStatus(streamAt(3, 3))).Time
 
-    expect(steps.state).toBe('reached')
-    expect(steps.reason).toBeNull()
+    expect(time.state).toBe('reached')
+    expect(time.reason).toBeNull()
+  })
+})
+
+describe('stepsReason', () => {
+  const intake = { name: 'Intake', performedBy: 'Product owner' }
+  const refinement = { name: 'Refinement', performedBy: 'Dev team' }
+
+  it('is null when there are two steps, all named and with a performer', () => {
+    expect(stepsReason([intake, refinement])).toBeNull()
+  })
+
+  it.each([[[]], [[intake]]])('asks for a step after Intake: %j', (steps) => {
+    expect(stepsReason(steps)).toBe('Add at least one step after Intake')
+  })
+
+  it('asks for a step after Intake before anything else is missing', () => {
+    expect(stepsReason([{ name: 'Intake', performedBy: '' }])).toBe(
+      'Add at least one step after Intake'
+    )
+  })
+
+  it.each(['', '   '])('asks for a name when one is %j', (name) => {
+    expect(stepsReason([intake, { ...refinement, name }])).toBe(
+      'Name every step'
+    )
+  })
+
+  it('asks for a name before a performer', () => {
+    const steps = [
+      { ...intake, performedBy: '' },
+      { ...refinement, name: '' },
+    ]
+
+    expect(stepsReason(steps)).toBe('Name every step')
+  })
+
+  it.each(['', '  '])('names the step missing a performer: %j', (blank) => {
+    expect(stepsReason([intake, { ...refinement, performedBy: blank }])).toBe(
+      'Add who does "Refinement"'
+    )
+  })
+
+  it('names the first step missing a performer, Intake included', () => {
+    const steps = [
+      { ...intake, performedBy: '' },
+      { ...refinement, performedBy: '' },
+    ]
+
+    expect(stepsReason(steps)).toBe('Add who does "Intake"')
+  })
+
+  it('trims the name it quotes', () => {
+    const steps = [intake, { name: ' Refinement ', performedBy: '' }]
+
+    expect(stepsReason(steps)).toBe('Add who does "Refinement"')
   })
 })

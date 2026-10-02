@@ -1,5 +1,6 @@
 <script>
   import { toastStore } from '../../stores/toastStore.svelte.js'
+  import { isToastHeld } from '../../utils/ui/toastHold.js'
 
   const typeStyles = {
     info: 'bg-blue-50 border-blue-200 text-blue-800',
@@ -13,6 +14,25 @@
     error: '\u274c',
     success: '\u2705',
     warning: '\u26a0\ufe0f',
+  }
+
+  // A toast with an action waits while the pointer or focus is on it, and
+  // starts its wait again only when neither is.
+
+  function handleHold(toast) {
+    if (toast.action) toastStore.pause(toast.id)
+  }
+
+  // On focusout the active element is the body, so focus is where it is going.
+  function handleRelease(event, toast, focused = document.activeElement) {
+    if (toast.action && !isToastHeld(event.currentTarget, focused)) {
+      toastStore.resume(toast.id)
+    }
+  }
+
+  function handleAction(toast) {
+    toast.action.onclick()
+    toastStore.dismiss(toast.id)
   }
 </script>
 
@@ -28,14 +48,27 @@
         role={toast.type === 'error' ? 'alert' : 'status'}
         aria-live={toast.type === 'error' ? 'assertive' : 'polite'}
         aria-atomic="true"
+        onmouseenter={() => handleHold(toast)}
+        onmouseleave={(event) => handleRelease(event, toast)}
+        onfocusin={() => handleHold(toast)}
+        onfocusout={(event) => handleRelease(event, toast, event.relatedTarget)}
       >
         <span class="flex-shrink-0" aria-hidden="true">
           {iconMap[toast.type] || iconMap.info}
         </span>
         <p class="flex-1 text-sm">{toast.text}</p>
+        {#if toast.action}
+          <button
+            onclick={() => handleAction(toast)}
+            class="flex-shrink-0 text-sm font-medium underline focus:outline-none focus:ring-2 focus:ring-blue-500 rounded"
+            data-testid="toast-action-button"
+          >
+            {toast.action.label}
+          </button>
+        {/if}
         <button
           onclick={() => toastStore.dismiss(toast.id)}
-          class="flex-shrink-0 text-gray-400 hover:text-gray-600 p-0.5"
+          class="flex-shrink-0 text-gray-600 hover:text-gray-800 p-0.5 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
           aria-label="Dismiss notification"
           data-testid="toast-dismiss-button"
         >

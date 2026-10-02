@@ -42,6 +42,9 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
+      - name: Build app and standalone file
+        run: npm run build && npm run build:standalone
+
       - name: E2E + visual regression tests
         run: npx playwright test
 

@@ -1,6 +1,6 @@
 <script>
   import { workspaceStore } from '../../stores/v2/workspaceStore.svelte.js'
-  import { STAGE_NAMES } from '../../models/v2/constants.js'
+  import { STAGE_NAMES, STAGE_NUMBER } from '../../models/v2/constants.js'
   import { isTextEntry, shortcutFor } from '../../utils/ui/keymap.js'
   import PlaceholderStage from './stages/PlaceholderStage.svelte'
   import { stageStatus } from '../../utils/session/stages.js'
@@ -9,15 +9,27 @@
     focusStageHeading,
   } from '../../utils/session/focus.js'
   import ScopeStage from './stages/ScopeStage.svelte'
+  import StepsStage from './stages/StepsStage.svelte'
   import SessionHeader from './SessionHeader.svelte'
   import StageRail from './StageRail.svelte'
+
+  // Each stage's own component, by stage number; the rest are still placeholders.
+  // Every stage is given the same props and uses the ones it needs: store,
+  // name, onnext and onannounce(text) to say something to screen readers.
+  const STAGE_COMPONENTS = {
+    [STAGE_NUMBER.SCOPE]: ScopeStage,
+    [STAGE_NUMBER.STEPS]: StepsStage,
+  }
 
   let store = $derived(workspaceStore.activeStore)
   let stream = $derived(store?.stream)
   let streamId = $derived(stream?.id)
-  let stage = $derived(stream?.session.activeStage ?? 1)
+  let stage = $derived(stream?.session.activeStage ?? STAGE_NUMBER.SCOPE)
   let stageName = $derived(STAGE_NAMES[stage - 1])
   let statuses = $derived(stream ? stageStatus(stream) : [])
+  let StageComponent = $derived(
+    (store && STAGE_COMPONENTS[stage]) || PlaceholderStage
+  )
 
   // On a stage change, and on opening a stream, focus moves to the heading.
   // It depends on the id, not the stream: an edit makes a new stream object
@@ -60,7 +72,7 @@
 
   // Later slices replace the remaining placeholders with the stages' own components.
   function handleNext() {
-    workspaceStore.activeStore.goToStage(stage + 1)
+    store.goToStage(stage + 1)
   }
 </script>
 
@@ -92,16 +104,14 @@
         data-testid="work-region"
         bind:this={workRegion}
       >
-        {#if store && stage === 1}
-          {#key stream.id}
-            <ScopeStage {store} onnext={handleNext} />
-          {/key}
-        {:else}
-          <PlaceholderStage
+        {#key streamId}
+          <StageComponent
+            {store}
             name={stageName}
             onnext={stage < STAGE_NAMES.length ? handleNext : null}
+            onannounce={announce}
           />
-        {/if}
+        {/key}
       </div>
     </main>
     <aside class="lg:w-80" aria-label="Map" data-testid="map-pane"></aside>

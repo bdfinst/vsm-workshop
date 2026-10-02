@@ -2884,10 +2884,10 @@ See each step's **Complexity** line. The `complex` steps are 3.1 (migration), 4.
 
 - [x] Slice 6: Single-file build (slice review done, findings fixed; 1093 unit tests)
   - [ ] Step 6.1: Single-file build
-- [ ] Slice 7: Steps stage
-  - [ ] Step 7.1: Step list, Intake lock, handoff, starter chips
-  - [ ] Step 7.2: Insert and reorder
-  - [ ] Step 7.3: Outside toggle, kind switch, delete with confirm and undo
+- [x] Slice 7: Steps stage (slice review done, findings fixed; 1329 unit tests, 116 guided e2e)
+  - [x] Step 7.1: Step list, Intake lock, handoff, starter chips
+  - [x] Step 7.2: Insert and reorder
+  - [x] Step 7.3: Outside toggle, kind switch, delete with confirm and undo
 
 #### Wave 6
 

@@ -27,11 +27,12 @@ import {
   STEP_KIND,
   VERSION_KIND,
 } from '../../models/v2/constants.js'
-import { createStep } from '../../models/v2/step.js'
-import { createReworkPath } from '../../models/v2/reworkPath.js'
+import { TIME_FIELDS, createStep, timeFieldsOf } from '../../models/v2/step.js'
+import {
+  createReworkPath,
+  pathTouchesStep,
+} from '../../models/v2/reworkPath.js'
 import { refuse } from '../../models/v2/result.js'
-
-const TIME_FIELDS = ['processTime', 'waitTime', 'elapsedTime']
 
 const firstMessage = ({ errors }) => Object.values(errors)[0]
 
@@ -178,8 +179,7 @@ export const createValueStreamStore = ({ stream, persist }) => {
       const error = checkDeleteStep(version.steps, stepId)
       if (error) return { error }
       version.steps = version.steps.filter((step) => step.id !== stepId)
-      const touches = (path) =>
-        path.fromStepId === stepId || path.toStepId === stepId
+      const touches = (path) => pathTouchesStep(path, stepId)
       return { removedPaths: removePathsWhere(version, touches) }
     })
 
@@ -245,9 +245,7 @@ export const createValueStreamStore = ({ stream, persist }) => {
         ...kept,
         kind,
         isHandoff: blank.isHandoff || handoffBeforeOutside[stepId] === true,
-        ...Object.fromEntries(
-          TIME_FIELDS.filter((f) => f in blank).map((f) => [f, blank[f]])
-        ),
+        ...Object.fromEntries(timeFieldsOf(kind).map((f) => [f, blank[f]])),
       }
     })
 

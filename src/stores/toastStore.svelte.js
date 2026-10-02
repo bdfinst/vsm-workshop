@@ -7,7 +7,16 @@
 
 import { SvelteMap } from 'svelte/reactivity'
 
+export const TOAST_TYPE = Object.freeze({
+  INFO: 'info',
+  SUCCESS: 'success',
+  WARNING: 'warning',
+  ERROR: 'error',
+})
+
 const DEFAULT_TOAST_DURATION_MS = 5000
+// A toast with an action gives time to reach it.
+const ACTION_TOAST_DURATION_MS = 10000
 
 /**
  * Create a toast notification store
@@ -17,28 +26,65 @@ export function createToastStore() {
   let nextId = 0
   let messages = $state([])
   const timerIds = new SvelteMap()
+  // How long each self-dismissing message waits; errors have no entry.
+  const durations = new SvelteMap()
+
+  const stopTimer = (id) => {
+    clearTimeout(timerIds.get(id))
+    timerIds.delete(id)
+  }
 
   const dismiss = (id) => {
-    if (timerIds.has(id)) {
-      clearTimeout(timerIds.get(id))
-      timerIds.delete(id)
-    }
+    stopTimer(id)
+    durations.delete(id)
     messages = messages.filter((m) => m.id !== id)
   }
 
-  const add = (text, type = 'info', duration = DEFAULT_TOAST_DURATION_MS) => {
-    const id = `toast-${++nextId}`
-    messages = [...messages, { id, text, type }]
+  const startTimer = (id) => {
+    stopTimer(id)
+    timerIds.set(
+      id,
+      setTimeout(() => dismiss(id), durations.get(id))
+    )
+  }
 
-    if (type !== 'error') {
-      const timerId = setTimeout(() => dismiss(id), duration)
-      timerIds.set(id, timerId)
+  // Hold a message while the user is reading or reaching for it.
+  const pause = (id) => stopTimer(id)
+
+  // The wait starts over in full.
+  const resume = (id) => {
+    if (durations.has(id)) startTimer(id)
+  }
+
+  /**
+   * @param {string} text - The message
+   * @param {string} [type] - info, success, warning or error (errors stay)
+   * @param {number} [duration] - Milliseconds before it goes
+   * @param {{action?: {label: string, onclick: function}}} [options] - An
+   *   action button; a message with one stays 10 s unless `duration` is given
+   * @returns {string} The id of the new message
+   */
+  const add = (text, type = TOAST_TYPE.INFO, duration, options) => {
+    const action = options?.action
+    nextId = nextId + 1
+    const id = `toast-${nextId}`
+    messages = [...messages, { id, text, type, action }]
+
+    if (type !== TOAST_TYPE.ERROR) {
+      durations.set(
+        id,
+        duration ??
+          (action ? ACTION_TOAST_DURATION_MS : DEFAULT_TOAST_DURATION_MS)
+      )
+      startTimer(id)
     }
+    return id
   }
 
   const clear = () => {
     timerIds.forEach((id) => clearTimeout(id))
     timerIds.clear()
+    durations.clear()
     messages = []
   }
 
@@ -48,6 +94,8 @@ export function createToastStore() {
     },
     add,
     dismiss,
+    pause,
+    resume,
     clear,
   }
 }

@@ -1,4 +1,8 @@
-import { STAGE_NAMES, UNIT_OF_WORK } from '../../models/v2/constants.js'
+import {
+  STAGE_NAMES,
+  STAGE_NUMBER,
+  UNIT_OF_WORK,
+} from '../../models/v2/constants.js'
 
 /**
  * The guided session's stages: the one place their metadata lives. `prompt`
@@ -12,6 +16,13 @@ const PROMPTS = {
       'Name it and say where it starts and ends, so everyone maps the same thing.',
     example:
       'Checkout delivery: starts when a customer asks for a change, ends when the change is live.',
+  },
+  Steps: {
+    question: 'What steps does the work go through?',
+    explanation:
+      'List every step in order, starting from Intake. Say who does each one and mark where work is handed to another team.',
+    example:
+      'Refinement: the dev team splits and sizes stories, then hands them to development.',
   },
 }
 
@@ -85,9 +96,25 @@ export const scopeReason = (missing) => {
   return `Add ${joinWithAnd(fields.map((f) => `${f.article} ${f.noun}`))}`
 }
 
+const MIN_STEP_COUNT = 2
+
+/**
+ * Why Next is disabled on Steps: Intake plus one more step, every step named,
+ * and every step with someone who does it. Names come first, then performers,
+ * both in step order.
+ * @param {{name: string, performedBy: string}[]} steps - The steps in order, Intake first
+ * @returns {?string} The reason, or null when the steps are ready
+ */
+export const stepsReason = (steps) => {
+  if (steps.length < MIN_STEP_COUNT) return 'Add at least one step after Intake'
+  if (steps.some((step) => isBlank(step.name))) return 'Name every step'
+  const unattributed = steps.find((step) => isBlank(step.performedBy))
+  return unattributed ? `Add who does "${unattributed.name.trim()}"` : null
+}
+
 // A stage with no rule yet has nothing to check; later slices add theirs.
 const STAGE_REASONS = {
-  1: (stream) => scopeReason(missingScopeFields(stream)),
+  [STAGE_NUMBER.SCOPE]: (stream) => scopeReason(missingScopeFields(stream)),
 }
 
 /**

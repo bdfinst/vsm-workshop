@@ -1,6 +1,13 @@
 import { describe, it, expect } from 'vitest'
-import { createStep } from '../../../src/models/v2/step.js'
-import { createReworkPath } from '../../../src/models/v2/reworkPath.js'
+import {
+  TIME_FIELDS,
+  createStep,
+  timeFieldsOf,
+} from '../../../src/models/v2/step.js'
+import {
+  createReworkPath,
+  pathTouchesStep,
+} from '../../../src/models/v2/reworkPath.js'
 import { createMapVersion } from '../../../src/models/v2/mapVersion.js'
 import {
   createValueStream,
@@ -60,6 +67,52 @@ describe('createStep', () => {
 
     expect(step.processTime).toEqual({ typ: 60 })
     expect(step.pctCA).toBe(80)
+  })
+})
+
+describe('timeFieldsOf', () => {
+  it('names process and wait time for a team step', () => {
+    expect(timeFieldsOf('team')).toEqual(['processTime', 'waitTime'])
+  })
+
+  it('names the one elapsed time for an outside step', () => {
+    expect(timeFieldsOf('outside')).toEqual(['elapsedTime'])
+  })
+
+  it('lists every time field a step can hold', () => {
+    expect(TIME_FIELDS).toEqual(['processTime', 'waitTime', 'elapsedTime'])
+  })
+
+  it.each(['team', 'outside'])(
+    'matches the times a new %s step holds',
+    (kind) => {
+      const step = createStep({ kind })
+
+      expect(TIME_FIELDS.filter((field) => field in step)).toEqual(
+        timeFieldsOf(kind)
+      )
+    }
+  )
+})
+
+describe('pathTouchesStep', () => {
+  const path = createReworkPath({ fromStepId: 'c', toStepId: 'a' })
+
+  it.each([
+    ['starts at', 'c'],
+    ['ends at', 'a'],
+  ])('is true for a path that %s the step', (_, stepId) => {
+    expect(pathTouchesStep(path, stepId)).toBe(true)
+  })
+
+  it('is false for a step the path does not touch', () => {
+    expect(pathTouchesStep(path, 'b')).toBe(false)
+  })
+
+  it('is true for a path from a step back to itself', () => {
+    const loop = createReworkPath({ fromStepId: 'b', toStepId: 'b' })
+
+    expect(pathTouchesStep(loop, 'b')).toBe(true)
   })
 })
 
