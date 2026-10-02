@@ -387,6 +387,10 @@ test.describe('Stage rail and header scenarios (step 5.4)', () => {
     await seed(workspaceAtStage(7))
     const timerWords = /timer|timebox|time left|countdown/i
 
+    // Wait for every stage to be listed, so the loop below cannot run empty.
+    await expect(rail(page).getByRole('listitem')).toHaveCount(
+      STAGE_NAMES.length
+    )
     for (const status of await rail(page).getByRole('listitem').all()) {
       const stage = status.getByRole('button')
       await stage.click()

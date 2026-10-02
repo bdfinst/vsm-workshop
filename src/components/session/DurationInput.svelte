@@ -1,4 +1,5 @@
 <script>
+  import { DURATION_UNIT } from '../../models/v2/constants.js'
   import {
     durationUnitOf,
     fromMinutes,
@@ -11,10 +12,11 @@
   // shows instead of the label, when it reads better; the label still names
   // the time in error messages), value ({ typ, min?, max? } in
   // minutes, or null), workdayHours (the length of a working day),
-  // positive (the time must be more than 0, not just 0 or more),
+  // mustBePositive (the time must be more than 0, not just 0 or more),
   // showRange (also show the min and max fields), oncommit(range) with the
-  // new { typ, min?, max? } in minutes, which returns { ok } (false when the
-  // parent refuses the edit, so the text stays for correcting), and
+  // new { typ, min?, max? } in minutes (only { typ } when the range fields are
+  // not shown), which returns { ok } (false when the parent refuses the edit,
+  // so the text stays for correcting), and
   // onvalidity(isValid), which says whether what is typed can be saved. Text
   // is saved on blur, Enter or a unit change, never per keystroke, so one edit
   // is one undo step. The parent decides whether the range changed.
@@ -25,7 +27,7 @@
     fieldLabel = label,
     value = null,
     workdayHours,
-    positive = false,
+    mustBePositive = false,
     showRange = false,
     oncommit,
     onvalidity,
@@ -40,9 +42,9 @@
   let unit = $derived(chosenUnit ?? durationUnitOf(value?.typ, workdayHours))
 
   let unitOptions = $derived([
-    { value: 'minutes', label: 'minutes' },
-    { value: 'hours', label: 'hours' },
-    { value: 'days', label: `working days (${workdayHours} h)` },
+    { value: DURATION_UNIT.MINUTES, label: 'minutes' },
+    { value: DURATION_UNIT.HOURS, label: 'hours' },
+    { value: DURATION_UNIT.DAYS, label: `working days (${workdayHours} h)` },
   ])
 
   // Unsaved text, by field, laid over what is stored.
@@ -56,7 +58,7 @@
   const textOf = (field) => drafts[field] ?? storedText(field)
 
   // Without the range fields, a stored min or max is not shown, so it is not
-  // parsed (it could block Next unseen) and not changed on commit.
+  // parsed (it could block Next unseen) and not part of what is committed.
   let parsed = $derived(
     parseDurationRange(
       {
@@ -65,7 +67,7 @@
       },
       unit,
       workdayHours,
-      { label, positive }
+      { label, mustBePositive }
     )
   )
   let errors = $derived(parsed.errors ?? {})
@@ -83,8 +85,11 @@
 
   function handleCommit() {
     if (Object.keys(drafts).length === 0 || !isValid) return
+    // Without the range fields the commit is the typical time alone: a hidden
+    // min or max is dropped, so the store never refuses over a field the person
+    // cannot see.
     const result = oncommit(
-      showRange ? parsed.range : { ...value, ...parsed.range }
+      showRange ? parsed.range : { typ: parsed.range.typ }
     )
     if (result.ok) drafts = {}
   }
@@ -99,42 +104,42 @@
   }
 </script>
 
-{#snippet field(key, text, testidSuffix, srPrefix = '')}
+{#snippet fieldInput(field, labelText, testidSuffix, srPrefix = '')}
   <div>
-    <label class="block font-medium" for="{id}-{key}">
-      {#if srPrefix}<span class="sr-only">{srPrefix} </span>{/if}{text}
+    <label class="block font-medium" for="{id}-{field}">
+      {#if srPrefix}<span class="sr-only">{srPrefix} </span>{/if}{labelText}
     </label>
     <input
-      id="{id}-{key}"
+      id="{id}-{field}"
       type="text"
       inputmode="decimal"
       class={inputClass}
-      value={textOf(key)}
-      aria-invalid={errors[key] ? 'true' : undefined}
-      aria-describedby={errors[key] ? `${id}-${key}-error` : undefined}
+      value={textOf(field)}
+      aria-invalid={errors[field] ? 'true' : undefined}
+      aria-describedby={errors[field] ? `${id}-${field}-error` : undefined}
       data-testid="{testid}{testidSuffix}-input"
-      oninput={(event) => handleInput(key, event.currentTarget.value)}
+      oninput={(event) => handleInput(field, event.currentTarget.value)}
       onblur={handleCommit}
       onkeydown={handleEnter}
     />
-    {#if errors[key]}
+    {#if errors[field]}
       <p
-        id="{id}-{key}-error"
+        id="{id}-{field}-error"
         role="alert"
         class="mt-1 text-red-700"
         data-testid="{testid}{testidSuffix}-error"
       >
-        {errors[key]}
+        {errors[field]}
       </p>
     {/if}
   </div>
 {/snippet}
 
 <div class="flex flex-wrap items-start gap-4" data-testid={testid}>
-  {@render field('typ', fieldLabel, '')}
+  {@render fieldInput('typ', fieldLabel, '')}
   {#if showRange}
-    {@render field('min', 'Min', '-min', label)}
-    {@render field('max', 'Max', '-max', label)}
+    {@render fieldInput('min', 'Min', '-min', label)}
+    {@render fieldInput('max', 'Max', '-max', label)}
   {/if}
   <div>
     <label class="block font-medium" for="{id}-unit">

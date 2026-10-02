@@ -1,5 +1,9 @@
 import { describe, it, expect } from 'vitest'
-import { validateTimeRange } from '../../../src/utils/validation/v2/timeRangeValidator.js'
+import {
+  boundError,
+  rangeOrderErrors,
+  validateTimeRange,
+} from '../../../src/utils/validation/v2/timeRangeValidator.js'
 
 const wait = { label: 'Wait time' }
 
@@ -75,22 +79,78 @@ describe('validateTimeRange values', () => {
   })
 
   describe('when the time must be positive', () => {
-    const elapsed = { label: 'Elapsed time', positive: true }
+    const elapsed = { label: 'Elapsed time', mustBePositive: true }
 
-    it.each([0, -5])('refuses %s', (typ) => {
+    it.each([0, -5])('refuses %s as not more than 0', (typ) => {
       expect(validateTimeRange({ typ }, elapsed)).toBe(
-        'Elapsed time must be a whole number of minutes, above 0'
+        'Elapsed time must be more than 0'
       )
     })
 
     it('refuses a min or max of zero', () => {
       expect(validateTimeRange({ typ: 5, min: 0 }, elapsed)).toBe(
-        'Elapsed time min must be a whole number of minutes, above 0'
+        'Elapsed time min must be more than 0'
+      )
+    })
+
+    it('asks for whole minutes when a value above zero has a fraction', () => {
+      expect(validateTimeRange({ typ: 1.5 }, elapsed)).toBe(
+        'Elapsed time must be a whole number of minutes, above 0'
       )
     })
 
     it('accepts a whole number above zero', () => {
       expect(validateTimeRange({ typ: 1 }, elapsed)).toBeNull()
     })
+  })
+})
+
+describe('boundError', () => {
+  it.each([-1, -0.5])('says %s is negative when 0 is allowed', (minutes) => {
+    expect(boundError('Wait time', minutes, false)).toBe(
+      "Wait time can't be negative"
+    )
+  })
+
+  it.each([0, 0.5, 60])('accepts %s when 0 is allowed', (minutes) => {
+    expect(boundError('Wait time', minutes, false)).toBeNull()
+  })
+
+  it.each([0, -5])(
+    'says %s is not more than 0 when it must be positive',
+    (minutes) => {
+      expect(boundError('Elapsed time', minutes, true)).toBe(
+        'Elapsed time must be more than 0'
+      )
+    }
+  )
+
+  it.each([0.5, 1])('accepts %s when it must be positive', (minutes) => {
+    expect(boundError('Elapsed time', minutes, true)).toBeNull()
+  })
+})
+
+describe('rangeOrderErrors', () => {
+  it('shows a min above the typical, and a max below it, each on its own field', () => {
+    expect(rangeOrderErrors({ typ: 5, min: 6, max: 4 })).toEqual({
+      min: "Min can't be more than typical",
+      max: "Max can't be less than typical",
+    })
+  })
+
+  it('shows only the max error when the min is fine but the max is below the typical', () => {
+    expect(rangeOrderErrors({ typ: 5, min: 4, max: 3 })).toEqual({
+      max: "Max can't be less than typical",
+    })
+  })
+
+  it('compares the min with the max when there is no typical', () => {
+    expect(rangeOrderErrors({ min: 3, max: 2 })).toEqual({
+      min: "Min can't be more than max",
+    })
+  })
+
+  it('finds nothing in an ordered range', () => {
+    expect(rangeOrderErrors({ typ: 5, min: 4, max: 6 })).toEqual({})
   })
 })

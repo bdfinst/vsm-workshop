@@ -131,7 +131,7 @@ const TIME_FIELD_NOUNS = {
 /**
  * The typical times still to enter. Zero counts as entered.
  * @param {{name: string, kind: string}[]} steps - Step rows in order, Intake first
- * @returns {{stepName: string, field: string}[]} In step order; a team step asks for process then wait time, an outside step for elapsed time
+ * @returns {{stepName: string, noun: string}[]} In step order, `noun` being how the gate names the time ("process time"); a team step asks for process then wait time, an outside step for elapsed time
  */
 export const missingTimeFields = (steps) =>
   steps.flatMap((step, index) =>
@@ -139,7 +139,7 @@ export const missingTimeFields = (steps) =>
       .filter((field) => step[field]?.typ == null)
       .map((field) => ({
         stepName: stepLabelOf(step.name, index + 1),
-        field: TIME_FIELD_NOUNS[field],
+        noun: TIME_FIELD_NOUNS[field],
       }))
   )
 
@@ -155,7 +155,7 @@ export const timeReason = (steps, hasInvalid) => {
   const missing = missingTimeFields(steps)
   if (missing.length === 0) return null
   return `Add ${joinWithAnd(
-    missing.map(({ stepName, field }) => `the ${field} for "${stepName}"`)
+    missing.map(({ stepName, noun }) => `the ${noun} for "${stepName}"`)
   )}`
 }
 
@@ -171,14 +171,15 @@ const STAGE_REASONS = {
  * - `complete`: reached, and its data is valid.
  * - `reached`: reached, and it has no completion rule yet.
  * @param {Object} stream - A v2 value stream
+ * @param {Object<number, function(Object): ?string>} [rules] - Each stage's rule by stage number, giving the reason its data is not valid or null; the built stages' rules by default
  * @returns {{number: number, name: string, state: string, reason: ?string}[]}
  */
-export const stageStatus = (stream) =>
+export const stageStatus = (stream, rules = STAGE_REASONS) =>
   STAGES.map(({ number, name }) => {
     if (number > stream.session.furthestStage) {
       return { number, name, state: 'not-selectable', reason: null }
     }
-    const check = STAGE_REASONS[number]
+    const check = rules[number]
     if (!check) return { number, name, state: 'reached', reason: null }
     const reason = check(stream)
     return {

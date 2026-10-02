@@ -57,6 +57,7 @@ describe('formatDuration of a missing figure', () => {
     ['null', null],
     ['undefined', undefined],
     ['NaN', NaN],
+    ['Infinity', Infinity],
     ['an incomplete result', incomplete],
   ])(
     'throws a TypeError for %s instead of printing a made-up value',
@@ -77,7 +78,7 @@ describe('formatDuration of a missing figure', () => {
 describe('formatPercent of a missing figure', () => {
   const incomplete = { incomplete: true, stepName: 'Deploy' }
 
-  it.each([null, undefined, NaN, incomplete])(
+  it.each([null, undefined, NaN, Infinity, incomplete])(
     'throws a TypeError for %j',
     (value) => {
       expect(() => formatPercent(value)).toThrow(TypeError)
@@ -178,6 +179,16 @@ describe('toMinutes', () => {
     expect(result).toEqual({ error: 'Enter a number' })
   })
 
+  it('rejects a very long digit run that ends in a letter without stalling', () => {
+    const hostile = `${'1'.repeat(50000)}x`
+    const started = performance.now()
+
+    const result = toMinutes(hostile, 'minutes', 8)
+
+    expect(result).toEqual({ error: 'Enter a number' })
+    expect(performance.now() - started).toBeLessThan(100)
+  })
+
   it('returns an error when the minutes are too large to be a number', () => {
     const hugeText = `1${'0'.repeat(308)}`
 
@@ -197,6 +208,18 @@ describe('toMinutes', () => {
   it('converts a negative amount; validation, not conversion, rejects it', () => {
     expect(toMinutes(-1.5, 'hours', 8)).toEqual({ minutes: -90 })
     expect(toMinutes(-30, 'minutes', 8)).toEqual({ minutes: -30 })
+  })
+
+  it('rounds a negative half away from zero, like a positive one', () => {
+    expect(toMinutes(-10.5, 'minutes', 8)).toEqual({ minutes: -11 })
+  })
+
+  it.each([
+    ['.5', 'hours', 30],
+    ['5.', 'minutes', 5],
+    ['+5', 'minutes', 5],
+  ])('reads the plain decimal "%s" in %s', (text, unit, minutes) => {
+    expect(toMinutes(text, unit, 8)).toEqual({ minutes })
   })
 
   it('never returns negative zero', () => {
@@ -243,11 +266,13 @@ describe('fromMinutes', () => {
       [8, 'hours'],
       [8, 'minutes'],
     ])('returns every sampled whole minute (%s h day, %s)', (hours, unit) => {
-      for (const minutes of sample) {
-        expect(
-          toMinutes(fromMinutes(minutes, unit, hours), unit, hours)
-        ).toEqual({ minutes })
-      }
+      const broken = sample.filter(
+        (minutes) =>
+          toMinutes(fromMinutes(minutes, unit, hours), unit, hours).minutes !==
+          minutes
+      )
+
+      expect(broken).toEqual([])
     })
   })
 })
@@ -317,7 +342,7 @@ describe('parseDurationRange', () => {
   })
 
   it('refuses zero and below when only a positive time is allowed', () => {
-    const elapsed = { label: 'Elapsed time', positive: true }
+    const elapsed = { label: 'Elapsed time', mustBePositive: true }
 
     expect(parseDurationRange({ typ: '0' }, 'days', 8, elapsed)).toEqual({
       errors: { typ: 'Elapsed time must be more than 0' },
@@ -328,7 +353,7 @@ describe('parseDurationRange', () => {
   })
 
   it('accepts a fraction above zero when only a positive time is allowed', () => {
-    const elapsed = { label: 'Elapsed time', positive: true }
+    const elapsed = { label: 'Elapsed time', mustBePositive: true }
 
     expect(parseDurationRange({ typ: '0.5' }, 'days', 8, elapsed)).toEqual({
       range: { typ: 240 },

@@ -57,24 +57,27 @@ describe('STAGES', () => {
 
 describe('STAGES prompts', () => {
   const filled = expect.stringMatching(/\S/)
+  const fullCard = { question: filled, explanation: filled, example: filled }
+  const promptOf = (name) => STAGES.find((stage) => stage.name === name).prompt
 
-  it('gives each stage a full prompt card or none', () => {
-    for (const stage of STAGES) {
-      if (stage.prompt) {
-        expect(stage.prompt).toEqual({
-          question: filled,
-          explanation: filled,
-          example: filled,
-        })
-      } else {
-        expect(stage.prompt).toBeNull()
-      }
-    }
+  it.each(['Scope', 'Steps', 'Time'])('gives %s a prompt card', (name) => {
+    expect(promptOf(name)).toEqual(fullCard)
   })
 
-  it('gives some stages a prompt and leaves the unbuilt ones without', () => {
-    expect(STAGES.some((stage) => stage.prompt)).toBe(true)
-    expect(STAGES.some((stage) => !stage.prompt)).toBe(true)
+  it('gives every stage that has a prompt a full card', () => {
+    const prompts = STAGES.filter((stage) => stage.prompt).map(
+      (stage) => stage.prompt
+    )
+
+    expect(prompts).toEqual(prompts.map(() => fullCard))
+  })
+
+  it('gives every other stage no prompt at all', () => {
+    const prompts = STAGES.filter((stage) => !stage.prompt).map(
+      (stage) => stage.prompt
+    )
+
+    expect(prompts).toEqual(prompts.map(() => null))
   })
 })
 
@@ -179,12 +182,14 @@ describe('stageStatus', () => {
     expect(byName(stageStatus(fixed)).Scope.state).toBe('complete')
   })
 
-  it('has no completion verdict yet for reached stages without rules', () => {
-    // Future is the last stage built; move to another if it gets a rule first.
-    const future = byName(stageStatus(streamAt(7, 7))).Future
+  it('has no completion verdict for a reached stage that has no rule', () => {
+    const noRules = {}
 
-    expect(future.state).toBe('reached')
-    expect(future.reason).toBeNull()
+    const statuses = stageStatus(streamAt(7, 7), noRules)
+
+    expect(statuses.map(({ state, reason }) => ({ state, reason }))).toEqual(
+      statuses.map(() => ({ state: 'reached', reason: null }))
+    )
   })
 })
 
@@ -262,25 +267,25 @@ describe('missingTimeFields', () => {
     expect(missingTimeFields(steps)).toEqual([])
   })
 
-  it('names the step and field of each missing typical time, in step order', () => {
+  it('names the step and noun of each missing typical time, in step order', () => {
     const steps = [team('Intake', null, 5), team('Deploy', 10, null)]
 
     expect(missingTimeFields(steps)).toEqual([
-      { stepName: 'Intake', field: 'process time' },
-      { stepName: 'Deploy', field: 'wait time' },
+      { stepName: 'Intake', noun: 'process time' },
+      { stepName: 'Deploy', noun: 'wait time' },
     ])
   })
 
   it('asks a team step for process time then wait time', () => {
     expect(missingTimeFields([team('Build', null, null)])).toEqual([
-      { stepName: 'Build', field: 'process time' },
-      { stepName: 'Build', field: 'wait time' },
+      { stepName: 'Build', noun: 'process time' },
+      { stepName: 'Build', noun: 'wait time' },
     ])
   })
 
   it('asks an outside step for its elapsed time only', () => {
     expect(missingTimeFields([outside('Security review', null)])).toEqual([
-      { stepName: 'Security review', field: 'elapsed time' },
+      { stepName: 'Security review', noun: 'elapsed time' },
     ])
   })
 
@@ -293,14 +298,14 @@ describe('missingTimeFields', () => {
     }
 
     expect(missingTimeFields([step])).toEqual([
-      { stepName: 'Build', field: 'process time' },
+      { stepName: 'Build', noun: 'process time' },
     ])
   })
 
   it('calls a step with no name by its position', () => {
     expect(
       missingTimeFields([team('Intake', 1, 1), team(' ', null, 1)])
-    ).toEqual([{ stepName: 'step 2', field: 'process time' }])
+    ).toEqual([{ stepName: 'step 2', noun: 'process time' }])
   })
 
   it.each([
@@ -316,7 +321,7 @@ describe('missingTimeFields', () => {
       }
 
       expect(missingTimeFields([step])).toEqual([
-        { stepName: 'Security review', field: 'elapsed time' },
+        { stepName: 'Security review', noun: 'elapsed time' },
       ])
     }
   )
@@ -330,8 +335,8 @@ describe('missingTimeFields', () => {
     }
 
     expect(missingTimeFields([step])).toEqual([
-      { stepName: 'Build', field: 'process time' },
-      { stepName: 'Build', field: 'wait time' },
+      { stepName: 'Build', noun: 'process time' },
+      { stepName: 'Build', noun: 'wait time' },
     ])
   })
 

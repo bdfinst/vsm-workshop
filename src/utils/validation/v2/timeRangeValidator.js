@@ -37,11 +37,31 @@ export const rangeOrderErrors = (range) => {
   const found = {}
   ORDER_RULES.forEach(({ field, other, message, breaks }) => {
     const [value, otherValue] = [range[field], range[other]]
-    const entered = value != null && otherValue != null
-    if (!found[field] && !found[other] && entered && breaks(value, otherValue))
+    const bothEntered = value != null && otherValue != null
+    if (
+      !found[field] &&
+      !found[other] &&
+      bothEntered &&
+      breaks(value, otherValue)
+    )
       found[field] = message
   })
   return found
+}
+
+/**
+ * Whether one duration is in bounds: 0 or more, or more than 0 when it must be
+ * positive. This is the one place the bound wording lives.
+ * @param {string} name - What the value is called in the message ("Process time min")
+ * @param {number} minutes - The value, in minutes
+ * @param {boolean} mustBePositive - Require more than 0 instead of 0 or more
+ * @returns {string|null} An error message, or null when in bounds
+ */
+export const boundError = (name, minutes, mustBePositive) => {
+  if (mustBePositive) {
+    return minutes > 0 ? null : `${name} must be more than 0`
+  }
+  return minutes < 0 ? `${name} can't be negative` : null
 }
 
 /**
@@ -50,25 +70,29 @@ export const rangeOrderErrors = (range) => {
  * @param {{typ?: number|null, min?: number|null, max?: number|null}} range
  * @param {Object} options
  * @param {string} options.label - Name used in messages ("Process time")
- * @param {boolean} [options.positive=false] - Require values above 0 instead of 0 or more
+ * @param {boolean} [options.mustBePositive=false] - Require values above 0 instead of 0 or more
  * @returns {string|null} An error message, or null when valid
  */
-export const validateTimeRange = (range, { label, positive = false }) => {
+export const validateTimeRange = (range, { label, mustBePositive = false }) => {
   if (!range) return null
 
-  const bound = positive ? 'above 0' : '0 or more'
-  const inBounds = (value) =>
-    isWholeMinutes(value) && (positive ? value > 0 : value >= 0)
-  const { typ, min, max } = range
-  const isNegative = (value) =>
-    !positive && typeof value === 'number' && value < 0
-  const badValue = (name, value) =>
-    isNegative(value)
-      ? `${name} can't be negative`
-      : `${name} must be a whole number of minutes, ${bound}`
+  const wholeBound = mustBePositive ? 'above 0' : '0 or more'
+  const valueError = (name, value) => {
+    if (value == null) return null
+    const notWhole = `${name} must be a whole number of minutes, ${wholeBound}`
+    if (!Number.isFinite(value)) return notWhole
+    return (
+      boundError(name, value, mustBePositive) ??
+      (isWholeMinutes(value) ? null : notWhole)
+    )
+  }
 
-  if (typ != null && !inBounds(typ)) return badValue(label, typ)
-  if (min != null && !inBounds(min)) return badValue(`${label} min`, min)
-  if (max != null && !inBounds(max)) return badValue(`${label} max`, max)
-  return Object.values(rangeOrderErrors(range))[0] ?? null
+  const { typ, min, max } = range
+  return (
+    valueError(label, typ) ??
+    valueError(`${label} min`, min) ??
+    valueError(`${label} max`, max) ??
+    Object.values(rangeOrderErrors(range))[0] ??
+    null
+  )
 }

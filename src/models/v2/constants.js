@@ -10,6 +10,13 @@ export const VERSION_KIND = Object.freeze({
   FUTURE: 'future',
 })
 
+/** The units a duration is typed in; "days" are working days. */
+export const DURATION_UNIT = Object.freeze({
+  MINUTES: 'minutes',
+  HOURS: 'hours',
+  DAYS: 'days',
+})
+
 /** What one item of work in the stream is: set on Scope, with no default. */
 export const UNIT_OF_WORK = Object.freeze({
   STORY: 'story',

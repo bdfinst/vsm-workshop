@@ -6,6 +6,8 @@ const TIME_STAGE = 3
 
 // "Given a working day of 8 hours": the value stream's default.
 const WORKDAY_LABEL = 'working days (8 h)'
+const HOUR = 60
+const DAY = 8 * HOUR
 
 // What a `timed` workspace gives each step, in minutes.
 const TYPICAL_TIMES = Object.freeze({
@@ -96,7 +98,7 @@ test.describe('The Time stage', () => {
 
     await expect
       .poll(() => savedStep(page, 'Development'))
-      .toMatchObject({ processTime: { typ: 480 }, waitTime: { typ: 960 } })
+      .toMatchObject({ processTime: { typ: DAY }, waitTime: { typ: 2 * DAY } })
     await expect(
       development.getByTestId('wait-time-unit-select').locator('option:checked')
     ).toHaveText(WORKDAY_LABEL)
@@ -117,7 +119,7 @@ test.describe('The Time stage', () => {
     ).toHaveText('working days (7.5 h)')
     await expect
       .poll(() => savedStep(page, 'Development'))
-      .toMatchObject({ waitTime: { typ: 900 } })
+      .toMatchObject({ waitTime: { typ: 2 * 7.5 * HOUR } })
   })
 
   test("Intake's times are editable", async ({ page, seed }) => {
@@ -129,7 +131,7 @@ test.describe('The Time stage', () => {
 
     await expect
       .poll(() => savedStep(page, 'Intake'))
-      .toMatchObject({ processTime: { typ: 60 }, waitTime: { typ: 2400 } })
+      .toMatchObject({ processTime: { typ: HOUR }, waitTime: { typ: 5 * DAY } })
   })
 
   test('Outside step takes one elapsed time', async ({ page, seed }) => {
@@ -155,7 +157,9 @@ test.describe('The Time stage', () => {
 
     await expect
       .poll(() => savedStep(page, 'Code review'))
-      .toMatchObject({ waitTime: { min: 480, typ: 960, max: 2400 } })
+      .toMatchObject({
+        waitTime: { min: DAY, typ: 2 * DAY, max: 5 * DAY },
+      })
   })
 
   const INVALID_INPUTS = [
@@ -182,7 +186,7 @@ test.describe('The Time stage', () => {
       testid: 'wait-time-min',
       entry: { typ: '2', min: '3', unit: 'days' },
       // The valid typical is saved as it is left; the refused min is not.
-      saved: { ...TYPICAL_TIMES.team, waitTime: { typ: 960 } },
+      saved: { ...TYPICAL_TIMES.team, waitTime: { typ: 2 * DAY } },
     },
     {
       input: 'wait time typical 5 days and max 2',
@@ -191,7 +195,7 @@ test.describe('The Time stage', () => {
       testid: 'wait-time-max',
       entry: { typ: '5', max: '2', unit: 'days' },
       // The valid typical is saved as it is left; the refused max is not.
-      saved: { ...TYPICAL_TIMES.team, waitTime: { typ: 2400 } },
+      saved: { ...TYPICAL_TIMES.team, waitTime: { typ: 5 * DAY } },
     },
   ]
 
@@ -272,6 +276,12 @@ test.describe('The Time stage', () => {
     await expect(security.getByTestId('elapsed-time-error')).toHaveText(
       'Elapsed time must be more than 0'
     )
+    const invalid = security.getByTestId('elapsed-time-input')
+    await expect(invalid).toHaveAttribute('aria-invalid', 'true')
+    await expect(invalid).toHaveAccessibleDescription(
+      'Elapsed time must be more than 0'
+    )
+    await expectReason(page, 'Fix the times that show an error')
   })
 
   // Wiring check, not a Gherkin scenario
@@ -288,11 +298,11 @@ test.describe('The Time stage', () => {
 
     await expect
       .poll(() => savedStep(page, 'Security review'))
-      .toMatchObject({ elapsedTime: { typ: 960 } })
+      .toMatchObject({ elapsedTime: { typ: 2 * DAY } })
   })
 
   // Wiring check, not a Gherkin scenario
-  test('A min stored but not shown never blocks Next', async ({
+  test('A min and max stored but not shown never refuse an edit to the typical time', async ({
     page,
     seed,
   }) => {
@@ -300,44 +310,57 @@ test.describe('The Time stage', () => {
       workspaceOnTime({
         outside: ['Security review'],
         timed: true,
-        times: { 'Security review': { elapsedTime: { typ: 240, min: 120 } } },
+        times: {
+          'Security review': {
+            elapsedTime: { typ: 4 * HOUR, min: 2 * HOUR, max: 8 * HOUR },
+          },
+        },
       })
     )
     const security = rowOf(page, 'Security review')
     await expect(security.getByRole('textbox')).toHaveCount(1)
 
+    // Below the hidden min and, in the next edit, above the hidden max.
     await enterTime(security, 'elapsed', { typ: '1', unit: 'hours' })
+    const savedElapsed = async () =>
+      (await savedStep(page, 'Security review'))?.elapsedTime
+    await expect.poll(savedElapsed).toEqual({ typ: HOUR })
+    await enterTime(security, 'elapsed', { typ: '10' })
 
+    await expect.poll(savedElapsed).toEqual({ typ: 10 * HOUR })
+    await expect(page.getByTestId('time-refusal')).toHaveCount(0)
     await expect(nextButton(page)).toBeEnabled()
   })
 
   // Wiring check, not a Gherkin scenario
-  test('A time the store refuses is shown with its reason and kept for editing', async ({
+  test('Stored times open in the unit they read best in, and a unit switch only re-reads them', async ({
     page,
     seed,
   }) => {
     await seed(
       workspaceOnTime({
-        outside: ['Security review'],
-        timed: true,
-        times: { 'Security review': { elapsedTime: { typ: 240, min: 120 } } },
+        times: {
+          Development: { waitTime: { typ: 2 * DAY }, processTime: { typ: 90 } },
+        },
       })
     )
-    const security = rowOf(page, 'Security review')
+    const development = rowOf(page, 'Development')
+    const selected = (testid) =>
+      development.getByTestId(`${testid}-unit-select`).locator('option:checked')
 
-    await enterTime(security, 'elapsed', { typ: '1', unit: 'hours' })
-
-    await expect(page.getByTestId('time-refusal')).toHaveText(
-      "Min can't be more than typical"
+    await expect(development.getByTestId('wait-time-input')).toHaveValue('2')
+    await expect(selected('wait-time')).toHaveText(WORKDAY_LABEL)
+    await expect(development.getByTestId('process-time-input')).toHaveValue(
+      '1.5'
     )
-    await expect(security.getByTestId('elapsed-time-input')).toHaveValue('1')
+    await expect(selected('process-time')).toHaveText('hours')
 
-    await enterTime(security, 'elapsed', { typ: '3' })
+    await development.getByTestId('wait-time-unit-select').selectOption('hours')
 
-    await expect(page.getByTestId('time-refusal')).toHaveCount(0)
+    await expect(development.getByTestId('wait-time-input')).toHaveValue('16')
     await expect
-      .poll(() => savedStep(page, 'Security review'))
-      .toMatchObject({ elapsedTime: { typ: 180, min: 120 } })
+      .poll(() => savedStep(page, 'Development'))
+      .toMatchObject({ waitTime: { typ: 2 * DAY } })
   })
 
   test('Source flag per step', async ({ page, seed }) => {

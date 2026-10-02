@@ -1,5 +1,5 @@
 <script>
-  import { SvelteSet } from 'svelte/reactivity'
+  import { SvelteMap, SvelteSet } from 'svelte/reactivity'
   import PromptCard from '../PromptCard.svelte'
   import DurationInput from '../DurationInput.svelte'
   import {
@@ -29,13 +29,23 @@
   )
   let workdayHours = $derived(store.stream.workdayHours)
 
-  // The fields whose typed text cannot be saved, by "stepId-field". Next waits
-  // for all of them, so a value that was refused is never silently skipped.
+  const keyOf = (row, field) => `${row.id}-${field}`
+
+  // The fields whose typed text cannot be saved, by "stepId-field".
   const invalidFields = new SvelteSet()
 
-  let nextReason = $derived(timeReason(rows, invalidFields.size > 0))
+  // Why the store refused each field's last edit, by the same key. A refused
+  // field keeps its text, so it stays here, and holds Next, until that same
+  // field saves; another field saving does not clear it.
+  const refusals = new SvelteMap()
 
-  const handleValidity = (key) => (isValid) => {
+  // Next waits for every field that cannot be saved, so a value that was
+  // refused is never silently skipped.
+  let nextReason = $derived(
+    timeReason(rows, invalidFields.size > 0 || refusals.size > 0)
+  )
+
+  const createValidityHandler = (key) => (isValid) => {
     if (isValid) invalidFields.delete(key)
     else invalidFields.add(key)
   }
@@ -43,20 +53,19 @@
   const isSameRange = (a, b) =>
     a?.typ === b.typ && a?.min === b.min && a?.max === b.max
 
-  // Why the last edit was refused, or null.
-  let refusal = $state(null)
-
-  // Show why a refused edit was refused; an edit that went through clears the
-  // last refusal. Returns the result, so the field knows whether to keep its text.
-  function showRefusal(result) {
-    refusal = result.ok ? null : result.error
+  // Show why a refused edit was refused, until that field is saved. Returns the
+  // result, so the field knows whether to keep its text.
+  function showRefusal(key, result) {
+    if (result.ok) refusals.delete(key)
+    else refusals.set(key, result.error)
     return result
   }
 
   // One commit is one edit, so one undo step; nothing changed is no edit.
   function handleCommit(row, field, range) {
-    if (isSameRange(row[field], range)) return showRefusal({ ok: true })
-    return showRefusal(store.updateStep(row.id, { [field]: range }))
+    const key = keyOf(row, field)
+    if (isSameRange(row[field], range)) return showRefusal(key, { ok: true })
+    return showRefusal(key, store.updateStep(row.id, { [field]: range }))
   }
 
   const otherSource = (source) =>
@@ -65,7 +74,10 @@
       : TIME_SOURCE.MEASURED
 
   function handleSourceToggle(row) {
-    store.updateStep(row.id, { timeSource: otherSource(row.timeSource) })
+    showRefusal(
+      keyOf(row, 'timeSource'),
+      store.updateStep(row.id, { timeSource: otherSource(row.timeSource) })
+    )
   }
 </script>
 
@@ -78,7 +90,7 @@
     value={row[field]}
     {workdayHours}
     oncommit={(range) => handleCommit(row, field, range)}
-    onvalidity={handleValidity(`${row.id}-${field}`)}
+    onvalidity={createValidityHandler(keyOf(row, field))}
   />
 {/snippet}
 
@@ -140,7 +152,7 @@
                 'Elapsed time',
                 {
                   fieldLabel: 'Elapsed, submitted → returned',
-                  positive: true,
+                  mustBePositive: true,
                 }
               )}
             {:else}
@@ -159,10 +171,10 @@
         </li>
       {/each}
     </ol>
-    {#if refusal}
+    {#each [...refusals] as [key, message] (key)}
       <p class="mt-4 text-red-700" role="alert" data-testid="time-refusal">
-        {refusal}
+        {message}
       </p>
-    {/if}
+    {/each}
   </div>
 </PromptCard>

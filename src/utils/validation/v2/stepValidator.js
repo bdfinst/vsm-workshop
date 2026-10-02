@@ -29,7 +29,7 @@ const validateOutsideTimes = (step, { set }) => {
     'elapsedTime',
     validateTimeRange(step.elapsedTime, {
       label: 'Elapsed time',
-      positive: true,
+      mustBePositive: true,
     })
   )
   if (step.processTime) {
