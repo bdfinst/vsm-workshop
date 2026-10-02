@@ -5,6 +5,20 @@ import { createBaseConfig } from './vite.config.js'
 const OUT_DIR = 'dist-standalone'
 const FILE_NAME = 'vsm-workshop.html'
 
+// The standalone file references nothing outside itself, so the icon links
+// and web manifest become a blank inline icon.
+const inlineHeadLinks = () => ({
+  name: 'inline-head-links',
+  transformIndexHtml(html) {
+    return html
+      .replace(
+        /\s*<link\b[^>]*\brel="(?:icon|apple-touch-icon|manifest)"[^>]*>/g,
+        ''
+      )
+      .replace('</head>', '    <link rel="icon" href="data:," />\n  </head>')
+  },
+})
+
 // The single-file plugin emits index.html; the download is named for the app.
 const nameStandaloneFile = () => ({
   name: 'name-standalone-file',
@@ -18,7 +32,7 @@ const nameStandaloneFile = () => ({
 
 export default defineConfig(
   mergeConfig(createBaseConfig({ splitVendorChunks: false }), {
-    plugins: [viteSingleFile(), nameStandaloneFile()],
+    plugins: [inlineHeadLinks(), viteSingleFile(), nameStandaloneFile()],
     publicDir: false,
     define: {
       'import.meta.env.VITE_DEFAULT_UI': JSON.stringify('guided'),

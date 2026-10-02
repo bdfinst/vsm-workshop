@@ -7,6 +7,9 @@ import {
   serializeVsm,
   deserializeVsm,
 } from '../infrastructure/VsmJsonRepository.js'
+import { deriveVsmFromEvents } from '../utils/import/deriveVsm.js'
+import { parseEventsFromCsv, parseEventsFromJson } from '../utils/import/eventAdapters.js'
+import { fetchAzureDevOpsEvents } from '../utils/import/azureDevOpsAdapter.js'
 import { vsmDataStore } from './vsmDataStore.svelte.js'
 import { vsmUIStore } from './vsmUIStore.svelte.js'
 
@@ -25,6 +28,28 @@ function remapConnectionIds(connections, idMap) {
     type: conn.type || 'forward',
     reworkRate: conn.reworkRate || 0,
   }))
+}
+
+/**
+ * Build a VSM from events and load it as the working map.
+ * Shared by every import source (file event log, Azure DevOps, …).
+ * @returns {boolean} True if a non-empty map was loaded
+ */
+function loadMapFromEvents(events, { name, stageOrder, description } = {}) {
+  const { steps, connections } = deriveVsmFromEvents(events, { stageOrder })
+  if (steps.length === 0) return false
+  const now = new Date().toISOString()
+  vsmDataStore.loadMap({
+    id: crypto.randomUUID(),
+    name: name || 'Imported current state',
+    description: description || 'Derived from a real-tooling event log',
+    steps,
+    connections,
+    createdAt: now,
+    updatedAt: now,
+  })
+  vsmUIStore.clearUIState()
+  return true
 }
 
 /**
@@ -120,6 +145,10 @@ function createVsmIOStore() {
         connections: vsmDataStore.connections,
         createdAt: vsmDataStore.createdAt,
         updatedAt: vsmDataStore.updatedAt,
+        readinessOverrides: vsmDataStore.readinessOverrides,
+        dora: vsmDataStore.dora,
+        annotations: vsmDataStore.annotations,
+        baseline: vsmDataStore.baseline,
       })
     },
 
@@ -136,6 +165,46 @@ function createVsmIOStore() {
         return true
       } catch (e) {
         console.error('Failed to import JSON:', e)
+        return false
+      }
+    },
+
+    /**
+     * Import a current-state map from a real-tooling event log (CSV or JSON).
+     * Derives a VSM from the events and loads it as the working map.
+     * @param {string} rawData - Raw CSV or JSON event log
+     * @param {'csv'|'json'} format
+     * @param {{name?: string, stageOrder?: string[]}} [options]
+     * @returns {boolean} Success status
+     */
+    importEventLog(rawData, format, options = {}) {
+      try {
+        const events =
+          format === 'csv' ? parseEventsFromCsv(rawData) : parseEventsFromJson(rawData)
+        return loadMapFromEvents(events, options)
+      } catch (e) {
+        console.error('Failed to import event log:', e)
+        return false
+      }
+    },
+
+    /**
+     * Optional live connection: import a current-state map from Azure DevOps.
+     * Does nothing unless explicitly called with org/project/PAT — the PAT is
+     * used only for this request and never persisted.
+     * @param {Object} config - { organization, project, pat, wiql, stageOrder?, fetchImpl? }
+     * @returns {Promise<boolean>} Success status
+     */
+    async importFromAzureDevOps(config = {}) {
+      try {
+        const events = await fetchAzureDevOpsEvents(config)
+        return loadMapFromEvents(events, {
+          name: config.name || `${config.project} (Azure DevOps)`,
+          stageOrder: config.stageOrder,
+          description: 'Imported from Azure DevOps work-item history',
+        })
+      } catch (e) {
+        console.error('Failed to import from Azure DevOps:', e)
         return false
       }
     },

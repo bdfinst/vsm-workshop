@@ -27,6 +27,11 @@ export const createSimulationStateInitializer = (storeApi) => {
     const firstStepId = steps[0]?.id
     const items = generateWorkItems(workItemCount, firstStepId)
 
+    // initSimulation returns an empty workItems array; the runner advances the
+    // state object we return here, so the generated items must live on it too
+    // (not only in the store) or the simulation never processes anything.
+    initialState.workItems = items
+
     storeApi.updateWorkItems(items)
     storeApi.updateQueueSizes(initialState.queueSizesByStepId)
     storeApi.updateElapsedTime(0)

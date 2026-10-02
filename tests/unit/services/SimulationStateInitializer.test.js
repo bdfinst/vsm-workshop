@@ -47,6 +47,18 @@ describe('SimulationStateInitializer', () => {
     expect(items[0].currentStepId).toBe('s1')
   })
 
+  it('returns state carrying the generated work items (runner advances this state)', () => {
+    const steps = [{ id: 's1', name: 'Dev', processTime: 60, leadTime: 240 }]
+
+    const state = initializer.initialize(steps, [])
+
+    // The runner advances the returned state object, not the store, so the
+    // items must be present here or the simulation never processes anything.
+    expect(state.workItems).toHaveLength(WORK_ITEM_COUNT)
+    expect(state.workItems).toEqual(storeApi.updateWorkItems.mock.calls[0][0])
+    expect(state.workItems[0].currentStepId).toBe('s1')
+  })
+
   it('resets elapsed time and clears results', () => {
     const steps = [{ id: 's1', name: 'Dev', processTime: 60, leadTime: 240 }]
 

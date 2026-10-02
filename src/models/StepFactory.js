@@ -13,6 +13,7 @@ import { STEP_TYPES } from '../data/stepTypes.js'
  * @property {number} batchSize - Number of items processed together
  * @property {number} peopleCount - Number of resources/people available
  * @property {string[]} tools - Array of tools/technologies used (e.g., ["IDE", "Git"])
+ * @property {boolean} automated - Whether the step runs without manual intervention
  * @property {{x: number, y: number}} position - Canvas position for React Flow visualization
  */
 
@@ -54,7 +55,17 @@ export const createStep = (name, overrides = {}) => {
     batchSize: 1,
     peopleCount: 1,
     tools: [],
+    automated: true,
     position: { x: 0, y: 0 },
     ...overrides,
   }
 }
+
+/**
+ * Whether a step is automated. A step is automated unless explicitly marked
+ * otherwise, so maps saved before the `automated` flag existed load as automated.
+ *
+ * @param {Step} step - The step to check
+ * @returns {boolean} True unless the step's `automated` is explicitly false
+ */
+export const isAutomated = (step) => step.automated !== false

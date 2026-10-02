@@ -49,3 +49,7 @@ metrics/
 
 # dev-team hygiene — machine-specific MCP config (absolute-path pollution — issues #1376, #1416)
 .mcp.json
+
+# Playwright artifacts
+test-results
+playwright-report

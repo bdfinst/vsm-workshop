@@ -1,4 +1,4 @@
-# VSM Workshop - Claude Development Guide
+# Norn - Claude Development Guide
 
 Start here: [.claude/INDEX.md](.claude/INDEX.md). Quick start: [.claude/QUICK_START.md](.claude/QUICK_START.md). Skills: [.claude/skills/_GUIDE.md](.claude/skills/_GUIDE.md). Pre-commit: [.claude/checklists/pre-commit.md](.claude/checklists/pre-commit.md).
 

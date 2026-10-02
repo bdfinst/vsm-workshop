@@ -17,10 +17,33 @@
  * @returns {string} JSON string representation
  */
 export function serializeVsm(vsm) {
-  const { id, name, description, steps, connections, createdAt, updatedAt } =
-    vsm
+  const {
+    id,
+    name,
+    description,
+    steps,
+    connections,
+    createdAt,
+    updatedAt,
+    readinessOverrides,
+    dora,
+    annotations,
+    baseline,
+  } = vsm
   return JSON.stringify(
-    { id, name, description, steps, connections, createdAt, updatedAt },
+    {
+      id,
+      name,
+      description,
+      steps,
+      connections,
+      createdAt,
+      updatedAt,
+      readinessOverrides,
+      dora,
+      annotations,
+      baseline,
+    },
     null,
     2
   )
@@ -32,11 +55,7 @@ export function serializeVsm(vsm) {
  * @returns {Object} VSM domain object with defaults applied
  * @throws {Error} If JSON parsing fails
  */
-const PROTOTYPE_POLLUTION_KEYS = new Set([
-  '__proto__',
-  'constructor',
-  'prototype',
-])
+const PROTOTYPE_POLLUTION_KEYS = new Set(['__proto__', 'constructor', 'prototype'])
 
 /**
  * JSON reviver that strips prototype-pollution keys
@@ -71,5 +90,12 @@ export function deserializeVsm(jsonString) {
     connections: data.connections ?? [],
     createdAt: data.createdAt ?? null,
     updatedAt: data.updatedAt ?? null,
+    readinessOverrides:
+      data.readinessOverrides && typeof data.readinessOverrides === 'object'
+        ? data.readinessOverrides
+        : {},
+    dora: data.dora && typeof data.dora === 'object' ? data.dora : undefined,
+    annotations: Array.isArray(data.annotations) ? data.annotations : undefined,
+    baseline: data.baseline && typeof data.baseline === 'object' ? data.baseline : undefined,
   }
 }

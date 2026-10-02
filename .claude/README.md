@@ -1,6 +1,6 @@
 # Claude Development Rules
 
-This directory contains development rules and guidelines for the VSM Workshop project. These rules ensure code quality, consistency, and adherence to best practices.
+This directory contains development rules and guidelines for the Norn project. These rules ensure code quality, consistency, and adherence to best practices.
 
 ## Rule Files
 

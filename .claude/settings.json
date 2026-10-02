@@ -1,6 +1,6 @@
 {
   "extraKnownMarketplaces": {
-    "agentic-dev-team": {
+    "bfinster": {
       "source": {
         "source": "git",
         "url": "https://github.com/bdfinst/agentic-dev-team.git"
@@ -8,9 +8,23 @@
     }
   },
   "enabledPlugins": {
-    "agentic-dev-team@agentic-dev-team": true
+    "dev-team@bfinster": true
   },
   "hooks": {
+    "SessionStart": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash \"$CLAUDE_PROJECT_DIR/.claude/install-dev-team.sh\""
+          },
+          {
+            "type": "command",
+            "command": "bash \"$CLAUDE_PROJECT_DIR/.claude/install-playwright.sh\""
+          }
+        ]
+      }
+    ],
     "PostToolUse": [
       {
         "matcher": "Edit|Write",

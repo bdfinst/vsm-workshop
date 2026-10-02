@@ -3,8 +3,20 @@
   import { STEP_TYPE_CONFIG } from '../../../data/stepTypeConfig.js'
   import { formatDuration } from '../../../utils/calculations/metrics.js'
   import { BOTTLENECK_QUEUE_THRESHOLD } from '../../../data/thresholds.js'
+  import { vsmUIStore } from '../../../stores/vsmUIStore.svelte.js'
 
   let { data, selected = false } = $props()
+
+  // Mouse users open the editor via single click (handled by Svelte Flow's
+  // onnodeclick in Canvas). Svelte Flow has no keyboard activation for nodes,
+  // so provide an Enter/Space path here for keyboard users.
+  function handleKeydown(e) {
+    if (e.key === 'Enter' || e.key === ' ') {
+      e.preventDefault()
+      vsmUIStore.selectStep(data.id)
+      vsmUIStore.setEditing(true)
+    }
+  }
 
   let config = $derived(STEP_TYPE_CONFIG[data.type] || STEP_TYPE_CONFIG.custom)
   let hasQueue = $derived(data.queueSize > 0)
@@ -25,6 +37,10 @@
 <div
   class={nodeClasses}
   data-testid="step-node-{data.id}"
+  role="button"
+  tabindex="0"
+  aria-label="Edit {data.name}"
+  onkeydown={handleKeydown}
 >
   <Handle
     type="target"

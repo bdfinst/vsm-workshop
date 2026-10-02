@@ -4,7 +4,6 @@ import { CANVAS_START_X, CANVAS_STEP_SPACING, CANVAS_Y } from './thresholds.js'
 export const TEMPLATE_CATEGORIES = {
   SOFTWARE: 'software',
   SUPPORT: 'support',
-  MANUFACTURING: 'manufacturing',
 }
 
 export const STEP_TEMPLATES = [
@@ -143,74 +142,11 @@ export const STEP_TEMPLATES = [
     queueSize: 2,
     batchSize: 1,
   },
-
-  // Manufacturing templates
-  {
-    id: 'design',
-    category: TEMPLATE_CATEGORIES.MANUFACTURING,
-    name: 'Design',
-    type: STEP_TYPES.PLANNING,
-    description: 'Product design and specifications',
-    processTime: 120,
-    leadTime: 480,
-    percentCompleteAccurate: 85,
-    queueSize: 2,
-    batchSize: 1,
-  },
-  {
-    id: 'procurement',
-    category: TEMPLATE_CATEGORIES.MANUFACTURING,
-    name: 'Procurement',
-    type: STEP_TYPES.CUSTOM,
-    description: 'Order and receive materials',
-    processTime: 30,
-    leadTime: 2400, // 5 days
-    percentCompleteAccurate: 95,
-    queueSize: 5,
-    batchSize: 10,
-  },
-  {
-    id: 'assembly',
-    category: TEMPLATE_CATEGORIES.MANUFACTURING,
-    name: 'Assembly',
-    type: STEP_TYPES.CUSTOM,
-    description: 'Assemble the product',
-    processTime: 60,
-    leadTime: 240,
-    percentCompleteAccurate: 92,
-    queueSize: 8,
-    batchSize: 5,
-  },
-  {
-    id: 'quality-check',
-    category: TEMPLATE_CATEGORIES.MANUFACTURING,
-    name: 'Quality Check',
-    type: STEP_TYPES.QA,
-    description: 'Inspect for defects',
-    processTime: 15,
-    leadTime: 60,
-    percentCompleteAccurate: 98,
-    queueSize: 3,
-    batchSize: 5,
-  },
-  {
-    id: 'packaging',
-    category: TEMPLATE_CATEGORIES.MANUFACTURING,
-    name: 'Packaging',
-    type: STEP_TYPES.CUSTOM,
-    description: 'Package for shipping',
-    processTime: 10,
-    leadTime: 30,
-    percentCompleteAccurate: 99,
-    queueSize: 10,
-    batchSize: 20,
-  },
 ]
 
 export const CATEGORY_LABELS = {
   [TEMPLATE_CATEGORIES.SOFTWARE]: 'Software Development',
   [TEMPLATE_CATEGORIES.SUPPORT]: 'Support & Service',
-  [TEMPLATE_CATEGORIES.MANUFACTURING]: 'Manufacturing',
 }
 
 export function getTemplatesByCategory() {

@@ -63,8 +63,7 @@ test.describe('Visual Regression Tests', () => {
     await page.getByTestId('lead-time-input').fill('480')
     await page.getByRole('button', { name: 'Save' }).click()
 
-    // Open metrics
-    await page.getByRole('button', { name: 'Metrics' }).click()
+    // The metrics dashboard is always rendered below the canvas
     await page.waitForSelector('[data-testid="metrics-dashboard"]', {
       state: 'visible',
     })
@@ -86,6 +85,10 @@ test.describe('Visual Regression Tests', () => {
     await page.getByTestId('step-name-input').fill('Testing')
     await page.getByRole('button', { name: 'Save' }).click()
 
+    // Fit the view so both nodes and their handles are reachable
+    await page.locator('.svelte-flow__controls-fitview').click()
+    await page.waitForTimeout(300)
+
     // Connect them
     const devNode = page.locator('.vsm-node').first()
     const testNode = page.locator('.vsm-node').nth(1)
@@ -93,8 +96,9 @@ test.describe('Visual Regression Tests', () => {
       .locator('.svelte-flow__handle-right')
       .dragTo(testNode.locator('.svelte-flow__handle-left'))
 
-    // Wait for edge to render
-    await page.waitForSelector('.svelte-flow__edge', { state: 'visible' })
+    // Wait for edge to render (the edge <g> has no hit box, so wait for it to
+    // be attached rather than "visible")
+    await page.waitForSelector('.svelte-flow__edge', { state: 'attached' })
 
     // Screenshot the canvas
     const canvas = page.locator('.svelte-flow')

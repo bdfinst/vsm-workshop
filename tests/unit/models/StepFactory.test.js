@@ -1,6 +1,27 @@
 import { describe, it, expect } from 'vitest'
-import { createStep } from '../../../src/models/StepFactory.js'
+import { createStep, isAutomated } from '../../../src/models/StepFactory.js'
 import { STEP_TYPES } from '../../../src/data/stepTypes.js'
+
+describe('automated flag', () => {
+  it('defaults a new step to automated', () => {
+    expect(createStep('Build').automated).toBe(true)
+  })
+
+  it('respects an automated override', () => {
+    expect(createStep('Manual Deploy', { automated: false }).automated).toBe(false)
+  })
+
+  it('isAutomated treats a step without the property as automated', () => {
+    const legacy = createStep('Legacy')
+    delete legacy.automated
+    expect(isAutomated(legacy)).toBe(true)
+  })
+
+  it('isAutomated returns false only when explicitly not automated', () => {
+    expect(isAutomated(createStep('Manual', { automated: false }))).toBe(false)
+    expect(isAutomated(createStep('Auto'))).toBe(true)
+  })
+})
 
 describe('createStep', () => {
   describe('default values', () => {
