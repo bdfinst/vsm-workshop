@@ -28,13 +28,13 @@ export const validateTimeRange = (range, { label, positive = false }) => {
   if (min != null && !inBounds(min)) return badValue(`${label} min`, min)
   if (max != null && !inBounds(max)) return badValue(`${label} max`, max)
   if (min != null && max != null && min > max) {
-    return `${label} min must not be above the max`
+    return "Min can't be more than max"
   }
   if (typ != null && min != null && min > typ) {
-    return `${label} min must not be above the typical value`
+    return "Min can't be more than typical"
   }
   if (typ != null && max != null && max < typ) {
-    return `${label} max must not be below the typical value`
+    return "Max can't be less than typical"
   }
   return null
 }

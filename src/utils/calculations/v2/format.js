@@ -160,3 +160,102 @@ export const toMinutes = (value, unit, workdayHours) => {
  */
 export const fromMinutes = (minutes, unit, workdayHours) =>
   roundTo(minutes / minutesPerUnit(unit, workdayHours), 4)
+
+const isBlank = (text) => text == null || String(text).trim() === ''
+
+// A blank field is "not entered", which is a stage status, not an error.
+const parseField = (text, unit, workdayHours) =>
+  isBlank(text) ? { minutes: null } : toMinutes(text, unit, workdayHours)
+
+const boundError = (name, minutes, positive) => {
+  if (positive) return minutes > 0 ? null : `${name} must be more than 0`
+  return minutes < 0 ? `${name} can't be negative` : null
+}
+
+const RANGE_FIELDS = Object.freeze(['typ', 'min', 'max'])
+
+// Order matters: the first rule a field breaks is the one it shows.
+const RANGE_RULES = Object.freeze([
+  {
+    field: 'min',
+    other: 'typ',
+    message: "Min can't be more than typical",
+    breaks: (min, typ) => min > typ,
+  },
+  {
+    field: 'max',
+    other: 'typ',
+    message: "Max can't be less than typical",
+    breaks: (max, typ) => max < typ,
+  },
+  {
+    field: 'min',
+    other: 'max',
+    message: "Min can't be more than max",
+    breaks: (min, max) => min > max,
+  },
+])
+
+/**
+ * Parse the typed typical, min and max of one duration into whole minutes.
+ * A blank field is not entered: typ becomes null, and a blank min or max is left
+ * out of the range. Errors are keyed by the field they belong to.
+ * @param {{typ?: number|string, min?: number|string, max?: number|string}} texts - What each field holds
+ * @param {'minutes'|'hours'|'days'} unit - "days" are working days
+ * @param {number} workdayHours - Length of a working day in hours
+ * @param {Object} options
+ * @param {string} options.label - Name used in messages ("Process time")
+ * @param {boolean} [options.positive=false] - Require more than 0 instead of 0 or more
+ * @returns {{range: {typ: number|null, min?: number, max?: number}}|{errors: {typ?: string, min?: string, max?: string}}}
+ * @throws {RangeError} On an unknown unit, or a "days" unit with no valid workdayHours
+ */
+export const parseDurationRange = (
+  texts,
+  unit,
+  workdayHours,
+  { label, positive = false }
+) => {
+  const names = { typ: label, min: `${label} min`, max: `${label} max` }
+  const minutes = {}
+  const errors = {}
+
+  RANGE_FIELDS.forEach((field) => {
+    const parsed = parseField(texts[field], unit, workdayHours)
+    minutes[field] = parsed.minutes ?? null
+    const error =
+      parsed.error ??
+      (minutes[field] === null
+        ? null
+        : boundError(names[field], minutes[field], positive))
+    if (error) errors[field] = error
+  })
+
+  RANGE_RULES.forEach(({ field, other, message, breaks }) => {
+    const bothEntered = minutes[field] !== null && minutes[other] !== null
+    if (!errors[field] && bothEntered && breaks(minutes[field], minutes[other]))
+      errors[field] = message
+  })
+
+  if (Object.keys(errors).length > 0) return { errors }
+
+  const { typ, min, max } = minutes
+  return {
+    range: {
+      typ,
+      ...(min !== null && { min }),
+      ...(max !== null && { max }),
+    },
+  }
+}
+
+/**
+ * The unit a field first shows a stored duration in: the one `formatDuration`
+ * reads it in, so a saved 2 working days reopens as "2 days", not "16 hours".
+ * Hours when nothing is entered yet.
+ * @param {number|null|undefined} minutes - The stored duration, if any
+ * @param {number} workdayHours - Length of a working day in hours
+ * @returns {'hours'|'days'}
+ * @throws {RangeError} When workdayHours is not a positive number
+ */
+export const durationUnitOf = (minutes, workdayHours) =>
+  Number.isFinite(minutes) ? durationParts(minutes, workdayHours).unit : 'hours'
