@@ -17,16 +17,16 @@ export const validateTimeRange = (range, { label, positive = false }) => {
   const inBounds = (value) =>
     isWholeMinutes(value) && (positive ? value > 0 : value >= 0)
   const { typ, min, max } = range
+  const isNegative = (value) =>
+    !positive && typeof value === 'number' && value < 0
+  const badValue = (name, value) =>
+    isNegative(value)
+      ? `${name} can't be negative`
+      : `${name} must be a whole number of minutes, ${bound}`
 
-  if (typ != null && !inBounds(typ)) {
-    return `${label} must be a whole number of minutes, ${bound}`
-  }
-  if (min != null && !inBounds(min)) {
-    return `${label} min must be a whole number of minutes, ${bound}`
-  }
-  if (max != null && !inBounds(max)) {
-    return `${label} max must be a whole number of minutes, ${bound}`
-  }
+  if (typ != null && !inBounds(typ)) return badValue(label, typ)
+  if (min != null && !inBounds(min)) return badValue(`${label} min`, min)
+  if (max != null && !inBounds(max)) return badValue(`${label} max`, max)
   if (min != null && max != null && min > max) {
     return `${label} min must not be above the max`
   }

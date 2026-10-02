@@ -61,6 +61,9 @@ const heldLoadRepository = (raw = null) => {
   }
 }
 
+const stepNamesOf = (store) =>
+  store.streams[0].versions[0].steps.map((step) => step.name)
+
 const rawOf = (streams, overrides) =>
   serializeWorkspace(workspaceOf(streams, overrides))
 
@@ -130,6 +133,84 @@ describe('workspaceStore: loading', () => {
 
     expect(store.status).toBe('unreadable')
     expect(store.unreadable.raw).toBeNull()
+  })
+
+  describe('when the repository cannot be read at all', () => {
+    // Nothing was backed up and nothing is in hand, but the working copy is intact.
+    const flakyRepository = (raw) => {
+      const inner = createMemoryWorkspaceRepository({ raw })
+      let failing = true
+      return {
+        ...inner,
+        heal: () => {
+          failing = false
+        },
+        load: async () => {
+          if (failing) throw new Error('no storage')
+          return inner.load()
+        },
+      }
+    }
+
+    it('flags the read failure and that nothing was backed up', async () => {
+      const store = await makeStore({
+        repository: flakyRepository(rawOf([referenceStream()])),
+      })
+
+      expect(store.unreadable).toMatchObject({
+        raw: null,
+        backupFailed: true,
+        readFailed: true,
+      })
+    })
+
+    it('refuses to replace the intact working copy, and saves nothing', async () => {
+      const raw = rawOf([referenceStream({ name: 'Intact' })])
+      const repository = flakyRepository(raw)
+      const save = vi.spyOn(repository, 'save')
+      const store = await makeStore({ repository })
+
+      const result = store.replaceWorkspace(createWorkspace())
+      await store.flushSaves()
+
+      expect(result).toEqual(refused)
+      expect(store.status).toBe('unreadable')
+      expect(save).not.toHaveBeenCalled()
+      repository.heal()
+      expect(await repository.load()).toBe(raw)
+    })
+
+    it('opens the intact working copy when init is retried after the read works', async () => {
+      const repository = flakyRepository(
+        rawOf([referenceStream({ name: 'Intact' })])
+      )
+      const store = await makeStore({ repository })
+      repository.heal()
+
+      await store.init()
+
+      expect(store.status).toBe('ready')
+      expect(store.unreadable).toBeNull()
+      expect(store.streams.map((s) => s.name)).toEqual(['Intact'])
+    })
+
+    it('lets a workspace be opened once a retry has succeeded', async () => {
+      const repository = flakyRepository(null)
+      const store = await makeStore({ repository })
+      repository.heal()
+      await store.init()
+
+      expect(store.replaceWorkspace(createWorkspace()).ok).toBe(true)
+    })
+
+    it('does not block a workspace that was read but is corrupt', async () => {
+      const store = await makeStore({
+        repository: createMemoryWorkspaceRepository({ raw: '{not json' }),
+      })
+
+      expect(store.unreadable.readFailed).toBeFalsy()
+      expect(store.replaceWorkspace(createWorkspace()).ok).toBe(true)
+    })
   })
 
   it('migrates a v1 map into the first stream when nothing else is saved', async () => {
@@ -247,9 +328,6 @@ describe('workspaceStore: concurrent loading', () => {
 })
 
 describe('workspaceStore: init on a store that is already ready', () => {
-  const stepNamesOf = (store) =>
-    store.streams[0].versions[0].steps.map((step) => step.name)
-
   it('does not load again', async () => {
     const repository = createMemoryWorkspaceRepository({
       raw: rawOf([referenceStream()]),
@@ -504,6 +582,82 @@ describe('workspaceStore: the single writer', () => {
     expect(result.ok).toBe(false)
     expect(store.revision).toBe(3)
     expect(listener).not.toHaveBeenCalled()
+  })
+})
+
+describe('workspaceStore: a stale value stream store', () => {
+  it('cannot edit a stream that was removed: no revision, no commit, no save', async () => {
+    const [a, b] = [referenceStream(), referenceReworkStream()]
+    const repository = createMemoryWorkspaceRepository({
+      raw: rawOf([a, b]),
+    })
+    const store = await makeStore({ repository })
+    const stale = store.activeStore
+    store.remove(a.id)
+    await store.flushSaves()
+    const revision = store.revision
+    const listener = vi.fn()
+    store.subscribeCommit(listener)
+    const save = vi.spyOn(repository, 'save')
+
+    stale.addStep({ name: 'Ghost' })
+    await store.flushSaves()
+
+    expect(store.revision).toBe(revision)
+    expect(listener).not.toHaveBeenCalled()
+    expect(save).not.toHaveBeenCalled()
+    expect(store.streams.map((s) => s.id)).toEqual([b.id])
+  })
+
+  it('cannot overwrite a freshly loaded stream that has the same id', async () => {
+    const stream = referenceStream()
+    const store = await makeStore({ streams: [stream] })
+    const stale = store.activeStore
+    store.replaceWorkspace(
+      workspaceOf([{ ...stream, name: 'From file' }], {
+        id: 'other',
+        revision: 7,
+      })
+    )
+    const listener = vi.fn()
+    store.subscribeCommit(listener)
+
+    stale.addStep({ name: 'Ghost' })
+
+    expect(store.revision).toBe(7)
+    expect(listener).not.toHaveBeenCalled()
+    expect(store.streams[0].name).toBe('From file')
+    expect(stepNamesOf(store)).not.toContain('Ghost')
+  })
+
+  it('cannot navigate or drag a replaced stream either', async () => {
+    const stream = referenceStream()
+    const store = await makeStore({ streams: [stream] })
+    const stale = store.activeStore
+    store.replaceWorkspace(
+      workspaceOf([{ ...stream, name: 'From file' }], { id: 'other' })
+    )
+    const { id } = stale.activeVersion.steps[1]
+
+    stale.goToStage(2)
+    stale.updateStepPosition(id, { x: 400, y: 120 })
+
+    expect(store.streams[0].session).toEqual(stream.session)
+    expect(store.streams[0].versions[0].steps[1].position).toEqual(
+      stream.versions[0].steps[1].position
+    )
+  })
+
+  it('cannot undo a rename by editing after the rename rebuilt the store', async () => {
+    const stream = referenceStream()
+    const store = await makeStore({ streams: [stream] })
+    const stale = store.activeStore
+    store.rename(stream.id, 'Payments')
+
+    stale.addStep({ name: 'Ghost' })
+
+    expect(store.streams[0].name).toBe('Payments')
+    expect(stepNamesOf(store)).not.toContain('Ghost')
   })
 })
 

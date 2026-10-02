@@ -5,7 +5,6 @@ import {
   makeStore,
   pathsFrom,
   referenceReworkStream,
-  refused,
   stepNamed,
   stepNames,
   streamOf,
@@ -47,7 +46,10 @@ describe('Editing rules and undo', () => {
         fromStepId: stepNamed(store.activeStore, 'Development').id,
         toStepId: stepNamed(store.activeStore, 'Deploy').id,
       })
-    ).toEqual(refused)
+    ).toEqual({
+      ok: false,
+      error: 'Rework can only go back to an earlier step',
+    })
 
     expect(
       edits.moveStep(stepNamed(store.activeStore, 'Code review').id, 0)
@@ -55,7 +57,7 @@ describe('Editing rules and undo', () => {
 
     expect(
       edits.moveStep(stepNamed(store.activeStore, 'Intake').id, 2)
-    ).toEqual(refused)
+    ).toEqual({ ok: false, error: 'Intake is always first' })
   })
 
   it('Reorder that would make an existing path point forward is refused', async () => {
@@ -70,7 +72,10 @@ describe('Editing rules and undo', () => {
 
     const result = store.activeStore.moveStep(codeReview, 2)
 
-    expect(result).toEqual(refused)
+    expect(result).toEqual({
+      ok: false,
+      error: 'A rework path would point forward — remove or change it first',
+    })
     expect(activeNames(store)).toEqual(before)
   })
 
@@ -79,7 +84,7 @@ describe('Editing rules and undo', () => {
 
     expect(
       store.activeStore.deleteStep(stepNamed(store.activeStore, 'Intake').id)
-    ).toEqual(refused)
+    ).toEqual({ ok: false, error: "Intake can't be deleted" })
 
     const result = store.activeStore.deleteStep(
       stepNamed(store.activeStore, 'Code review').id
@@ -115,7 +120,7 @@ describe('Editing rules and undo', () => {
       edits.activeVersion.steps,
       edits.activeVersion.reworkPaths
     ).errors
-    expect(flags).toEqual({ [codeReview]: expect.stringMatching(/\S/) })
+    expect(flags).toEqual({ [codeReview]: 'Shares add up to 25% — need 100%' })
   })
 
   it("Setting %C/A to 100 removes the step's paths", async () => {
@@ -168,7 +173,10 @@ describe('Editing rules and undo', () => {
       { processTime: { typ: -5 } }
     )
 
-    expect(result).toEqual(refused)
+    expect(result).toEqual({
+      ok: false,
+      error: "Process time can't be negative",
+    })
     expect(stepNamed(store.activeStore, 'Development').processTime.typ).toBe(
       480
     )

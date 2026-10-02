@@ -52,7 +52,7 @@ export const validateReworkShares = (steps, reworkPaths) => {
       .filter((path) => path.fromStepId === step.id)
       .reduce((sum, path) => sum + path.shareOfRejects, 0)
     if (total !== 100) {
-      errors[step.id] = `Rework shares from ${step.name} must add up to 100`
+      errors[step.id] = `Shares add up to ${total}% — need 100%`
     }
   }
 

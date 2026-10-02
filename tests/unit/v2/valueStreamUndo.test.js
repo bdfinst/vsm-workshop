@@ -205,15 +205,19 @@ describe('valueStreamStore: undo and the session stage', () => {
     expect(undo).not.toBe(redo)
   })
 
-  it('says more when the edit was on another stage than when it was on this one', () => {
-    const away = editOnSteps().store
-    away.goToStage(3)
-    const here = editOnSteps().store
+  it('names the stage of the edit when it was on another stage', () => {
+    const { store } = editOnSteps()
+    store.goToStage(3)
 
-    const awayText = announced(away)
-    const hereText = announced(here)
+    expect(announced(store)).toEqual({
+      undo: 'Undo: change on the Steps stage',
+      redo: 'Redo: change on the Steps stage',
+    })
+  })
 
-    expect(awayText.undo.length).toBeGreaterThan(hereText.undo.length)
-    expect(awayText.redo.length).toBeGreaterThan(hereText.redo.length)
+  it('does not name a stage when the edit was on this one', () => {
+    const { store } = editOnSteps()
+
+    expect(announced(store)).toEqual({ undo: 'Undo', redo: 'Redo' })
   })
 })

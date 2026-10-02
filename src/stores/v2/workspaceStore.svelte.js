@@ -29,6 +29,8 @@ export const BLANK_NAME_MESSAGE = 'Add a name'
 export const STREAM_MISSING_MESSAGE = "That value stream isn't in the workspace"
 export const NOTHING_TO_RESTORE_MESSAGE = 'Nothing to restore'
 export const UNREADABLE_MESSAGE = "The saved workspace couldn't be read"
+export const READ_FAILED_MESSAGE =
+  "The saved workspace couldn't be read, so it is kept as it is. Try again."
 
 const DB_NAME = 'vsm-workshop-v2'
 
@@ -48,9 +50,12 @@ export const createWorkspaceStore = ({
   v1Repository = vsmLocalStorageRepo,
 }) => {
   let status = $state('loading')
-  // { reason, raw, backupFailed, downloaded } while status is 'unreadable'.
-  // `raw` is the saved text as found, or null when it could not be read at all.
-  // `downloaded` is set once the user has taken a copy of `raw` this session.
+  // { reason, raw, backupFailed, readFailed?, downloaded? } while status is
+  // 'unreadable'. `raw` is the saved text as found, or null when it could not be
+  // read at all. `downloaded` is set once the user has taken a copy of `raw`
+  // this session. `readFailed` means the read itself failed (not the text), so
+  // the working copy may be intact and nothing was backed up: it is treated as
+  // an unsafe backup, and `replaceWorkspace` refuses until `init()` succeeds.
   let unreadable = $state.raw(null)
   // What migrating a v1 map changed, for the screen to tell the user.
   let changes = $state.raw([])
@@ -67,8 +72,6 @@ export const createWorkspaceStore = ({
   // The workspace's own fields, kept as loaded: format, schema version and id.
   let base = createWorkspace()
   let queue = Promise.resolve()
-  // Saves asked for and not finished yet.
-  let pendingSaves = 0
   let listeners = []
   // Restore tokens that can still be used.
   let tokens = []
@@ -88,23 +91,17 @@ export const createWorkspaceStore = ({
   // `saveError` and never stops the saves behind it.
   const enqueueSave = () => {
     const workspace = snapshot()
-    pendingSaves += 1
     queue = queue
       .then(() => repository.save(workspace))
       .then(
         () => {
           saveError = null
-          pendingSaves -= 1
         },
         (error) => {
           saveError = error
-          pendingSaves -= 1
         }
       )
   }
-
-  // Edits the saved file does not have yet, or saves still on their way.
-  const hasUnsavedWork = () => revision > savedRevision || pendingSaves > 0
 
   // An edit: counts as a new revision, is saved and tells the listeners.
   const commit = () => {
@@ -125,8 +122,8 @@ export const createWorkspaceStore = ({
   // as the last edit left it (the stream store's copy of it is older).
   const persistStream = (stream, options) => {
     const stored = streams.find((s) => s.id === stream.id)
+    if (!stored) return
     if (options?.navigation || options?.positionOnly) {
-      if (!stored) return
       const quiet = options.navigation
         ? { ...stored, session: stream.session }
         : { ...stream, updatedAt: stored.updatedAt }
@@ -138,11 +135,22 @@ export const createWorkspaceStore = ({
     commit()
   }
 
-  // A new value stream store each time, so undo history is per stream.
+  // A new value stream store each time, so undo history is per stream. Each
+  // store's `persist` is good only while it is the current one: a store that
+  // was replaced (stream removed, workspace swapped, stream renamed) must not
+  // write its older copy of the stream back over what replaced it.
+  let builds = 0
   const buildActiveStore = () => {
+    builds += 1
+    const build = builds
     const stream = streams.find((s) => s.id === activeStreamId)
     activeStore = stream
-      ? createValueStreamStore({ stream, persist: persistStream })
+      ? createValueStreamStore({
+          stream,
+          persist: (edited, options) => {
+            if (build === builds) persistStream(edited, options)
+          },
+        })
       : null
   }
 
@@ -178,7 +186,8 @@ export const createWorkspaceStore = ({
       unreadable = {
         reason: UNREADABLE_MESSAGE,
         raw: null,
-        backupFailed: false,
+        backupFailed: true,
+        readFailed: true,
       }
       status = 'unreadable'
       return
@@ -201,11 +210,11 @@ export const createWorkspaceStore = ({
   }
 
   // Loading again would swap the stored copy in over edits made since, so a
-  // ready store, or one holding unsaved work, keeps what it has.
+  // ready store keeps what it has. A store is not ready only until its first
+  // successful load (or `replaceWorkspace`), so it cannot hold edits before
+  // then. On an unreadable store this is also the retry.
   const init = () => {
-    if (status === 'ready' || hasUnsavedWork()) {
-      return loading ?? Promise.resolve()
-    }
+    if (status === 'ready') return loading ?? Promise.resolve()
     if (!loading) {
       loading = load().finally(() => {
         loading = null
@@ -325,13 +334,17 @@ export const createWorkspaceStore = ({
   // Swap in a whole workspace (a file the user opened, or an empty start). It
   // becomes the saved baseline, so it fires no commit; the file it came from is
   // already the saved copy.
+  // It refuses while the saved workspace could not be read at all: the working
+  // copy may be intact, and replacing it would destroy the only copy.
   const replaceWorkspace = (workspace) => {
+    if (unreadable?.readFailed === true) return refuse(READ_FAILED_MESSAGE)
     replacements += 1
     adopt(workspace)
     changes = []
     unreadable = null
     status = 'ready'
     enqueueSave()
+    return { ok: true }
   }
 
   // The user has taken a copy of the unreadable data, so it is safe to leave it.
