@@ -109,6 +109,15 @@ describe('workspaceStore: loading', () => {
     expect(await repository.loadBackup()).toBe('{not json')
   })
 
+  it('hands back exactly the unreadable text it found', async () => {
+    const raw = '{"format": "vsm-workspace", oops'
+    const store = await makeStore({
+      repository: createMemoryWorkspaceRepository({ raw }),
+    })
+
+    expect(store.unreadable.raw).toBe(raw)
+  })
+
   it('is unreadable when the repository cannot be read at all', async () => {
     const repository = {
       ...createMemoryWorkspaceRepository(),
@@ -120,6 +129,7 @@ describe('workspaceStore: loading', () => {
     const store = await makeStore({ repository })
 
     expect(store.status).toBe('unreadable')
+    expect(store.unreadable.raw).toBeNull()
   })
 
   it('migrates a v1 map into the first stream when nothing else is saved', async () => {

@@ -7,14 +7,16 @@
   import SessionShell from './SessionShell.svelte'
   import HomeScreen from '../home/HomeScreen.svelte'
 
+  const lifecycle = createGuidedLifecycle({ store: workspaceStore })
+
   onMount(() => {
-    createGuidedLifecycle({ store: workspaceStore }).start()
+    lifecycle.start()
   })
 </script>
 
 <NoticeRegion />
 {#if workspaceStore.status === 'unreadable'}
-  <UnreadableScreen />
+  <UnreadableScreen {lifecycle} />
 {:else if workspaceStore.status === 'ready'}
   {#if workspaceStore.screen === 'home'}
     <HomeScreen />

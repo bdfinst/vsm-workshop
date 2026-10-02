@@ -89,6 +89,12 @@ describe('decideLoad', () => {
       expect(result.unreadable).toBeNull()
     })
 
+    it('opens the migrated stream on Review with every stage reached', () => {
+      const [stream] = decideLoad(null, v1Map()).workspace.streams
+
+      expect(stream.session).toEqual({ activeStage: 6, furthestStage: 7 })
+    })
+
     it('does not change the v1 map', () => {
       const v1 = v1Map()
       const before = structuredClone(v1)

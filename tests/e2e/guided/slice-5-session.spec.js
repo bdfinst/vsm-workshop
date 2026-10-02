@@ -1,4 +1,16 @@
-import { test, expect, GUIDED_URL, workspaceAtStage } from './fixtures.js'
+import { readFile } from 'node:fs/promises'
+import { createValueStream } from '../../../src/models/v2/valueStream.js'
+import { exportValueStream } from '../../../src/persistence/v2/valueStreamJson.js'
+import {
+  test,
+  expect,
+  GUIDED_URL,
+  V1_STORAGE_KEY,
+  savedBackup,
+  savedWorkingCopy,
+  v1MapWithoutIntake,
+  workspaceAtStage,
+} from './fixtures.js'
 
 test('Guided mode is opt-in until switch-over', async ({ page }) => {
   await page.goto('/')
@@ -92,20 +104,6 @@ test.describe('Session header (step 5.2)', () => {
 
     await expect(page.getByTestId('live-region')).not.toContainText('Undo')
     await expect(page.getByRole('button', { name: 'Undo' })).toBeEnabled()
-  })
-
-  test('New value stream from the File menu opens an empty one on Scope', async ({
-    page,
-    seed,
-  }) => {
-    await seed(workspaceAtStage(2))
-
-    await page.getByRole('button', { name: 'File' }).click()
-    await page.getByRole('menuitem', { name: 'New value stream' }).click()
-
-    await expect(page.getByRole('heading', { name: 'Scope' })).toBeVisible()
-    await expect(page.getByLabel('Map name')).toHaveValue('')
-    await expect(page.getByRole('menuitem')).toHaveCount(0)
   })
 })
 
@@ -244,7 +242,7 @@ test.describe('Stage rail and Scope edits (step 5.3 wiring)', () => {
     seed,
     axe,
   }) => {
-    await seed(workspaceAtStage(2, { trigger: 'A customer asks' }))
+    await seed(workspaceAtStage(2, { endPoint: '' }))
     const scope = page.getByTestId('stage-scope')
     const time = page.getByTestId('stage-time')
 
@@ -286,18 +284,67 @@ test.describe('Stage rail and Scope edits (step 5.3 wiring)', () => {
 
     await expect(field(page, 'Map name')).toHaveValue('Checkout delivery')
   })
+})
 
-  for (const [hours, valid] of [
+const rail = (page) => page.getByRole('navigation', { name: 'Stages' })
+const stageItem = (page, name) => page.getByTestId(`stage-${name}`)
+const mapName = (page) => page.getByLabel('Map name')
+const liveRegion = (page) => page.getByTestId('live-region')
+
+/** Change the header's map name the way a user does: type, then Enter. */
+const renameMap = async (page, name) => {
+  await mapName(page).fill(name)
+  await mapName(page).press('Enter')
+}
+
+test.describe('Stage rail and header scenarios (step 5.4)', () => {
+  test('Return to a reached stage', async ({ page, seed }) => {
+    await seed(workspaceAtStage(2))
+
+    await stageItem(page, 'scope').click()
+
+    await expect(stageItem(page, 'scope')).toHaveAttribute(
+      'aria-current',
+      'step'
+    )
+    await expect(stageItem(page, 'scope')).toHaveAttribute(
+      'data-state',
+      'complete'
+    )
+  })
+
+  test('Stages beyond the furthest reached are not selectable', async ({
+    page,
+    seed,
+  }) => {
+    await seed(workspaceAtStage(2))
+    const time = stageItem(page, 'time')
+
+    await expect(time).toHaveAttribute('data-state', 'not-selectable')
+    await expect(time).toHaveAttribute('aria-disabled', 'true')
+    await time.click({ force: true })
+
+    await expect(stageItem(page, 'steps')).toHaveAttribute(
+      'aria-current',
+      'step'
+    )
+    await expect(time).not.toHaveAttribute('aria-current', 'step')
+  })
+
+  // The hours in each row's title are the Examples values.
+  const WORKING_DAYS = [
     ['0', false],
     ['1', true],
     ['7.5', true],
     ['24', true],
     ['25', false],
-  ]) {
+  ]
+  for (const [hours, valid] of WORKING_DAYS) {
     test(`Working day must be between 1 and 24 hours: ${hours}`, async ({
       page,
+      seed,
     }) => {
-      await page.goto(GUIDED_URL)
+      await seed(workspaceAtStage(1))
 
       await field(page, 'Working day (hours)').fill(hours)
 
@@ -306,4 +353,281 @@ test.describe('Stage rail and Scope edits (step 5.3 wiring)', () => {
       else await expect(error).toContainText(/between 1 and 24/)
     })
   }
+
+  test('No stage timer', async ({ page, seed }) => {
+    await seed(workspaceAtStage(7))
+    const timerWords = /timer|timebox|time left|countdown/i
+
+    for (const status of await rail(page).getByRole('listitem').all()) {
+      await status.getByRole('button').click()
+      await expect(page.getByTestId('work-region')).toBeVisible()
+      await expect(page.locator('body')).not.toContainText(timerWords)
+      await expect(page.locator('[role="timer"]')).toHaveCount(0)
+    }
+    await expect(stageItem(page, 'future')).toHaveAttribute(
+      'aria-current',
+      'step'
+    )
+  })
+
+  test('Header shows the version being edited', async ({ page, seed }) => {
+    await seed(workspaceAtStage(2))
+
+    await expect(page.getByTestId('editing-indicator')).toHaveText(
+      /Editing:\s*Current state/
+    )
+  })
+
+  test('Undo and redo from the toolbar and keyboard', async ({
+    page,
+    seed,
+  }) => {
+    await seed(workspaceAtStage(2))
+    const undo = page.getByRole('button', { name: 'Undo' })
+    const redo = page.getByRole('button', { name: 'Redo' })
+    await expect(undo).toBeDisabled()
+    await expect(redo).toBeDisabled()
+
+    await renameMap(page, 'Checkout v2')
+    await undo.click()
+
+    await expect(mapName(page)).toHaveValue('Checkout delivery')
+    await expect(liveRegion(page)).toContainText(/undo/i)
+    await expect(liveRegion(page)).toContainText(/map name/i)
+
+    await page.keyboard.press('Control+Shift+Z')
+
+    await expect(mapName(page)).toHaveValue('Checkout v2')
+    await expect(redo).toBeDisabled()
+  })
+
+  test('A new edit clears redo', async ({ page, seed }) => {
+    await seed(workspaceAtStage(2))
+
+    await renameMap(page, 'Checkout v2')
+    await page.getByRole('button', { name: 'Undo' }).click()
+    await expect(page.getByRole('button', { name: 'Redo' })).toBeEnabled()
+    await renameMap(page, 'Checkout v3')
+
+    await expect(page.getByRole('button', { name: 'Redo' })).toBeDisabled()
+  })
+
+  test('Start a new value stream from the header', async ({ page, seed }) => {
+    await seed(workspaceAtStage(2))
+
+    await page.getByRole('button', { name: 'File' }).click()
+    await page.getByRole('menuitem', { name: 'New value stream' }).click()
+
+    await expect(stageItem(page, 'scope')).toHaveAttribute(
+      'aria-current',
+      'step'
+    )
+    await expect(page.getByRole('heading', { name: 'Scope' })).toBeVisible()
+    await expect(mapName(page)).toHaveValue('')
+    await expect(page.getByRole('menuitem')).toHaveCount(0)
+  })
+
+  test('Reload resumes the session', async ({ page, seed }) => {
+    await seed(workspaceAtStage(2))
+    await renameMap(page, 'Checkout v2')
+    // The write to the working copy is async; reload once it has landed.
+    await expect.poll(() => savedWorkingCopy(page)).toContain('Checkout v2')
+
+    await page.reload()
+
+    await expect(stageItem(page, 'steps')).toHaveAttribute(
+      'aria-current',
+      'step'
+    )
+    await expect(mapName(page)).toHaveValue('Checkout v2')
+  })
+})
+
+test.describe('Upgrade notice (step 5.4)', () => {
+  test('Upgrade notice lists what changed', async ({ page, seedV1 }) => {
+    const v1 = v1MapWithoutIntake()
+    await seedV1(v1)
+    const notice = page.getByTestId('upgrade-notice')
+
+    await expect(
+      notice.getByRole('heading', { name: 'Map upgraded to the new format' })
+    ).toBeVisible()
+    await expect(notice.getByRole('listitem')).toHaveText(['Intake step added'])
+    await expect(notice).toContainText(/original map is kept/i)
+    await expect(stageItem(page, 'review')).toHaveAttribute(
+      'aria-current',
+      'step'
+    )
+    await expect(stageItem(page, 'future')).not.toHaveAttribute(
+      'aria-disabled',
+      'true'
+    )
+    expect(
+      await page.evaluate((key) => localStorage.getItem(key), V1_STORAGE_KEY)
+    ).toBe(JSON.stringify(v1))
+
+    await notice.getByRole('button', { name: 'Dismiss' }).click()
+
+    await expect(notice).toHaveCount(0)
+    await page.reload()
+    await expect(page.getByTestId('session-shell')).toBeVisible()
+    await expect(page.getByTestId('upgrade-notice')).toHaveCount(0)
+  })
+
+  test('the upgrade notice has no accessibility violations', async ({
+    page,
+    seedV1,
+    axe,
+  }) => {
+    await seedV1(v1MapWithoutIntake())
+    await expect(page.getByTestId('upgrade-notice')).toBeVisible()
+
+    await axe({ include: '[data-testid="notice-region"]' })
+    await axe()
+  })
+})
+
+const UNREADABLE_TEXT = '{"format": "vsm-workspace", "streams": [oopsé\n'
+
+const unreadableScreen = (page) => page.getByTestId('unreadable-screen')
+
+const startEmptyButton = (page) =>
+  page.getByRole('button', { name: 'Start an empty workspace' })
+
+const confirmation = (page) => page.getByRole('alertdialog')
+
+const RECOVERY_MESSAGE = /couldn.t read your saved workspace/i
+const KEPT_MESSAGE = /saved data is kept/i
+
+// Waits for a download and returns the text the file holds.
+const downloadedText = async (page, trigger) => {
+  const download = page.waitForEvent('download')
+  await trigger()
+  return readFile(await (await download).path(), 'utf8')
+}
+
+test.describe('Unreadable workspace (step 5.4)', () => {
+  test('Unreadable workspace offers recovery', async ({ page, seed }) => {
+    await seed(UNREADABLE_TEXT)
+
+    await expect(unreadableScreen(page)).toContainText(RECOVERY_MESSAGE)
+    await expect(unreadableScreen(page)).toContainText(KEPT_MESSAGE)
+    await expect(unreadableScreen(page).getByRole('button')).toHaveText([
+      'Import value stream',
+      'Download the unreadable data',
+      'Start an empty workspace',
+    ])
+    await expect(page.getByTestId('session-shell')).toHaveCount(0)
+  })
+
+  test('Download the unreadable data', async ({ page, seed }) => {
+    await seed(UNREADABLE_TEXT)
+
+    const text = await downloadedText(page, () =>
+      page.getByRole('button', { name: 'Download the unreadable data' }).click()
+    )
+
+    expect(text).toBe(UNREADABLE_TEXT)
+  })
+
+  test('Starting an empty workspace keeps the backup', async ({
+    page,
+    seed,
+  }) => {
+    await seed(UNREADABLE_TEXT)
+
+    await startEmptyButton(page).click()
+
+    await expect(confirmation(page)).toContainText(/stays kept/i)
+    await expect(confirmation(page)).toContainText(/won.t be shown again/i)
+    const download = confirmation(page).getByRole('button', {
+      name: 'Download the unreadable data',
+    })
+    await expect(download).toBeVisible()
+    expect(await downloadedText(page, () => download.click())).toBe(
+      UNREADABLE_TEXT
+    )
+
+    await confirmation(page)
+      .getByRole('button', { name: 'Start empty' })
+      .click()
+
+    await expect(stageItem(page, 'scope')).toHaveAttribute(
+      'aria-current',
+      'step'
+    )
+    await expect(unreadableScreen(page)).toHaveCount(0)
+    expect(await savedBackup(page)).toBe(UNREADABLE_TEXT)
+    await expect.poll(() => savedWorkingCopy(page)).not.toBe(UNREADABLE_TEXT)
+  })
+
+  test('Cancelling start-empty keeps the recovery screen', async ({
+    page,
+    seed,
+  }) => {
+    await seed(UNREADABLE_TEXT)
+
+    await startEmptyButton(page).click()
+    await expect(
+      confirmation(page).getByRole('button', { name: 'Cancel' })
+    ).toBeFocused()
+    await page.keyboard.press('Escape')
+
+    await expect(confirmation(page)).toHaveCount(0)
+    await expect(unreadableScreen(page)).toContainText(RECOVERY_MESSAGE)
+    await expect(unreadableScreen(page)).toContainText(KEPT_MESSAGE)
+    await expect(startEmptyButton(page)).toBeFocused()
+  })
+
+  test('Import value stream starts a workspace holding the imported stream', async ({
+    page,
+    seed,
+  }) => {
+    await seed(UNREADABLE_TEXT)
+    const imported = createValueStream({ name: 'Imported delivery' })
+
+    const chooser = page.waitForEvent('filechooser')
+    await page.getByRole('button', { name: 'Import value stream' }).click()
+    await (
+      await chooser
+    ).setFiles({
+      name: 'stream.json',
+      mimeType: 'application/json',
+      buffer: Buffer.from(exportValueStream(imported)),
+    })
+
+    await expect(mapName(page)).toHaveValue('Imported delivery')
+    await expect(unreadableScreen(page)).toHaveCount(0)
+    expect(await savedBackup(page)).toBe(UNREADABLE_TEXT)
+  })
+
+  test('Import value stream refuses a file that is not a value stream', async ({
+    page,
+    seed,
+  }) => {
+    await seed(UNREADABLE_TEXT)
+
+    await page.getByTestId('import-value-stream-input').setInputFiles({
+      name: 'other.json',
+      mimeType: 'application/json',
+      buffer: Buffer.from('{"hello":"world"}'),
+    })
+
+    await expect(page.getByRole('alert')).toHaveText(/\S/)
+    await expect(unreadableScreen(page)).toContainText(RECOVERY_MESSAGE)
+  })
+
+  test('the unreadable screen, with its confirmation open, has no accessibility violations', async ({
+    page,
+    seed,
+    axe,
+  }) => {
+    await seed(UNREADABLE_TEXT)
+    await expect(unreadableScreen(page)).toBeVisible()
+    await axe()
+
+    await startEmptyButton(page).click()
+    await expect(confirmation(page)).toBeVisible()
+    await axe()
+  })
 })

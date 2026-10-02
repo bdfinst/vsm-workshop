@@ -48,7 +48,8 @@ export const createWorkspaceStore = ({
   v1Repository = vsmLocalStorageRepo,
 }) => {
   let status = $state('loading')
-  // { reason, backupFailed } while status is 'unreadable'.
+  // { reason, raw, backupFailed } while status is 'unreadable'. `raw` is the
+  // saved text as found, or null when it could not be read at all.
   let unreadable = $state.raw(null)
   // What migrating a v1 map changed, for the screen to tell the user.
   let changes = $state.raw([])
@@ -173,7 +174,11 @@ export const createWorkspaceStore = ({
       loaded = await loadWorkspace(repository, v1Repository)
     } catch {
       if (replacements !== started) return
-      unreadable = { reason: UNREADABLE_MESSAGE, backupFailed: false }
+      unreadable = {
+        reason: UNREADABLE_MESSAGE,
+        raw: null,
+        backupFailed: false,
+      }
       status = 'unreadable'
       return
     }
@@ -182,6 +187,7 @@ export const createWorkspaceStore = ({
     if (loaded.unreadable) {
       unreadable = {
         reason: loaded.unreadable.reason,
+        raw: loaded.raw ?? null,
         backupFailed: loaded.backupFailed === true,
       }
       status = 'unreadable'

@@ -3,6 +3,7 @@ import { createGuidedLifecycle } from '../../../src/stores/v2/guidedLifecycle.js
 import { createWorkspaceStore } from '../../../src/stores/v2/workspaceStore.svelte.js'
 import { createMemoryWorkspaceRepository } from '../../../src/persistence/v2/memoryWorkspaceRepository.js'
 import { serializeWorkspace } from '../../../src/persistence/v2/workspaceCodec.js'
+import { exportValueStream } from '../../../src/persistence/v2/valueStreamJson.js'
 import { noV1Repository, referenceStream, workspaceOf } from './fixtures.js'
 
 /** A repository whose load answers only when the test releases it. */
@@ -80,5 +81,67 @@ describe('guidedLifecycle', () => {
 
     expect(store.status).toBe('unreadable')
     expect(store.streams).toHaveLength(0)
+  })
+
+  it('Reload resumes the session: opens the active stream at its saved stage', async () => {
+    const stream = referenceStream({
+      session: { activeStage: 2, furthestStage: 4 },
+    })
+    const raw = serializeWorkspace(workspaceOf([stream]))
+    const { store, lifecycle } = launchOver(
+      createMemoryWorkspaceRepository({ raw })
+    )
+
+    await lifecycle.start()
+
+    expect(store.screen).toBe('stream')
+    expect(store.activeStore.stream.id).toBe(stream.id)
+    expect(store.activeStore.stream.session.activeStage).toBe(2)
+  })
+
+  describe('leaving an unreadable workspace', () => {
+    const UNREADABLE = '{not json'
+    const unreadableLaunch = async () => {
+      const repository = createMemoryWorkspaceRepository({ raw: UNREADABLE })
+      const launched = launchOver(repository)
+      await launched.lifecycle.start()
+      return { repository, ...launched }
+    }
+
+    it('starting empty opens one empty stream on Scope and keeps the backup', async () => {
+      const { store, lifecycle, repository } = await unreadableLaunch()
+
+      lifecycle.startEmpty()
+
+      expect(store.status).toBe('ready')
+      expect(store.streams).toHaveLength(1)
+      expect(store.activeStore.stream.session.activeStage).toBe(1)
+      expect(store.revision).toBe(store.savedRevision)
+      await store.flushSaves()
+      expect(await repository.loadBackup()).toBe(UNREADABLE)
+    })
+
+    it('importing starts a workspace holding the imported stream', async () => {
+      const { store, lifecycle, repository } = await unreadableLaunch()
+      const text = exportValueStream(referenceStream({ name: 'Imported' }))
+
+      const result = lifecycle.startFromImport(text)
+
+      expect(result.ok).toBe(true)
+      expect(store.status).toBe('ready')
+      expect(store.streams.map((stream) => stream.name)).toEqual(['Imported'])
+      expect(store.activeStore.stream.name).toBe('Imported')
+      expect(await repository.loadBackup()).toBe(UNREADABLE)
+    })
+
+    it('a file that is not a value stream is refused and the screen stays', async () => {
+      const { store, lifecycle } = await unreadableLaunch()
+
+      const result = lifecycle.startFromImport('{"hello":"world"}')
+
+      expect(result.ok).toBe(false)
+      expect(result.error).toMatch(/\S/)
+      expect(store.status).toBe('unreadable')
+    })
   })
 })

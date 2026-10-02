@@ -1,3 +1,4 @@
+import { STAGE_NAMES } from '../../models/v2/constants.js'
 import { createWorkspace } from '../../models/v2/workspace.js'
 import { isRecord } from '../validation/v2/result.js'
 import { parseWorkspace } from '../../persistence/v2/workspaceCodec.js'
@@ -19,12 +20,19 @@ const EMPTY_LOAD = () => ({
 const hasV1Steps = (v1) =>
   isRecord(v1) && Array.isArray(v1.steps) && v1.steps.some(isRecord)
 
+// A migrated map is already built, so it opens on Review with every stage reached.
+const MIGRATED_SESSION = {
+  activeStage: STAGE_NAMES.indexOf('Review') + 1,
+  furthestStage: STAGE_NAMES.length,
+}
+
 // A v1 map that cannot be migrated is treated as nothing saved: the app opens
 // empty rather than crashing on data it cannot read.
 const fromV1 = (v1) => {
   const migrated = migrateV1Safely(v1)
   if (!migrated.ok) return EMPTY_LOAD()
-  const { stream, changes } = migrated
+  const { changes } = migrated
+  const stream = { ...migrated.stream, session: { ...MIGRATED_SESSION } }
   const workspace = createWorkspace({
     streams: [stream],
     activeStreamId: stream.id,
