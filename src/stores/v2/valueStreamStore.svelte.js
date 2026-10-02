@@ -52,10 +52,14 @@ const dataOf = (stream) => {
   return data
 }
 
-const announce = (verb, stage, currentStage) =>
-  stage === currentStage
-    ? verb
-    : `${verb}: change on the ${STAGE_NAMES[stage - 1]} stage`
+const NAME_LABEL = 'map name'
+const NAME_NOT_TEXT_MESSAGE = 'Name must be text'
+
+// `label` says what the edit was, when it is worth saying.
+const announce = (verb, stage, currentStage, label) => {
+  if (stage === currentStage) return label ? `${verb}: ${label}` : verb
+  return `${verb}: ${label ?? 'change'} on the ${STAGE_NAMES[stage - 1]} stage`
+}
 
 /**
  * Create the store for one value stream.
@@ -85,6 +89,7 @@ export const createValueStreamStore = ({ stream, persist }) => {
       history.pushSnapshot({
         data: dataOf(current),
         stage: current.session.activeStage,
+        label: options?.label,
       })
     }
     current = draft
@@ -262,6 +267,16 @@ export const createValueStreamStore = ({ stream, persist }) => {
       version.focusItems = items
     })
 
+  // An empty name is allowed: a new map starts without one.
+  const setName = (name) => {
+    if (typeof name !== 'string') return refuse(NAME_NOT_TEXT_MESSAGE)
+    if (name === current.name) return { ok: true }
+    const draft = $state.snapshot(current)
+    draft.name = name
+    commit(draft, { label: NAME_LABEL })
+    return { ok: true }
+  }
+
   // A canvas drag: saved, but not an undo step and not an edit that counts.
   const updateStepPosition = (stepId, position) => {
     const draft = $state.snapshot(current)
@@ -294,12 +309,21 @@ export const createValueStreamStore = ({ stream, persist }) => {
   const travel = (verb, peek, move) => {
     const entry = peek()
     if (!entry) return refuse(`Nothing to ${verb.toLowerCase()}`)
-    const restored = move({ data: dataOf(current), stage: entry.stage })
+    const restored = move({
+      data: dataOf(current),
+      stage: entry.stage,
+      label: entry.label,
+    })
     current = { ...restored.data, session: current.session }
     save()
     return {
       ok: true,
-      announcement: announce(verb, entry.stage, current.session.activeStage),
+      announcement: announce(
+        verb,
+        entry.stage,
+        current.session.activeStage,
+        entry.label
+      ),
     }
   }
 
@@ -324,6 +348,7 @@ export const createValueStreamStore = ({ stream, persist }) => {
     get metrics() {
       return metrics
     },
+    setName,
     updateStep,
     updateStepPosition,
     addStep,
