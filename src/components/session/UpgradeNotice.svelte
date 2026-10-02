@@ -1,4 +1,6 @@
 <script>
+  import { tick } from 'svelte'
+  import { focusStageHeading } from '../../utils/session/focus.js'
   import {
     getPersistedValue,
     persistValue,
@@ -13,9 +15,12 @@
 
   let dismissed = $state(getPersistedValue(DISMISSED_KEY, false))
 
-  function handleDismiss() {
+  // The button that had focus is removed, so focus goes to the stage heading.
+  async function handleDismiss() {
     dismissed = true
     persistValue(DISMISSED_KEY, true)
+    await tick()
+    focusStageHeading()
   }
 </script>
 

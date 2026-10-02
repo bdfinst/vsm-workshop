@@ -48,8 +48,9 @@ export const createWorkspaceStore = ({
   v1Repository = vsmLocalStorageRepo,
 }) => {
   let status = $state('loading')
-  // { reason, raw, backupFailed } while status is 'unreadable'. `raw` is the
-  // saved text as found, or null when it could not be read at all.
+  // { reason, raw, backupFailed, downloaded } while status is 'unreadable'.
+  // `raw` is the saved text as found, or null when it could not be read at all.
+  // `downloaded` is set once the user has taken a copy of `raw` this session.
   let unreadable = $state.raw(null)
   // What migrating a v1 map changed, for the screen to tell the user.
   let changes = $state.raw([])
@@ -333,6 +334,11 @@ export const createWorkspaceStore = ({
     enqueueSave()
   }
 
+  // The user has taken a copy of the unreadable data, so it is safe to leave it.
+  const markUnreadableDownloaded = () => {
+    if (unreadable) unreadable = { ...unreadable, downloaded: true }
+  }
+
   const subscribeCommit = (listener) => {
     listeners = [...listeners, listener]
     return () => {
@@ -347,6 +353,7 @@ export const createWorkspaceStore = ({
     get unreadable() {
       return unreadable
     },
+    markUnreadableDownloaded,
     get changes() {
       return changes
     },

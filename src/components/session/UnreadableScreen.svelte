@@ -8,11 +8,16 @@
   let { lifecycle } = $props()
 
   const DOWNLOAD_NAME = 'unreadable-workspace.json'
+  const READ_ERROR_MESSAGE = "That file couldn't be read. Try another file."
   const buttonClass =
     'px-4 py-2 bg-white text-gray-700 border border-gray-300 rounded-md hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2'
 
   let raw = $derived(workspaceStore.unreadable?.raw ?? null)
   let reason = $derived(workspaceStore.unreadable?.reason ?? '')
+
+  // Leaving replaces the only copy when it could not be backed up, so it
+  // waits for a download; null when nothing is in the way.
+  let blockedReason = $derived(lifecycle.exitBlockedReason())
 
   let fileInput = $state()
   let importError = $state('')
@@ -21,19 +26,32 @@
 
   function handleDownload() {
     browserDownload(DOWNLOAD_NAME, raw)
+    lifecycle.noteUnreadableDownloaded()
+  }
+
+  function handleImportClick() {
+    if (!blockedReason) fileInput.click()
   }
 
   async function handleFileChosen(event) {
     const file = event.currentTarget.files[0]
     event.currentTarget.value = ''
     if (!file) return
-    const result = lifecycle.startFromImport(await file.text())
+    let text
+    try {
+      text = await file.text()
+    } catch {
+      importError = READ_ERROR_MESSAGE
+      return
+    }
+    const result = lifecycle.startFromImport(text)
     importError = result.ok ? '' : result.error
   }
 
   function handleConfirm() {
+    const result = lifecycle.startEmpty()
+    if (!result.ok) return
     confirming = false
-    lifecycle.startEmpty()
   }
 
   // The popover is gone, so focus goes back to what opened it.
@@ -55,8 +73,10 @@
     <button
       type="button"
       class={buttonClass}
+      aria-disabled={blockedReason ? 'true' : undefined}
+      aria-describedby={blockedReason ? 'backup-required-reason' : undefined}
       data-testid="import-value-stream-button"
-      onclick={() => fileInput.click()}
+      onclick={handleImportClick}
     >
       Import value stream
     </button>
@@ -78,11 +98,21 @@
         Download the unreadable data
       </button>
     {/if}
+    {#if blockedReason}
+      <p
+        id="backup-required-reason"
+        class="text-gray-700"
+        data-testid="backup-required-reason"
+      >
+        {blockedReason}
+      </p>
+    {/if}
     <div class="relative">
       <button
         type="button"
         class={buttonClass}
         aria-haspopup="dialog"
+        aria-expanded={confirming}
         data-testid="start-empty-button"
         bind:this={startEmptyButton}
         onclick={() => (confirming = true)}
@@ -94,6 +124,7 @@
           message="Start an empty workspace? The unreadable copy stays kept, but it won't be shown again after this."
           confirmLabel="Start empty"
           placement="below"
+          confirmBlockedReason={blockedReason}
           onconfirm={handleConfirm}
           oncancel={handleCancel}
         >

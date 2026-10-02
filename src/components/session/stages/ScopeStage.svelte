@@ -91,6 +91,7 @@
         <input
           id={field.id}
           type="text"
+          aria-required="true"
           class={inputClass}
           value={textDrafts[field.key] ?? stream[field.key]}
           data-testid={field.testid}
@@ -108,6 +109,7 @@
       </label>
       <select
         id="scope-unit-of-work"
+        aria-required="true"
         class={inputClass}
         value={stream.unitOfWork ?? ''}
         data-testid="unit-of-work-select"
@@ -141,6 +143,7 @@
       {#if workdayError}
         <p
           id="working-day-error"
+          role="alert"
           class="mt-1 text-red-700"
           data-testid="working-day-error"
         >

@@ -111,6 +111,19 @@ export const savedWorkingCopy = (page) =>
   page.evaluate(readEntry, { key: WORKING_COPY.key, location: WORKING_COPY })
 
 /**
+ * The working copy parsed, or null while it is missing or not valid JSON.
+ * @param {import('@playwright/test').Page} page - Any page of the app's origin
+ * @returns {Promise<?Object>}
+ */
+export const savedWorkspace = async (page) => {
+  try {
+    return JSON.parse(await savedWorkingCopy(page))
+  } catch {
+    return null
+  }
+}
+
+/**
  * The text the app has kept as the unreadable-data backup, or null.
  * @param {import('@playwright/test').Page} page - Any page of the app's origin
  * @returns {Promise<?string>}

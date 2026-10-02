@@ -4,7 +4,12 @@ import { createWorkspaceStore } from '../../../src/stores/v2/workspaceStore.svel
 import { createMemoryWorkspaceRepository } from '../../../src/persistence/v2/memoryWorkspaceRepository.js'
 import { serializeWorkspace } from '../../../src/persistence/v2/workspaceCodec.js'
 import { exportValueStream } from '../../../src/persistence/v2/valueStreamJson.js'
-import { noV1Repository, referenceStream, workspaceOf } from './fixtures.js'
+import {
+  noV1Repository,
+  referenceStream,
+  refused,
+  workspaceOf,
+} from './fixtures.js'
 
 /** A repository whose load answers only when the test releases it. */
 const heldLoadRepository = (raw = null) => {
@@ -142,6 +147,75 @@ describe('guidedLifecycle', () => {
       expect(result.ok).toBe(false)
       expect(result.error).toMatch(/\S/)
       expect(store.status).toBe('unreadable')
+    })
+  })
+
+  describe('when the unreadable data could not be backed up', () => {
+    const UNREADABLE = '{not json'
+    const failedBackupLaunch = async () => {
+      const repository = {
+        ...createMemoryWorkspaceRepository({ raw: UNREADABLE }),
+        saveBackup: async () => {
+          throw new Error('storage full')
+        },
+      }
+      const launched = launchOver(repository)
+      await launched.lifecycle.start()
+      return { repository, ...launched }
+    }
+
+    it('starting empty is refused and the only copy survives', async () => {
+      const { store, lifecycle, repository } = await failedBackupLaunch()
+
+      const result = lifecycle.startEmpty()
+
+      expect(result).toEqual(refused)
+      expect(store.status).toBe('unreadable')
+      expect(store.streams).toHaveLength(0)
+      await store.flushSaves()
+      expect(await repository.load()).toBe(UNREADABLE)
+    })
+
+    it('importing is refused and the only copy survives', async () => {
+      const { store, lifecycle, repository } = await failedBackupLaunch()
+      const text = exportValueStream(referenceStream({ name: 'Imported' }))
+
+      const result = lifecycle.startFromImport(text)
+
+      expect(result).toEqual(refused)
+      expect(store.status).toBe('unreadable')
+      await store.flushSaves()
+      expect(await repository.load()).toBe(UNREADABLE)
+    })
+
+    it('says why leaving is blocked until the data has been downloaded', async () => {
+      const { lifecycle } = await failedBackupLaunch()
+
+      expect(lifecycle.exitBlockedReason()).toMatch(/\S/)
+      lifecycle.noteUnreadableDownloaded()
+
+      expect(lifecycle.exitBlockedReason()).toBeNull()
+    })
+
+    it('starting empty and importing work once the data has been downloaded', async () => {
+      const empty = await failedBackupLaunch()
+      empty.lifecycle.noteUnreadableDownloaded()
+      expect(empty.lifecycle.startEmpty().ok).toBe(true)
+      expect(empty.store.status).toBe('ready')
+
+      const imported = await failedBackupLaunch()
+      imported.lifecycle.noteUnreadableDownloaded()
+      const text = exportValueStream(referenceStream({ name: 'Imported' }))
+      expect(imported.lifecycle.startFromImport(text).ok).toBe(true)
+      expect(imported.store.activeStore.stream.name).toBe('Imported')
+    })
+
+    it('a backed-up workspace is never blocked', async () => {
+      const repository = createMemoryWorkspaceRepository({ raw: UNREADABLE })
+      const { lifecycle } = launchOver(repository)
+      await lifecycle.start()
+
+      expect(lifecycle.exitBlockedReason()).toBeNull()
     })
   })
 })

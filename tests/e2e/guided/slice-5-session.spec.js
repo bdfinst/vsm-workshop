@@ -8,6 +8,7 @@ import {
   V1_STORAGE_KEY,
   savedBackup,
   savedWorkingCopy,
+  savedWorkspace,
   v1MapWithoutIntake,
   workspaceAtStage,
 } from './fixtures.js'
@@ -345,12 +346,22 @@ test.describe('Stage rail and header scenarios (step 5.4)', () => {
       seed,
     }) => {
       await seed(workspaceAtStage(1))
+      const workingDay = field(page, 'Working day (hours)')
 
-      await field(page, 'Working day (hours)').fill(hours)
+      await workingDay.fill(hours)
+      await workingDay.press('Tab')
 
       const error = page.getByTestId('working-day-error')
-      if (valid) await expect(error).toHaveCount(0)
-      else await expect(error).toContainText(/between 1 and 24/)
+      if (!valid) {
+        await expect(error).toContainText(/between 1 and 24/)
+        return
+      }
+      await expect(error).toHaveCount(0)
+      await expect
+        .poll(async () => (await savedWorkspace(page))?.streams[0].workdayHours)
+        .toBe(Number(hours))
+      await page.reload()
+      await expect(field(page, 'Working day (hours)')).toHaveValue(hours)
     })
   }
 
@@ -558,7 +569,9 @@ test.describe('Unreadable workspace (step 5.4)', () => {
     )
     await expect(unreadableScreen(page)).toHaveCount(0)
     expect(await savedBackup(page)).toBe(UNREADABLE_TEXT)
-    await expect.poll(() => savedWorkingCopy(page)).not.toBe(UNREADABLE_TEXT)
+    await expect
+      .poll(async () => (await savedWorkspace(page))?.streams.length)
+      .toBe(1)
   })
 
   test('Cancelling start-empty keeps the recovery screen', async ({
@@ -615,6 +628,8 @@ test.describe('Unreadable workspace (step 5.4)', () => {
 
     await expect(page.getByRole('alert')).toHaveText(/\S/)
     await expect(unreadableScreen(page)).toContainText(RECOVERY_MESSAGE)
+    expect(await savedBackup(page)).toBe(UNREADABLE_TEXT)
+    expect(await savedWorkingCopy(page)).toBe(UNREADABLE_TEXT)
   })
 
   test('the unreadable screen, with its confirmation open, has no accessibility violations', async ({
@@ -629,5 +644,304 @@ test.describe('Unreadable workspace (step 5.4)', () => {
     await startEmptyButton(page).click()
     await expect(confirmation(page)).toBeVisible()
     await axe()
+  })
+})
+
+const stageHeading = (page) => page.getByTestId('stage-heading')
+
+test.describe('Focus and keyboard (slice 5 review)', () => {
+  test('Tabbing out of an edited Scope field moves on to the next field', async ({
+    page,
+  }) => {
+    await page.goto(GUIDED_URL)
+
+    await field(page, 'Value stream name').fill('Checkout delivery')
+    await field(page, 'Value stream name').press('Tab')
+    // The edit has landed once it is saved; focus must not have been pulled away.
+    await expect
+      .poll(async () => (await savedWorkspace(page))?.streams[0].name)
+      .toBe('Checkout delivery')
+
+    await expect(field(page, 'Trigger')).toBeFocused()
+  })
+
+  test('Undo keeps focus after the last undo step is used', async ({
+    page,
+    seed,
+  }) => {
+    await seed(workspaceAtStage(2))
+    const undo = page.getByRole('button', { name: 'Undo' })
+    await renameMap(page, 'Checkout v2')
+
+    await undo.click()
+
+    await expect(mapName(page)).toHaveValue('Checkout delivery')
+    await expect(undo).toHaveAttribute('aria-disabled', 'true')
+    await expect(undo).toBeFocused()
+  })
+
+  test('Redo keeps focus after the last redo step is used', async ({
+    page,
+    seed,
+  }) => {
+    await seed(workspaceAtStage(2))
+    const redo = page.getByRole('button', { name: 'Redo' })
+    await renameMap(page, 'Checkout v2')
+    await page.getByRole('button', { name: 'Undo' }).click()
+
+    await redo.click()
+
+    await expect(mapName(page)).toHaveValue('Checkout v2')
+    await expect(redo).toHaveAttribute('aria-disabled', 'true')
+    await expect(redo).toBeFocused()
+  })
+
+  test('Dismissing the upgrade notice moves focus to the stage heading', async ({
+    page,
+    seedV1,
+  }) => {
+    await seedV1(v1MapWithoutIntake())
+    const dismiss = page
+      .getByTestId('upgrade-notice')
+      .getByRole('button', { name: 'Dismiss' })
+
+    await dismiss.click()
+
+    await expect(page.getByTestId('upgrade-notice')).toHaveCount(0)
+    await expect(stageHeading(page)).toBeFocused()
+  })
+
+  test('Next stays focusable while it is not allowed, says why, and does nothing', async ({
+    page,
+  }) => {
+    await page.goto(GUIDED_URL)
+    const next = nextButton(page)
+
+    await next.focus()
+
+    await expect(next).toBeFocused()
+    await expect(next).toHaveAttribute('aria-disabled', 'true')
+    await expect(next).toHaveAccessibleDescription(/\S/)
+    await next.click({ force: true })
+    await expect(stageItem(page, 'scope')).toHaveAttribute(
+      'aria-current',
+      'step'
+    )
+  })
+
+  test('The reason Next is not allowed is announced as it changes', async ({
+    page,
+  }) => {
+    await page.goto(GUIDED_URL)
+    const reason = page.getByTestId('next-reason')
+
+    await expect(reason).toHaveAttribute('aria-live', 'polite')
+    await expect(reason).toHaveText(/\S/)
+
+    await fillScope(page, COMPLETE_SCOPE)
+
+    await expect(nextButton(page)).not.toHaveAttribute('aria-disabled', 'true')
+    await expect(reason).toHaveAttribute('aria-live', 'polite')
+    await expect(reason).toHaveText('')
+  })
+
+  test('The File menu opens onto its first item and Escape returns to File', async ({
+    page,
+    seed,
+    axe,
+  }) => {
+    await seed(workspaceAtStage(2))
+    const file = page.getByRole('button', { name: 'File' })
+    const item = page.getByRole('menuitem', { name: 'New value stream' })
+    await expect(file).not.toHaveAttribute('aria-controls', /.*/)
+
+    await file.focus()
+    await page.keyboard.press('Enter')
+
+    await expect(item).toBeFocused()
+    await expect(file).toHaveAttribute('aria-expanded', 'true')
+    const menuId = await file.getAttribute('aria-controls')
+    await expect(page.locator(`[id="${menuId}"]`)).toBeVisible()
+    await axe()
+
+    await page.keyboard.press('Escape')
+
+    await expect(file).toBeFocused()
+    await expect(file).toHaveAttribute('aria-expanded', 'false')
+    await expect(file).not.toHaveAttribute('aria-controls', /.*/)
+    await expect(item).toHaveCount(0)
+  })
+})
+
+test.describe('Form semantics (slice 5 review)', () => {
+  test('Scope fields are marked required', async ({ page }) => {
+    await page.goto(GUIDED_URL)
+
+    for (const label of [
+      'Value stream name',
+      'Trigger',
+      'End point',
+      'Unit of work',
+    ]) {
+      await expect(field(page, label)).toHaveAttribute('aria-required', 'true')
+    }
+  })
+
+  test('A working day out of range is announced as an alert', async ({
+    page,
+  }) => {
+    await page.goto(GUIDED_URL)
+
+    await field(page, 'Working day (hours)').fill('30')
+
+    await expect(
+      page.getByTestId('work-region').getByRole('alert')
+    ).toContainText(/between 1 and 24/)
+  })
+})
+
+/** Runs in the page: unreadable data can be read, but not backed up. */
+const failBackupWrites = () => {
+  const put = IDBObjectStore.prototype.put
+  IDBObjectStore.prototype.put = function (value, key) {
+    if (key === 'backup') throw new DOMException('Full', 'QuotaExceededError')
+    return put.call(this, value, key)
+  }
+}
+
+test.describe('Unreadable workspace dialogs and errors (slice 5 review)', () => {
+  test('Starting empty is a modal dialog and its trigger reports it is open', async ({
+    page,
+    seed,
+  }) => {
+    await seed(UNREADABLE_TEXT)
+    const trigger = startEmptyButton(page)
+    await expect(trigger).toHaveAttribute('aria-expanded', 'false')
+
+    await trigger.click()
+
+    await expect(trigger).toHaveAttribute('aria-expanded', 'true')
+    await expect(confirmation(page)).toHaveAttribute('aria-modal', 'true')
+
+    await page.keyboard.press('Escape')
+
+    await expect(trigger).toHaveAttribute('aria-expanded', 'false')
+  })
+
+  test('A file that cannot be read is reported and the screen stays', async ({
+    page,
+    seed,
+  }) => {
+    await seed(UNREADABLE_TEXT)
+    await expect(unreadableScreen(page)).toBeVisible()
+    await page.evaluate(() => {
+      Blob.prototype.text = () => Promise.reject(new Error('read failed'))
+    })
+
+    await page.getByTestId('import-value-stream-input').setInputFiles({
+      name: 'stream.json',
+      mimeType: 'application/json',
+      buffer: Buffer.from('{}'),
+    })
+
+    await expect(page.getByRole('alert')).toHaveText(/\S/)
+    await expect(unreadableScreen(page)).toContainText(RECOVERY_MESSAGE)
+  })
+})
+
+test.describe('Unreadable data that could not be backed up (data safety)', () => {
+  test('Start empty waits for the download, and the only copy survives until then', async ({
+    page,
+    seed,
+    axe,
+  }) => {
+    await page.addInitScript(failBackupWrites)
+    await seed(UNREADABLE_TEXT)
+    await startEmptyButton(page).click()
+    const confirm = confirmation(page).getByRole('button', {
+      name: 'Start empty',
+    })
+
+    await expect(confirm).toHaveAttribute('aria-disabled', 'true')
+    await expect(confirm).toHaveAccessibleDescription(/\S/)
+    await expect(
+      page.getByTestId('confirm-popover-blocked-reason')
+    ).toBeVisible()
+    await confirm.focus()
+    await expect(confirm).toBeFocused()
+    await axe()
+
+    await confirm.click({ force: true })
+
+    await expect(confirmation(page)).toBeVisible()
+    await expect(unreadableScreen(page)).toBeVisible()
+    expect(await savedWorkingCopy(page)).toBe(UNREADABLE_TEXT)
+    expect(await savedBackup(page)).toBeNull()
+
+    const copy = await downloadedText(page, () =>
+      confirmation(page)
+        .getByRole('button', { name: 'Download the unreadable data' })
+        .click()
+    )
+    expect(copy).toBe(UNREADABLE_TEXT)
+    await expect(confirm).not.toHaveAttribute('aria-disabled', 'true')
+    await expect(
+      page.getByTestId('confirm-popover-blocked-reason')
+    ).toHaveCount(0)
+
+    await confirm.click()
+
+    await expect(stageItem(page, 'scope')).toHaveAttribute(
+      'aria-current',
+      'step'
+    )
+  })
+
+  test('Import waits for the download, and the only copy survives until then', async ({
+    page,
+    seed,
+  }) => {
+    await page.addInitScript(failBackupWrites)
+    await seed(UNREADABLE_TEXT)
+    const importButton = page.getByRole('button', {
+      name: 'Import value stream',
+    })
+    const imported = createValueStream({ name: 'Imported delivery' })
+
+    await expect(importButton).toHaveAttribute('aria-disabled', 'true')
+    await expect(importButton).toHaveAccessibleDescription(/\S/)
+    const opened = page.waitForEvent('filechooser', { timeout: 500 }).then(
+      () => true,
+      () => false
+    )
+    await importButton.click({ force: true })
+    expect(await opened).toBe(false)
+
+    await page.getByTestId('import-value-stream-input').setInputFiles({
+      name: 'stream.json',
+      mimeType: 'application/json',
+      buffer: Buffer.from(exportValueStream(imported)),
+    })
+
+    await expect(page.getByRole('alert')).toHaveText(/\S/)
+    await expect(unreadableScreen(page)).toBeVisible()
+    expect(await savedWorkingCopy(page)).toBe(UNREADABLE_TEXT)
+
+    await downloadedText(page, () =>
+      page.getByRole('button', { name: 'Download the unreadable data' }).click()
+    )
+    await expect(importButton).not.toHaveAttribute('aria-disabled', 'true')
+
+    const chooser = page.waitForEvent('filechooser')
+    await importButton.click()
+    await (
+      await chooser
+    ).setFiles({
+      name: 'stream.json',
+      mimeType: 'application/json',
+      buffer: Buffer.from(exportValueStream(imported)),
+    })
+
+    await expect(mapName(page)).toHaveValue('Imported delivery')
   })
 })

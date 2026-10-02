@@ -4,21 +4,25 @@
   import { isTextEntry, shortcutFor } from '../../utils/ui/keymap.js'
   import PlaceholderStage from './stages/PlaceholderStage.svelte'
   import { stageStatus } from '../../utils/session/stages.js'
+  import { focusStageHeading } from '../../utils/session/focus.js'
   import ScopeStage from './stages/ScopeStage.svelte'
   import SessionHeader from './SessionHeader.svelte'
   import StageRail from './StageRail.svelte'
 
   let store = $derived(workspaceStore.activeStore)
   let stream = $derived(store?.stream)
+  let streamId = $derived(stream?.id)
   let stage = $derived(stream?.session.activeStage ?? 1)
   let stageName = $derived(STAGE_NAMES[stage - 1])
   let statuses = $derived(stream ? stageStatus(stream) : [])
 
   // On a stage change, and on opening a stream, focus moves to the heading.
+  // It depends on the id, not the stream: an edit makes a new stream object
+  // and must not pull focus off the field being edited.
   let workRegion = $state()
   $effect(() => {
-    void [stream?.id, stage]
-    workRegion?.querySelector('[data-testid="stage-heading"]')?.focus()
+    void [streamId, stage]
+    focusStageHeading(workRegion)
   })
 
   // The id makes a repeated message a new node, so screen readers say it again.

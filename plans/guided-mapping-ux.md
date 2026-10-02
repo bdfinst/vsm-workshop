@@ -2874,7 +2874,7 @@ See each step's **Complexity** line. The `complex` steps are 3.1 (migration), 4.
 
 #### Wave 4
 
-- [ ] Slice 5: Session shell, header, stage rail, Scope stage
+- [x] Slice 5: Session shell, header, stage rail, Scope stage (slice review done, findings fixed; 1090 tests)
   - [ ] Step 5.1: GuidedRoot, mode branch, SessionShell layout, axe helper
   - [ ] Step 5.2: SessionHeader with Editing indicator, undo/redo and File menu
   - [ ] Step 5.3: StageRail, PromptCard, Scope stage, Next gate

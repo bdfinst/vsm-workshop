@@ -6,7 +6,7 @@
   let { store, onundo, onredo } = $props()
 
   const buttonClass =
-    'px-3 py-1 bg-white text-gray-700 border border-gray-300 rounded-md hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed'
+    'px-3 py-1 bg-white text-gray-700 border border-gray-300 rounded-md hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500 aria-disabled:opacity-50 aria-disabled:cursor-not-allowed'
 
   // The name is saved on blur or Enter, never per keystroke, so one edit is one undo step.
   let draft = $state(null)
@@ -53,8 +53,20 @@
 
   function handleNewValueStream() {
     const created = workspaceStore.create({})
-    if (created.ok) workspaceStore.open(created.streamId)
     menuOpen = false
+    if (created.ok) workspaceStore.open(created.streamId)
+    // On failure the menu item is gone, so focus goes back to what opened it.
+    else fileButton?.focus()
+  }
+
+  // Undo and Redo stay focusable when there is nothing to do, so focus is not
+  // lost when the last step is used; the click is ignored instead.
+  function handleUndo() {
+    if (store.canUndo) onundo()
+  }
+
+  function handleRedo() {
+    if (store.canRedo) onredo()
   }
 </script>
 
@@ -65,7 +77,7 @@
       class={buttonClass}
       aria-haspopup="menu"
       aria-expanded={menuOpen}
-      aria-controls="file-menu"
+      aria-controls={menuOpen ? 'file-menu' : undefined}
       data-testid="file-menu-button"
       bind:this={fileButton}
       onclick={handleFileClick}
@@ -122,9 +134,9 @@
       type="button"
       class={buttonClass}
       aria-label="Undo"
-      disabled={!store.canUndo}
+      aria-disabled={store.canUndo ? undefined : 'true'}
       data-testid="undo-button"
-      onclick={onundo}
+      onclick={handleUndo}
     >
       Undo
     </button>
@@ -132,9 +144,9 @@
       type="button"
       class={buttonClass}
       aria-label="Redo"
-      disabled={!store.canRedo}
+      aria-disabled={store.canRedo ? undefined : 'true'}
       data-testid="redo-button"
-      onclick={onredo}
+      onclick={handleRedo}
     >
       Redo
     </button>
