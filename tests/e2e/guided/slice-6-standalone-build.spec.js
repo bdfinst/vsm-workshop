@@ -71,4 +71,26 @@ test.describe('Standalone app in one file', () => {
 
     expect(requests).toEqual(['http://example.invalid/ping'])
   })
+
+  test('The bundled fonts are used without the network', async ({
+    standalone,
+  }) => {
+    const { page, requests } = await standalone({ offline: true })
+    await expect(page.getByRole('heading', { name: 'Scope' })).toBeVisible()
+
+    const loaded = await page.evaluate(async () => {
+      await document.fonts.ready
+      return {
+        family: getComputedStyle(document.body).fontFamily,
+        plex: document.fonts.check('16px "IBM Plex Sans"'),
+        faces: [...document.fonts].filter((face) => face.status === 'loaded')
+          .length,
+      }
+    })
+
+    expect(loaded.family).toContain('IBM Plex Sans')
+    expect(loaded.plex).toBe(true)
+    expect(loaded.faces).toBeGreaterThan(0)
+    expect(requests).toEqual([])
+  })
 })

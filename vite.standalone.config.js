@@ -1,5 +1,3 @@
-import fs from 'node:fs'
-import path from 'node:path'
 import { defineConfig, mergeConfig } from 'vite'
 import { viteSingleFile } from 'vite-plugin-singlefile'
 import { createBaseConfig } from './vite.config.js'
@@ -12,11 +10,9 @@ const nameStandaloneFile = () => ({
   name: 'name-standalone-file',
   apply: 'build',
   enforce: 'post',
-  closeBundle() {
-    fs.renameSync(
-      path.join(OUT_DIR, 'index.html'),
-      path.join(OUT_DIR, FILE_NAME)
-    )
+  generateBundle(_options, bundle) {
+    const page = bundle['index.html']
+    if (page) page.fileName = FILE_NAME
   },
 })
 
