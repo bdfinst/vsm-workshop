@@ -1,4 +1,5 @@
 import { readFile } from 'node:fs/promises'
+import { STAGE_NAMES, STAGE_NUMBER } from '../../../src/models/v2/constants.js'
 import { createValueStream } from '../../../src/models/v2/valueStream.js'
 import { exportValueStream } from '../../../src/persistence/v2/valueStreamJson.js'
 import {
@@ -29,14 +30,21 @@ test.describe('Session shell (step 5.1)', () => {
     page,
     seed,
   }) => {
-    await seed(workspaceAtStage(4))
+    // Review is the last stage that is both a placeholder and has a stage after
+    // it; when it gets its own component, move this to the one that still has none.
+    const stage = STAGE_NUMBER.REVIEW
+    await seed(workspaceAtStage(stage))
 
-    await expect(page.getByRole('heading', { name: 'Quality' })).toBeVisible()
-    await expect(page.getByText('This stage is not built yet')).toBeVisible()
+    await expect(page.getByTestId('placeholder-stage')).toBeVisible()
+    await expect(
+      page.getByRole('heading', { name: STAGE_NAMES[stage - 1] })
+    ).toBeVisible()
     await expect(page.getByRole('button', { name: 'Next' })).toBeEnabled()
 
     await page.getByRole('button', { name: 'Next' }).click()
-    await expect(page.getByRole('heading', { name: 'Rework' })).toBeVisible()
+    await expect(
+      page.getByRole('heading', { name: STAGE_NAMES[stage] })
+    ).toBeVisible()
   })
 
   test('the shell has no accessibility violations', async ({ page, axe }) => {

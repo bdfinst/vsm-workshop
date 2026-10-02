@@ -43,10 +43,20 @@
   const isSameRange = (a, b) =>
     a?.typ === b.typ && a?.min === b.min && a?.max === b.max
 
+  // Why the last edit was refused, or null.
+  let refusal = $state(null)
+
+  // Show why a refused edit was refused; an edit that went through clears the
+  // last refusal. Returns the result, so the field knows whether to keep its text.
+  function showRefusal(result) {
+    refusal = result.ok ? null : result.error
+    return result
+  }
+
   // One commit is one edit, so one undo step; nothing changed is no edit.
   function handleCommit(row, field, range) {
-    if (isSameRange(row[field], range)) return
-    store.updateStep(row.id, { [field]: range })
+    if (isSameRange(row[field], range)) return showRefusal({ ok: true })
+    return showRefusal(store.updateStep(row.id, { [field]: range }))
   }
 
   const otherSource = (source) =>
@@ -149,5 +159,10 @@
         </li>
       {/each}
     </ol>
+    {#if refusal}
+      <p class="mt-4 text-red-700" role="alert" data-testid="time-refusal">
+        {refusal}
+      </p>
+    {/if}
   </div>
 </PromptCard>

@@ -7,6 +7,12 @@ const TIME_STAGE = 3
 // "Given a working day of 8 hours": the value stream's default.
 const WORKDAY_LABEL = 'working days (8 h)'
 
+// What a `timed` workspace gives each step, in minutes.
+const TYPICAL_TIMES = Object.freeze({
+  team: { processTime: { typ: 60 }, waitTime: { typ: 120 } },
+  outside: { elapsedTime: { typ: 240 } },
+})
+
 const nextButton = (page) => page.getByRole('button', { name: 'Next' })
 
 /** The Time stage's row for the step with this name. */
@@ -18,14 +24,18 @@ const rowOf = (page, name) =>
 /**
  * A workspace on the Time stage whose steps are Intake, Development, Code
  * review and Deploy, then any outside steps. No times are entered unless
- * `timed` is set, which gives every step typical times; `times` then overrides
- * the time fields of the named steps.
+ * `timed` is set, which gives every step its `TYPICAL_TIMES`; `times` then
+ * overrides the time fields of the named steps. `workdayHours` is the length
+ * of the working day, 8 unless given.
  */
-const workspaceOnTime = ({ outside = [], timed = false, times = {} } = {}) => {
-  const teamTimes = timed
-    ? { processTime: { typ: 60 }, waitTime: { typ: 120 } }
-    : {}
-  const outsideTimes = timed ? { elapsedTime: { typ: 240 } } : {}
+const workspaceOnTime = ({
+  outside = [],
+  timed = false,
+  times = {},
+  workdayHours = 8,
+} = {}) => {
+  const teamTimes = timed ? TYPICAL_TIMES.team : {}
+  const outsideTimes = timed ? TYPICAL_TIMES.outside : {}
   const steps = [
     ...['Intake', 'Development', 'Code review', 'Deploy'].map((name) =>
       createStep({ name, ...teamTimes, ...times[name] })
@@ -35,6 +45,7 @@ const workspaceOnTime = ({ outside = [], timed = false, times = {} } = {}) => {
     ),
   ]
   return workspaceAtStage(TIME_STAGE, {
+    workdayHours,
     versions: [createMapVersion({ steps })],
     session: { activeStage: TIME_STAGE, furthestStage: TIME_STAGE },
   })
@@ -91,6 +102,24 @@ test.describe('The Time stage', () => {
     ).toHaveText(WORKDAY_LABEL)
   })
 
+  // Wiring check, not a Gherkin scenario
+  test('A working day of 7.5 hours is labelled and converts at that length', async ({
+    page,
+    seed,
+  }) => {
+    await seed(workspaceOnTime({ workdayHours: 7.5 }))
+    const development = rowOf(page, 'Development')
+
+    await enterTime(development, 'wait', { typ: '2', unit: 'days' })
+
+    await expect(
+      development.getByTestId('wait-time-unit-select').locator('option:checked')
+    ).toHaveText('working days (7.5 h)')
+    await expect
+      .poll(() => savedStep(page, 'Development'))
+      .toMatchObject({ waitTime: { typ: 900 } })
+  })
+
   test("Intake's times are editable", async ({ page, seed }) => {
     await seed(workspaceOnTime())
     const intake = rowOf(page, 'Intake')
@@ -111,8 +140,6 @@ test.describe('The Time stage', () => {
       security.getByLabel('elapsed, submitted → returned')
     ).toBeVisible()
     await expect(security.getByRole('textbox')).toHaveCount(1)
-    await expect(security.getByTestId('process-time-input')).toHaveCount(0)
-    await expect(security.getByTestId('wait-time-input')).toHaveCount(0)
     await expect(security.getByText(/process time|wait time/i)).toHaveCount(0)
   })
 
@@ -136,46 +163,39 @@ test.describe('The Time stage', () => {
       input: 'process time -1 minutes',
       message: "Process time can't be negative",
       kind: 'process',
-      errorTestid: 'process-time-error',
+      testid: 'process-time',
       entry: { typ: '-1', unit: 'minutes' },
-      saved: { processTime: { typ: 60 }, waitTime: { typ: 120 } },
+      saved: TYPICAL_TIMES.team,
     },
     {
       input: 'wait time "abc"',
       message: 'Enter a number',
       kind: 'wait',
-      errorTestid: 'wait-time-error',
+      testid: 'wait-time',
       entry: { typ: 'abc' },
-      saved: { processTime: { typ: 60 }, waitTime: { typ: 120 } },
+      saved: TYPICAL_TIMES.team,
     },
     {
       input: 'wait time min 3 days and typical 2',
       message: "Min can't be more than typical",
       kind: 'wait',
-      errorTestid: 'wait-time-min-error',
+      testid: 'wait-time-min',
       entry: { typ: '2', min: '3', unit: 'days' },
       // The valid typical is saved as it is left; the refused min is not.
-      saved: { processTime: { typ: 60 }, waitTime: { typ: 960 } },
+      saved: { ...TYPICAL_TIMES.team, waitTime: { typ: 960 } },
     },
     {
       input: 'wait time typical 5 days and max 2',
       message: "Max can't be less than typical",
       kind: 'wait',
-      errorTestid: 'wait-time-max-error',
+      testid: 'wait-time-max',
       entry: { typ: '5', max: '2', unit: 'days' },
       // The valid typical is saved as it is left; the refused max is not.
-      saved: { processTime: { typ: 60 }, waitTime: { typ: 2400 } },
+      saved: { ...TYPICAL_TIMES.team, waitTime: { typ: 2400 } },
     },
   ]
 
-  for (const {
-    input,
-    message,
-    kind,
-    errorTestid,
-    entry,
-    saved,
-  } of INVALID_INPUTS) {
+  for (const { input, message, kind, testid, entry, saved } of INVALID_INPUTS) {
     test(`Invalid times are refused with a reason: ${input}`, async ({
       page,
       seed,
@@ -183,21 +203,34 @@ test.describe('The Time stage', () => {
       // Every step has times, so only the invalid entry can disable Next.
       await seed(workspaceOnTime({ timed: true }))
       const development = rowOf(page, 'Development')
-      await expect(nextButton(page)).not.toHaveAttribute('aria-disabled')
+      await expect(development).toBeVisible()
+      await expect(nextButton(page)).toBeEnabled()
 
       await enterTime(development, kind, entry)
 
-      await expect(development.getByTestId(errorTestid)).toHaveText(message)
-      await expect(nextButton(page)).toHaveAttribute('aria-disabled', 'true')
+      await expect(development.getByTestId(`${testid}-error`)).toHaveText(
+        message
+      )
+      const invalid = development.getByTestId(`${testid}-input`)
+      await expect(invalid).toHaveAttribute('aria-invalid', 'true')
+      await expect(invalid).toHaveAccessibleDescription(message)
+      await expectReason(page, 'Fix the times that show an error')
+
+      // A later valid edit landing proves the app had saved by the time the
+      // refused value is checked, so "not saved" is not just "not saved yet".
+      await enterTime(rowOf(page, 'Intake'), 'process', {
+        typ: '5',
+        unit: 'minutes',
+      })
       await expect
-        .poll(async () => {
-          const { processTime, waitTime } = await savedStep(page, 'Development')
-          return { processTime, waitTime }
-        })
-        .toEqual(saved)
+        .poll(() => savedStep(page, 'Intake'))
+        .toMatchObject({ processTime: { typ: 5 } })
+      const { processTime, waitTime } = await savedStep(page, 'Development')
+      expect({ processTime, waitTime }).toEqual(saved)
     })
   }
 
+  // Wiring check, not a Gherkin scenario
   test('Next is allowed again once an invalid time is corrected', async ({
     page,
     seed,
@@ -210,7 +243,7 @@ test.describe('The Time stage', () => {
     await enterTime(development, 'wait', { typ: '3', unit: 'hours' })
 
     await expect(development.getByRole('alert')).toHaveCount(0)
-    await expect(nextButton(page)).not.toHaveAttribute('aria-disabled')
+    await expect(nextButton(page)).toBeEnabled()
   })
 
   test('Zero is a valid process or wait time', async ({ page, seed }) => {
@@ -241,6 +274,72 @@ test.describe('The Time stage', () => {
     )
   })
 
+  // Wiring check, not a Gherkin scenario
+  test('Outside elapsed time is entered in working days', async ({
+    page,
+    seed,
+  }) => {
+    await seed(workspaceOnTime({ outside: ['Security review'] }))
+
+    await enterTime(rowOf(page, 'Security review'), 'elapsed', {
+      typ: '2',
+      unit: 'days',
+    })
+
+    await expect
+      .poll(() => savedStep(page, 'Security review'))
+      .toMatchObject({ elapsedTime: { typ: 960 } })
+  })
+
+  // Wiring check, not a Gherkin scenario
+  test('A min stored but not shown never blocks Next', async ({
+    page,
+    seed,
+  }) => {
+    await seed(
+      workspaceOnTime({
+        outside: ['Security review'],
+        timed: true,
+        times: { 'Security review': { elapsedTime: { typ: 240, min: 120 } } },
+      })
+    )
+    const security = rowOf(page, 'Security review')
+    await expect(security.getByRole('textbox')).toHaveCount(1)
+
+    await enterTime(security, 'elapsed', { typ: '1', unit: 'hours' })
+
+    await expect(nextButton(page)).toBeEnabled()
+  })
+
+  // Wiring check, not a Gherkin scenario
+  test('A time the store refuses is shown with its reason and kept for editing', async ({
+    page,
+    seed,
+  }) => {
+    await seed(
+      workspaceOnTime({
+        outside: ['Security review'],
+        timed: true,
+        times: { 'Security review': { elapsedTime: { typ: 240, min: 120 } } },
+      })
+    )
+    const security = rowOf(page, 'Security review')
+
+    await enterTime(security, 'elapsed', { typ: '1', unit: 'hours' })
+
+    await expect(page.getByTestId('time-refusal')).toHaveText(
+      "Min can't be more than typical"
+    )
+    await expect(security.getByTestId('elapsed-time-input')).toHaveValue('1')
+
+    await enterTime(security, 'elapsed', { typ: '3' })
+
+    await expect(page.getByTestId('time-refusal')).toHaveCount(0)
+    await expect
+      .poll(() => savedStep(page, 'Security review'))
+      .toMatchObject({ elapsedTime: { typ: 180, min: 120 } })
+  })
+
   test('Source flag per step', async ({ page, seed }) => {
     await seed(workspaceOnTime())
     const source = (name) => rowOf(page, name).getByTestId('time-source-button')
@@ -254,9 +353,28 @@ test.describe('The Time stage', () => {
     await expect
       .poll(() => savedStep(page, 'Code review'))
       .toMatchObject({ timeSource: 'measured' })
-    expect(await savedStep(page, 'Development')).toMatchObject({
-      timeSource: 'estimate',
-    })
+  })
+
+  // Wiring check, not a Gherkin scenario
+  test('Marking a step Measured twice returns it to Estimate', async ({
+    page,
+    seed,
+  }) => {
+    await seed(workspaceOnTime())
+    const codeReview = rowOf(page, 'Code review').getByTestId(
+      'time-source-button'
+    )
+
+    await codeReview.click()
+    await expect
+      .poll(() => savedStep(page, 'Code review'))
+      .toMatchObject({ timeSource: 'measured' })
+    await codeReview.click()
+
+    await expect(codeReview).toHaveText('Estimate')
+    await expect
+      .poll(() => savedStep(page, 'Code review'))
+      .toMatchObject({ timeSource: 'estimate' })
   })
 
   test('Next needs every typical time', async ({ page, seed }) => {
@@ -271,9 +389,10 @@ test.describe('The Time stage', () => {
 
     await enterTime(rowOf(page, 'Deploy'), 'wait', { typ: '1', unit: 'days' })
 
-    await expect(nextButton(page)).not.toHaveAttribute('aria-disabled')
+    await expect(nextButton(page)).toBeEnabled()
   })
 
+  // Wiring check, not a Gherkin scenario
   test('Next names every missing time', async ({ page, seed }) => {
     await seed(
       workspaceOnTime({
@@ -292,16 +411,14 @@ test.describe('The Time stage', () => {
     )
   })
 
-  test('Edits through the stage are single undo steps', async ({
-    page,
-    seed,
-  }) => {
+  // Wiring check, not a Gherkin scenario
+  test('Undo reverts the last time edit', async ({ page, seed }) => {
     await seed(workspaceOnTime())
     const development = rowOf(page, 'Development')
     await enterTime(development, 'process', { typ: '8', unit: 'hours' })
     await enterTime(development, 'wait', { typ: '2', unit: 'days' })
 
-    await page.getByRole('button', { name: /undo/i }).click()
+    await page.getByRole('button', { name: 'Undo', exact: true }).click()
 
     await expect(development.getByTestId('wait-time-input')).toHaveValue('')
     await expect(development.getByTestId('process-time-input')).toHaveValue('8')
@@ -318,7 +435,9 @@ test.describe('The Time stage', () => {
 
     await enterTime(rowOf(page, 'Development'), 'wait', { typ: 'abc' })
     await enterTime(rowOf(page, 'Security review'), 'elapsed', { typ: '0' })
-    await expect(page.getByRole('alert')).toHaveCount(2)
+    await expect(page.getByTestId('time-stage').getByRole('alert')).toHaveCount(
+      2
+    )
     await axe({ include: '[data-testid="work-region"]' })
   })
 })

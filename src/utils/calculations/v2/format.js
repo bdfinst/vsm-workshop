@@ -1,3 +1,5 @@
+import { rangeOrderErrors } from '../../validation/v2/timeRangeValidator.js'
+
 const MINUTES_PER_HOUR = 60
 const EN_DASH = '–'
 const NOT_A_NUMBER = Object.freeze({ error: 'Enter a number' })
@@ -125,16 +127,21 @@ export const formatPercentRange = ({ low, high }, options) => {
   return lowText === highText ? lowText : `${lowText}${EN_DASH}${highText}`
 }
 
+// Plain decimals only: Number() would also read "1e3" and "0x10" as numbers.
+const PLAIN_DECIMAL = /^[+-]?(\d+\.?\d*|\.\d+)$/
+
 const parseNumber = (value) => {
   if (typeof value === 'number') return value
-  if (typeof value === 'string' && value.trim() !== '') return Number(value)
-  return NaN
+  if (typeof value !== 'string') return NaN
+  const text = value.trim()
+  return PLAIN_DECIMAL.test(text) ? Number(text) : NaN
 }
 
 /**
  * Convert a typed duration to whole minutes.
- * Decimals round to the nearest minute. Empty or non-numeric input gives an
- * error result rather than throwing, so a field can show it inline.
+ * Decimals round to the nearest minute. Empty or non-numeric input (including
+ * exponent, hexadecimal and comma forms) gives an error result rather than
+ * throwing, so a field can show it inline.
  * @param {number|string} value - The amount typed
  * @param {'minutes'|'hours'|'days'} unit - "days" are working days
  * @param {number} workdayHours - Length of a working day in hours
@@ -144,9 +151,10 @@ const parseNumber = (value) => {
 export const toMinutes = (value, unit, workdayHours) => {
   const perUnit = minutesPerUnit(unit, workdayHours)
   const amount = parseNumber(value)
-  return Number.isFinite(amount)
-    ? { minutes: roundTo(amount * perUnit, 0) }
-    : NOT_A_NUMBER
+  if (!Number.isFinite(amount)) return NOT_A_NUMBER
+  // A figure too large to scale overflows to Infinity, which is not minutes.
+  const minutes = roundTo(amount * perUnit, 0)
+  return Number.isFinite(minutes) ? { minutes } : NOT_A_NUMBER
 }
 
 /**
@@ -173,28 +181,6 @@ const boundError = (name, minutes, positive) => {
 }
 
 const RANGE_FIELDS = Object.freeze(['typ', 'min', 'max'])
-
-// Order matters: the first rule a field breaks is the one it shows.
-const RANGE_RULES = Object.freeze([
-  {
-    field: 'min',
-    other: 'typ',
-    message: "Min can't be more than typical",
-    breaks: (min, typ) => min > typ,
-  },
-  {
-    field: 'max',
-    other: 'typ',
-    message: "Max can't be less than typical",
-    breaks: (max, typ) => max < typ,
-  },
-  {
-    field: 'min',
-    other: 'max',
-    message: "Min can't be more than max",
-    breaks: (min, max) => min > max,
-  },
-])
 
 /**
  * Parse the typed typical, min and max of one duration into whole minutes.
@@ -230,11 +216,11 @@ export const parseDurationRange = (
     if (error) errors[field] = error
   })
 
-  RANGE_RULES.forEach(({ field, other, message, breaks }) => {
-    const bothEntered = minutes[field] !== null && minutes[other] !== null
-    if (!errors[field] && bothEntered && breaks(minutes[field], minutes[other]))
-      errors[field] = message
-  })
+  // A field that already shows an error is left out of the comparison.
+  const compared = Object.fromEntries(
+    RANGE_FIELDS.map((field) => [field, errors[field] ? null : minutes[field]])
+  )
+  Object.assign(errors, rangeOrderErrors(compared))
 
   if (Object.keys(errors).length > 0) return { errors }
 

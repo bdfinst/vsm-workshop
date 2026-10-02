@@ -56,16 +56,25 @@ describe('STAGES', () => {
 })
 
 describe('STAGES prompts', () => {
-  it('gives only Scope, Steps and Time a prompt so far', () => {
-    const withPrompt = STAGES.filter((stage) => stage.prompt).map(
-      (stage) => stage.name
-    )
-    const without = STAGES.filter((stage) => !stage.prompt).map(
-      (stage) => stage.prompt
-    )
+  const filled = expect.stringMatching(/\S/)
 
-    expect(withPrompt).toEqual(['Scope', 'Steps', 'Time'])
-    expect(without).toEqual([null, null, null, null])
+  it('gives each stage a full prompt card or none', () => {
+    for (const stage of STAGES) {
+      if (stage.prompt) {
+        expect(stage.prompt).toEqual({
+          question: filled,
+          explanation: filled,
+          example: filled,
+        })
+      } else {
+        expect(stage.prompt).toBeNull()
+      }
+    }
+  })
+
+  it('gives some stages a prompt and leaves the unbuilt ones without', () => {
+    expect(STAGES.some((stage) => stage.prompt)).toBe(true)
+    expect(STAGES.some((stage) => !stage.prompt)).toBe(true)
   })
 })
 
@@ -171,10 +180,11 @@ describe('stageStatus', () => {
   })
 
   it('has no completion verdict yet for reached stages without rules', () => {
-    const time = byName(stageStatus(streamAt(3, 3))).Time
+    // Future is the last stage built; move to another if it gets a rule first.
+    const future = byName(stageStatus(streamAt(7, 7))).Future
 
-    expect(time.state).toBe('reached')
-    expect(time.reason).toBeNull()
+    expect(future.state).toBe('reached')
+    expect(future.reason).toBeNull()
   })
 })
 
@@ -292,6 +302,42 @@ describe('missingTimeFields', () => {
       missingTimeFields([team('Intake', 1, 1), team(' ', null, 1)])
     ).toEqual([{ stepName: 'step 2', field: 'process time' }])
   })
+
+  it.each([
+    ['null', null],
+    ['not set', undefined],
+  ])(
+    'treats an outside step whose elapsed time is %s as missing',
+    (_, elapsed) => {
+      const step = {
+        name: 'Security review',
+        kind: 'outside',
+        elapsedTime: elapsed,
+      }
+
+      expect(missingTimeFields([step])).toEqual([
+        { stepName: 'Security review', field: 'elapsed time' },
+      ])
+    }
+  )
+
+  it('treats a range with no typical time set as missing', () => {
+    const step = {
+      name: 'Build',
+      kind: 'team',
+      processTime: { min: 5 },
+      waitTime: { typ: undefined },
+    }
+
+    expect(missingTimeFields([step])).toEqual([
+      { stepName: 'Build', field: 'process time' },
+      { stepName: 'Build', field: 'wait time' },
+    ])
+  })
+
+  it('is empty when there are no steps', () => {
+    expect(missingTimeFields([])).toEqual([])
+  })
 })
 
 describe('timeReason', () => {
@@ -312,6 +358,17 @@ describe('timeReason', () => {
     expect(timeReason(steps, false)).toBe('Add the wait time for "Deploy"')
   })
 
+  it('joins two missing fields with "and"', () => {
+    const steps = [
+      { ...complete, name: 'Intake', processTime: { typ: null } },
+      { ...complete, name: 'Deploy', waitTime: { typ: null } },
+    ]
+
+    expect(timeReason(steps, false)).toBe(
+      'Add the process time for "Intake" and the wait time for "Deploy"'
+    )
+  })
+
   it('names every missing field, joined like the Scope gate', () => {
     const steps = [
       { ...complete, name: 'Intake', processTime: { typ: null } },
@@ -321,6 +378,16 @@ describe('timeReason', () => {
 
     expect(timeReason(steps, false)).toBe(
       'Add the process time for "Intake", the wait time for "Deploy" and the elapsed time for "Security review"'
+    )
+  })
+
+  it('is null when there are no steps and nothing is invalid', () => {
+    expect(timeReason([], false)).toBeNull()
+  })
+
+  it('says to fix an invalid entry even when nothing is missing', () => {
+    expect(timeReason([complete], true)).toBe(
+      'Fix the times that show an error'
     )
   })
 

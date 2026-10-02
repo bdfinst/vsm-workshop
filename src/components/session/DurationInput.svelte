@@ -13,10 +13,11 @@
   // minutes, or null), workdayHours (the length of a working day),
   // positive (the time must be more than 0, not just 0 or more),
   // showRange (also show the min and max fields), oncommit(range) with the
-  // new { typ, min?, max? } in minutes, and onvalidity(isValid), which says
-  // whether what is typed can be saved. Text is saved on blur, Enter or a
-  // unit change, never per keystroke, so one edit is one undo step. The
-  // parent decides whether the range changed.
+  // new { typ, min?, max? } in minutes, which returns { ok } (false when the
+  // parent refuses the edit, so the text stays for correcting), and
+  // onvalidity(isValid), which says whether what is typed can be saved. Text
+  // is saved on blur, Enter or a unit change, never per keystroke, so one edit
+  // is one undo step. The parent decides whether the range changed.
   let {
     id,
     testid,
@@ -54,9 +55,14 @@
 
   const textOf = (field) => drafts[field] ?? storedText(field)
 
+  // Without the range fields, a stored min or max is not shown, so it is not
+  // parsed (it could block Next unseen) and not changed on commit.
   let parsed = $derived(
     parseDurationRange(
-      { typ: textOf('typ'), min: textOf('min'), max: textOf('max') },
+      {
+        typ: textOf('typ'),
+        ...(showRange && { min: textOf('min'), max: textOf('max') }),
+      },
       unit,
       workdayHours,
       { label, positive }
@@ -77,8 +83,10 @@
 
   function handleCommit() {
     if (Object.keys(drafts).length === 0 || !isValid) return
-    oncommit(parsed.range)
-    drafts = {}
+    const result = oncommit(
+      showRange ? parsed.range : { ...value, ...parsed.range }
+    )
+    if (result.ok) drafts = {}
   }
 
   function handleUnitChange(event) {
