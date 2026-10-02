@@ -1,4 +1,5 @@
 import { describe, it, expect } from 'vitest'
+import { STAGE_NUMBER } from '../../../src/models/v2/constants.js'
 import { createValueStream } from '../../../src/models/v2/valueStream.js'
 import {
   STAGES,
@@ -34,6 +35,21 @@ describe('STAGES', () => {
       'Future',
     ])
     expect(STAGES.map((stage) => stage.number)).toEqual([1, 2, 3, 4, 5, 6, 7])
+  })
+
+  it('numbers each stage as STAGE_NUMBER names it', () => {
+    const numberOf = (name) =>
+      STAGES.find((stage) => stage.name === name).number
+
+    expect(STAGE_NUMBER).toEqual({
+      SCOPE: numberOf('Scope'),
+      STEPS: numberOf('Steps'),
+      TIME: numberOf('Time'),
+      QUALITY: numberOf('Quality'),
+      REWORK: numberOf('Rework'),
+      REVIEW: numberOf('Review'),
+      FUTURE: numberOf('Future'),
+    })
   })
 })
 

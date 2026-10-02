@@ -3,9 +3,11 @@
   import PromptCard from '../PromptCard.svelte'
   import StepListRow from '../StepListRow.svelte'
   import { STEP_TEMPLATES } from '../../../data/stepTemplates.js'
-  import { toastStore } from '../../../stores/toastStore.svelte.js'
+  import { TOAST_TYPE, toastStore } from '../../../stores/toastStore.svelte.js'
+  import { STAGE_NUMBER } from '../../../models/v2/constants.js'
   import { STAGES, stepsReason } from '../../../utils/session/stages.js'
   import {
+    INTAKE_INDEX,
     MOVE_DOWN,
     MOVE_UP,
     movedAnnouncement,
@@ -19,7 +21,7 @@
   // onannounce(text) to say something to screen readers.
   let { store, onnext, onannounce } = $props()
 
-  const { name: heading, prompt } = STAGES[1]
+  const { name: heading, prompt } = STAGES[STAGE_NUMBER.STEPS - 1]
 
   // A starter suggestion fills in what the template knows: name and description.
   const starterFields = ({ name, description }) => ({ name, description })
@@ -36,7 +38,7 @@
     }))
   )
 
-  let reason = $derived(stepsReason(rows))
+  let nextReason = $derived(stepsReason(rows))
 
   function handleInput(stepId, field, text) {
     drafts[stepId] = { ...drafts[stepId], [field]: text }
@@ -91,18 +93,19 @@
   }
 
   // A rework path keeps its direction, so the way out is on the Rework stage.
-  const reworkStage = STAGES.find(({ name }) => name === 'Rework').number
+  const reworkStageNumber = STAGE_NUMBER.REWORK
 
   function handleGoToRework() {
-    const result = store.goToStage(reworkStage)
-    if (!result.ok) refusal = result.error
+    showRefusal(store.goToStage(reworkStageNumber))
   }
 
   // A moved row is a new DOM node, so focus goes back to the control it was on.
   function restoreFocus(stepId, control) {
-    const onControl = `[data-control="${control}"], [data-field="${control}"]`
+    const controlSelector = `[data-control="${control}"], [data-field="${control}"]`
     listElement
-      .querySelector(`[data-step-id="${CSS.escape(stepId)}"] :is(${onControl})`)
+      .querySelector(
+        `[data-step-id="${CSS.escape(stepId)}"] :is(${controlSelector})`
+      )
       ?.focus()
   }
 
@@ -166,7 +169,9 @@
     delete drafts[stepId]
     const action = { label: 'Undo', onclick: handleUndoDelete }
     deleteToast = {
-      id: toastStore.add(`${label} deleted`, 'info', undefined, { action }),
+      id: toastStore.add(`${label} deleted`, TOAST_TYPE.INFO, undefined, {
+        action,
+      }),
       version: store.activeVersion,
     }
     await tick()
@@ -179,7 +184,7 @@
   question={prompt.question}
   explanation={prompt.explanation}
   example={prompt.example}
-  nextReason={reason}
+  {nextReason}
   {onnext}
 >
   <div data-testid="steps-stage">
@@ -193,8 +198,8 @@
       {#each rows as row, index (row.id)}
         <StepListRow
           {row}
-          position={index + 1}
-          isIntake={index === 0}
+          stepNumber={index + 1}
+          isIntake={index === INTAKE_INDEX}
           isLast={index === rows.length - 1}
           oninput={handleInput}
           oncommit={handleCommit}
@@ -210,7 +215,7 @@
           ondragstart={(stepId) => (draggedId = stepId)}
           ondragend={() => (draggedId = null)}
           ondrop={handleDrop}
-          dragging={draggedId !== null}
+          isAnyRowDragged={draggedId !== null}
           moveUpReason={moveBlockReason(index, rows.length, MOVE_UP)}
           moveDownReason={moveBlockReason(index, rows.length, MOVE_DOWN)}
         />

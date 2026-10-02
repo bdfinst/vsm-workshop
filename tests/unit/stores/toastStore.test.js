@@ -1,5 +1,8 @@
 import { describe, it, expect, beforeEach, vi, afterEach } from 'vitest'
-import { createToastStore } from '../../../src/stores/toastStore.svelte.js'
+import {
+  TOAST_TYPE,
+  createToastStore,
+} from '../../../src/stores/toastStore.svelte.js'
 
 describe('toastStore', () => {
   let store
@@ -43,6 +46,17 @@ describe('toastStore', () => {
       expect(store.messages[0].text).toBe('First')
       expect(store.messages[1].text).toBe('Second')
       expect(store.messages[2].text).toBe('Third')
+    })
+  })
+
+  describe('TOAST_TYPE', () => {
+    it('names the four types the store knows', () => {
+      expect(TOAST_TYPE).toEqual({
+        INFO: 'info',
+        SUCCESS: 'success',
+        WARNING: 'warning',
+        ERROR: 'error',
+      })
     })
   })
 

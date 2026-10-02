@@ -1,6 +1,6 @@
 <script>
   import { workspaceStore } from '../../stores/v2/workspaceStore.svelte.js'
-  import { STAGE_NAMES } from '../../models/v2/constants.js'
+  import { STAGE_NAMES, STAGE_NUMBER } from '../../models/v2/constants.js'
   import { isTextEntry, shortcutFor } from '../../utils/ui/keymap.js'
   import PlaceholderStage from './stages/PlaceholderStage.svelte'
   import { stageStatus } from '../../utils/session/stages.js'
@@ -16,7 +16,7 @@
   let store = $derived(workspaceStore.activeStore)
   let stream = $derived(store?.stream)
   let streamId = $derived(stream?.id)
-  let stage = $derived(stream?.session.activeStage ?? 1)
+  let stage = $derived(stream?.session.activeStage ?? STAGE_NUMBER.SCOPE)
   let stageName = $derived(STAGE_NAMES[stage - 1])
   let statuses = $derived(stream ? stageStatus(stream) : [])
 
@@ -61,7 +61,7 @@
 
   // Later slices replace the remaining placeholders with the stages' own components.
   function handleNext() {
-    workspaceStore.activeStore.goToStage(stage + 1)
+    store.goToStage(stage + 1)
   }
 </script>
 
@@ -93,11 +93,11 @@
         data-testid="work-region"
         bind:this={workRegion}
       >
-        {#if store && stage === 1}
+        {#if store && stage === STAGE_NUMBER.SCOPE}
           {#key stream.id}
             <ScopeStage {store} onnext={handleNext} />
           {/key}
-        {:else if store && stage === 2}
+        {:else if store && stage === STAGE_NUMBER.STEPS}
           {#key stream.id}
             <StepsStage {store} onnext={handleNext} onannounce={announce} />
           {/key}

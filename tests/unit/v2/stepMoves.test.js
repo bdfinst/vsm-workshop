@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest'
 import {
+  INTAKE_INDEX,
   MOVE_DOWN,
   MOVE_UP,
   movedAnnouncement,
@@ -37,7 +38,13 @@ describe('movedAnnouncement', () => {
     )
   })
 
-  it.each(['', '   '])('calls a blank name %j an unnamed step', (name) => {
-    expect(movedAnnouncement(name, 1)).toBe('Unnamed step moved to position 2')
+  it.each(['', '   '])('labels a blank name %j by its position', (name) => {
+    expect(movedAnnouncement(name, 1)).toBe('step 2 moved to position 2')
+  })
+})
+
+describe('INTAKE_INDEX', () => {
+  it('is the first position in the list', () => {
+    expect(INTAKE_INDEX).toBe(0)
   })
 })

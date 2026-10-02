@@ -6,6 +6,7 @@ import {
   hasTimeData,
   kindSwitchMessage,
   needsDeleteConfirm,
+  stepLabelOf,
 } from '../../../src/utils/session/stepData.js'
 import { STEP_KIND } from '../../../src/models/v2/constants.js'
 
@@ -19,6 +20,20 @@ const blankTeamRow = {
   waitTime: { typ: null },
   elapsedTime: null,
 }
+
+describe('stepLabelOf', () => {
+  it('is the name', () => {
+    expect(stepLabelOf('Development', 3)).toBe('Development')
+  })
+
+  it('trims the name', () => {
+    expect(stepLabelOf('  Development ', 3)).toBe('Development')
+  })
+
+  it.each(['', '   '])('stands in "step N" for a blank name %j', (name) => {
+    expect(stepLabelOf(name, 3)).toBe('step 3')
+  })
+})
 
 describe('hasTimeData', () => {
   it('is false for a step with no times entered', () => {

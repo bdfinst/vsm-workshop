@@ -28,6 +28,17 @@ export const STAGE_NAMES = Object.freeze([
   'Future',
 ])
 
+/** Each stage's number, 1-based: `STAGE_NAMES[STAGE_NUMBER.STEPS - 1]` is 'Steps'. */
+export const STAGE_NUMBER = Object.freeze({
+  SCOPE: 1,
+  STEPS: 2,
+  TIME: 3,
+  QUALITY: 4,
+  REWORK: 5,
+  REVIEW: 6,
+  FUTURE: 7,
+})
+
 /** The locked first step of every version. */
 export const INTAKE_NAME = 'Intake'
 

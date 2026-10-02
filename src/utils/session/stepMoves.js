@@ -1,10 +1,13 @@
 import { INTAKE_FIRST_MESSAGE } from '../validation/v2/editRules.js'
+import { stepLabelOf } from './stepData.js'
 
 export const MOVE_UP = -1
 export const MOVE_DOWN = 1
 
 const LAST_STEP_MESSAGE = 'This is the last step'
-const FIRST_AFTER_INTAKE = 1
+/** Intake's 0-based position: the locked first step. */
+export const INTAKE_INDEX = 0
+const FIRST_AFTER_INTAKE = INTAKE_INDEX + 1
 
 /**
  * Why a step's Move button is unavailable, or null when it works. This only
@@ -29,4 +32,4 @@ export const moveBlockReason = (index, count, direction) => {
  * @returns {string} For example "Development moved to position 3"
  */
 export const movedAnnouncement = (name, toIndex) =>
-  `${name.trim() || 'Unnamed step'} moved to position ${toIndex + 1}`
+  `${stepLabelOf(name, toIndex + 1)} moved to position ${toIndex + 1}`

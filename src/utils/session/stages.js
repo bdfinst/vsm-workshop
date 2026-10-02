@@ -1,4 +1,8 @@
-import { STAGE_NAMES, UNIT_OF_WORK } from '../../models/v2/constants.js'
+import {
+  STAGE_NAMES,
+  STAGE_NUMBER,
+  UNIT_OF_WORK,
+} from '../../models/v2/constants.js'
 
 /**
  * The guided session's stages: the one place their metadata lives. `prompt`
@@ -110,7 +114,7 @@ export const stepsReason = (steps) => {
 
 // A stage with no rule yet has nothing to check; later slices add theirs.
 const STAGE_REASONS = {
-  1: (stream) => scopeReason(missingScopeFields(stream)),
+  [STAGE_NUMBER.SCOPE]: (stream) => scopeReason(missingScopeFields(stream)),
 }
 
 /**

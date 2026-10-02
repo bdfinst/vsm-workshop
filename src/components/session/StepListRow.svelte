@@ -6,26 +6,27 @@
     hasTimeData,
     kindSwitchMessage,
     needsDeleteConfirm,
+    stepLabelOf,
   } from '../../utils/session/stepData.js'
   import { MOVE_DOWN, MOVE_UP } from '../../utils/session/stepMoves.js'
   import ConfirmPopover from '../ui/ConfirmPopover.svelte'
 
   // StepListRow props: row (a step row from rowModel, with any unsaved text
-  // laid over it), position (1-based), isIntake, oninput(stepId, field, text)
+  // laid over it), stepNumber (1-based), isIntake, oninput(stepId, field, text)
   // and oncommit(stepId, field) for the text fields, onhandoff(stepId, checked),
   // isLast, oninsert(stepId) to add a step right after this one, and
   // onmove(stepId, direction, control) for a step to move up (-1) or down (1);
   // `control` names the control to keep focus on. moveUpReason and
   // moveDownReason say why a move is unavailable, or are null when it works.
   // ondragstart(stepId), ondragend() and ondrop(stepId) report a drag of this
-  // row's handle, and a drop on this row; `dragging` is true while any row is
-  // being dragged. onkindchange(stepId, kind) switches
+  // row's handle, and a drop on this row; `isAnyRowDragged` is true while any row
+  // is being dragged. onkindchange(stepId, kind) switches
   // the step between team and outside; a switch that would clear a time asks
   // first. reworkPathCount is how many rework paths start or end at this step,
   // and ondelete(stepId, label) deletes it; a step with data or paths asks first.
   let {
     row,
-    position,
+    stepNumber,
     isIntake = false,
     isLast = false,
     oninput,
@@ -38,13 +39,13 @@
     ondragstart,
     ondragend,
     ondrop,
-    dragging = false,
+    isAnyRowDragged = false,
     onkindchange,
     reworkPathCount = 0,
     ondelete,
   } = $props()
 
-  const stepLabel = $derived(row.name.trim() || `step ${position}`)
+  const stepLabel = $derived(stepLabelOf(row.name, stepNumber))
 
   let isNameMissing = $derived(!isIntake && row.name.trim() === '')
 
@@ -81,11 +82,11 @@
 
   // Only a row being dragged is accepted; text dropped into a field is not.
   const handleDragOver = (event) => {
-    if (dragging) event.preventDefault()
+    if (isAnyRowDragged) event.preventDefault()
   }
 
   const handleDrop = (event) => {
-    if (!dragging) return
+    if (!isAnyRowDragged) return
     event.preventDefault()
     ondrop(row.id)
   }
@@ -113,12 +114,12 @@
   }
 
   function handleKindToggle(event) {
-    const box = event.currentTarget
+    const checkbox = event.currentTarget
     if (hasTimeData(row)) confirming = CONFIRM_KIND
     else onkindchange(row.id, otherKind)
     // The box shows what the store holds: unchanged until a switch is
     // confirmed, and unchanged if the store refuses it.
-    box.checked = isOutside(row)
+    checkbox.checked = isOutside(row)
   }
 
   function handleKindConfirm() {
@@ -165,22 +166,26 @@
   </div>
 {/snippet}
 
-{#snippet moveButton(name, label, direction, reason)}
+{#snippet moveButton(directionName, label, direction, reason)}
   <button
     type="button"
     class={buttonClass}
     aria-label="{label} {stepLabel}"
     aria-disabled={reason ? 'true' : undefined}
-    aria-describedby={reason ? `step-${row.id}-move-${name}-reason` : undefined}
-    data-control="move-{name}"
-    data-testid="move-{name}-button"
+    aria-describedby={reason
+      ? `step-${row.id}-move-${directionName}-reason`
+      : undefined}
+    data-control="move-{directionName}"
+    data-testid="move-{directionName}-button"
     onclick={(event) =>
       reason || onmove(row.id, direction, event.currentTarget.dataset.control)}
   >
     {label}
   </button>
   {#if reason}
-    <span id="step-{row.id}-move-{name}-reason" class="sr-only">{reason}</span>
+    <span id="step-{row.id}-move-{directionName}-reason" class="sr-only"
+      >{reason}</span
+    >
   {/if}
 {/snippet}
 
@@ -188,7 +193,7 @@
   class="rounded-lg border border-gray-200 p-4"
   data-step-id={row.id}
   data-testid="step-row"
-  data-position={position}
+  data-position={stepNumber}
   bind:this={itemElement}
   onkeydown={handleKeydown}
   ondragover={handleDragOver}
@@ -202,7 +207,7 @@
     ></div>
   {/if}
   <div class="flex items-center gap-2">
-    <span class="font-semibold" aria-hidden="true">{position}</span>
+    <span class="font-semibold" aria-hidden="true">{stepNumber}</span>
     {#if isIntake}
       <span class="font-medium" data-testid="step-name">{row.name}</span>
       <span

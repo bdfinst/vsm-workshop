@@ -7,6 +7,13 @@
 
 import { SvelteMap } from 'svelte/reactivity'
 
+export const TOAST_TYPE = Object.freeze({
+  INFO: 'info',
+  SUCCESS: 'success',
+  WARNING: 'warning',
+  ERROR: 'error',
+})
+
 const DEFAULT_TOAST_DURATION_MS = 5000
 // A toast with an action gives time to reach it.
 const ACTION_TOAST_DURATION_MS = 10000
@@ -57,13 +64,13 @@ export function createToastStore() {
    *   action button; a message with one stays 10 s unless `duration` is given
    * @returns {string} The id of the new message
    */
-  const add = (text, type = 'info', duration, options) => {
+  const add = (text, type = TOAST_TYPE.INFO, duration, options) => {
     const action = options?.action
     nextId = nextId + 1
     const id = `toast-${nextId}`
     messages = [...messages, { id, text, type, action }]
 
-    if (type !== 'error') {
+    if (type !== TOAST_TYPE.ERROR) {
       durations.set(
         id,
         duration ??

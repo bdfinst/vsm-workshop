@@ -1,5 +1,15 @@
 import { STEP_KIND } from '../../models/v2/constants.js'
 
+/**
+ * How a step is named in labels, questions and announcements: its name, or
+ * "step N" while it has none.
+ * @param {string} name - The step's name, possibly blank
+ * @param {number} stepNumber - Its 1-based position in the list
+ * @returns {string}
+ */
+export const stepLabelOf = (name, stepNumber) =>
+  name.trim() || `step ${stepNumber}`
+
 const hasText = (value) => typeof value === 'string' && value.trim() !== ''
 
 const isEntered = (value) => value !== null && value !== undefined

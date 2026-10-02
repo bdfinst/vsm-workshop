@@ -1,6 +1,6 @@
 <script>
   import PromptCard from '../PromptCard.svelte'
-  import { UNIT_OF_WORK } from '../../../models/v2/constants.js'
+  import { STAGE_NUMBER, UNIT_OF_WORK } from '../../../models/v2/constants.js'
   import {
     STAGES,
     missingScopeFields,
@@ -11,7 +11,7 @@
   // ScopeStage props: store (the open value stream store), onnext.
   let { store, onnext } = $props()
 
-  const { name: heading, prompt } = STAGES[0]
+  const { name: heading, prompt } = STAGES[STAGE_NUMBER.SCOPE - 1]
 
   const inputClass =
     'w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent'
