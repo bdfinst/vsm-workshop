@@ -13,12 +13,23 @@
   import SessionHeader from './SessionHeader.svelte'
   import StageRail from './StageRail.svelte'
 
+  // Each stage's own component, by stage number; the rest are still placeholders.
+  // Every stage is given the same props and uses the ones it needs: store,
+  // name, onnext and onannounce(text) to say something to screen readers.
+  const STAGE_COMPONENTS = {
+    [STAGE_NUMBER.SCOPE]: ScopeStage,
+    [STAGE_NUMBER.STEPS]: StepsStage,
+  }
+
   let store = $derived(workspaceStore.activeStore)
   let stream = $derived(store?.stream)
   let streamId = $derived(stream?.id)
   let stage = $derived(stream?.session.activeStage ?? STAGE_NUMBER.SCOPE)
   let stageName = $derived(STAGE_NAMES[stage - 1])
   let statuses = $derived(stream ? stageStatus(stream) : [])
+  let StageComponent = $derived(
+    (store && STAGE_COMPONENTS[stage]) || PlaceholderStage
+  )
 
   // On a stage change, and on opening a stream, focus moves to the heading.
   // It depends on the id, not the stream: an edit makes a new stream object
@@ -93,20 +104,14 @@
         data-testid="work-region"
         bind:this={workRegion}
       >
-        {#if store && stage === STAGE_NUMBER.SCOPE}
-          {#key stream.id}
-            <ScopeStage {store} onnext={handleNext} />
-          {/key}
-        {:else if store && stage === STAGE_NUMBER.STEPS}
-          {#key stream.id}
-            <StepsStage {store} onnext={handleNext} onannounce={announce} />
-          {/key}
-        {:else}
-          <PlaceholderStage
+        {#key streamId}
+          <StageComponent
+            {store}
             name={stageName}
             onnext={stage < STAGE_NAMES.length ? handleNext : null}
+            onannounce={announce}
           />
-        {/if}
+        {/key}
       </div>
     </main>
     <aside class="lg:w-80" aria-label="Map" data-testid="map-pane"></aside>

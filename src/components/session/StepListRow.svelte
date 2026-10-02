@@ -8,6 +8,12 @@
     needsDeleteConfirm,
     stepLabelOf,
   } from '../../utils/session/stepData.js'
+  import {
+    CONTROL_ATTRIBUTE,
+    FIELD_ATTRIBUTE,
+    controlSelector,
+    focusControl,
+  } from '../../utils/session/focus.js'
   import { MOVE_DOWN, MOVE_UP } from '../../utils/session/stepMoves.js'
   import ConfirmPopover from '../ui/ConfirmPopover.svelte'
 
@@ -15,12 +21,12 @@
   // laid over it), stepNumber (1-based), isIntake, oninput(stepId, field, text)
   // and oncommit(stepId, field) for the text fields, onhandoff(stepId, checked),
   // isLast, oninsert(stepId) to add a step right after this one, and
-  // onmove(stepId, direction, control) for a step to move up (-1) or down (1);
-  // `control` names the control to keep focus on. moveUpReason and
-  // moveDownReason say why a move is unavailable, or are null when it works.
-  // ondragstart(stepId), ondragend() and ondrop(stepId) report a drag of this
-  // row's handle, and a drop on this row; `isAnyRowDragged` is true while any row
-  // is being dragged. onkindchange(stepId, kind) switches
+  // move: { onmove(stepId, direction, control), upReason, downReason } for a
+  // step to move up (-1) or down (1); `control` names the control to keep focus
+  // on, and the reasons say why a move is unavailable, or are null when it
+  // works. drag is the list's createRowDrag: this row's handle starts and ends
+  // a drag, a drop on this row ends it, and `drag.isAnyRowDragged` is true
+  // while any row is being dragged. onkindchange(stepId, kind) switches
   // the step between team and outside; a switch that would clear a time asks
   // first. reworkPathCount is how many rework paths start or end at this step,
   // and ondelete(stepId, label) deletes it; a step with data or paths asks first.
@@ -33,13 +39,8 @@
     oncommit,
     onhandoff,
     oninsert,
-    onmove,
-    moveUpReason = null,
-    moveDownReason = null,
-    ondragstart,
-    ondragend,
-    ondrop,
-    isAnyRowDragged = false,
+    move,
+    drag,
     onkindchange,
     reworkPathCount = 0,
     ondelete,
@@ -60,16 +61,18 @@
 
   const KEY_DIRECTIONS = { ArrowUp: MOVE_UP, ArrowDown: MOVE_DOWN }
 
-  // The control a key press came from: a button, or a text field.
-  const controlOf = ({ dataset }) => dataset.control ?? dataset.field
+  // The control an event came from: a button, or a text field.
+  const controlOf = (element) =>
+    element.getAttribute(CONTROL_ATTRIBUTE) ??
+    element.getAttribute(FIELD_ATTRIBUTE)
 
   // Alt+Up and Alt+Down act as the Move buttons, from any control in the row.
   const handleKeydown = (event) => {
     const direction = KEY_DIRECTIONS[event.key]
     if (!event.altKey || direction === undefined || isIntake) return
     event.preventDefault()
-    const reason = direction === MOVE_UP ? moveUpReason : moveDownReason
-    if (!reason) onmove(row.id, direction, controlOf(event.target))
+    const reason = direction === MOVE_UP ? move.upReason : move.downReason
+    if (!reason) move.onmove(row.id, direction, controlOf(event.target))
   }
 
   // The whole row follows the pointer, not just the small handle.
@@ -77,18 +80,18 @@
     event.dataTransfer.effectAllowed = 'move'
     event.dataTransfer.setData('text/plain', row.id)
     event.dataTransfer.setDragImage(event.currentTarget.closest('li'), 0, 0)
-    ondragstart(row.id)
+    drag.start(row.id)
   }
 
   // Only a row being dragged is accepted; text dropped into a field is not.
   const handleDragOver = (event) => {
-    if (isAnyRowDragged) event.preventDefault()
+    if (drag.isAnyRowDragged) event.preventDefault()
   }
 
   const handleDrop = (event) => {
-    if (!isAnyRowDragged) return
+    if (!drag.isAnyRowDragged) return
     event.preventDefault()
-    ondrop(row.id)
+    drag.drop(row.id)
   }
 
   const handleEnter = (event, field) => {
@@ -110,7 +113,7 @@
   async function closeConfirm(control) {
     confirming = null
     await tick()
-    itemElement?.querySelector(`[data-control="${control}"]`)?.focus()
+    focusControl(itemElement, controlSelector(control))
   }
 
   function handleKindToggle(event) {
@@ -178,7 +181,7 @@
     data-control="move-{directionName}"
     data-testid="move-{directionName}-button"
     onclick={(event) =>
-      reason || onmove(row.id, direction, event.currentTarget.dataset.control)}
+      reason || move.onmove(row.id, direction, controlOf(event.currentTarget))}
   >
     {label}
   </button>
@@ -241,12 +244,12 @@
         aria-hidden="true"
         data-testid="drag-handle"
         ondragstart={handleDragStart}
-        ondragend={() => ondragend()}
+        ondragend={() => drag.end()}
       >
         &#10303;
       </span>
-      {@render moveButton('up', 'Move up', MOVE_UP, moveUpReason)}
-      {@render moveButton('down', 'Move down', MOVE_DOWN, moveDownReason)}
+      {@render moveButton('up', 'Move up', MOVE_UP, move.upReason)}
+      {@render moveButton('down', 'Move down', MOVE_DOWN, move.downReason)}
     {/if}
   </div>
   <div class="mt-3 grid gap-4 md:grid-cols-2">

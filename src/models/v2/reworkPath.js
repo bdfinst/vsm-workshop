@@ -12,3 +12,12 @@ export const createReworkPath = (overrides = {}) => ({
   note: '',
   ...overrides,
 })
+
+/**
+ * Whether the path starts or ends at the step; deleting the step removes it.
+ * @param {{fromStepId: string, toStepId: string}} path - A rework path
+ * @param {string} stepId - The step's id
+ * @returns {boolean}
+ */
+export const pathTouchesStep = (path, stepId) =>
+  path.fromStepId === stepId || path.toStepId === stepId

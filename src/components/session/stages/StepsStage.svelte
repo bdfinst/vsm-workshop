@@ -3,8 +3,15 @@
   import PromptCard from '../PromptCard.svelte'
   import StepListRow from '../StepListRow.svelte'
   import { STEP_TEMPLATES } from '../../../data/stepTemplates.js'
-  import { TOAST_TYPE, toastStore } from '../../../stores/toastStore.svelte.js'
+  import { toastStore } from '../../../stores/toastStore.svelte.js'
   import { STAGE_NUMBER } from '../../../models/v2/constants.js'
+  import { createDeleteUndo } from '../../../utils/session/deleteUndo.js'
+  import {
+    controlSelector,
+    fieldSelector,
+    focusControl,
+  } from '../../../utils/session/focus.js'
+  import { createRowDrag } from '../../../utils/session/rowDrag.svelte.js'
   import { STAGES, stepsReason } from '../../../utils/session/stages.js'
   import {
     INTAKE_INDEX,
@@ -52,16 +59,15 @@
     const stored = store.activeVersion.steps.find((s) => s.id === stepId)
     const value = text.trim()
     if (stored && value !== stored[field]) {
-      clearRefusalWhenOk(store.updateStep(stepId, { [field]: value }))
+      showRefusal(store.updateStep(stepId, { [field]: value }))
     }
   }
 
   function handleHandoff(stepId, isHandoff) {
-    clearRefusalWhenOk(store.updateStep(stepId, { isHandoff }))
+    showRefusal(store.updateStep(stepId, { isHandoff }))
   }
 
-  const focusName = (item) =>
-    item?.querySelector('[data-field="name"]')?.focus()
+  const focusName = (item) => focusControl(item, fieldSelector('name'))
 
   // The new step is last in the list; its name is the next thing to type.
   async function addStep(fields) {
@@ -88,10 +94,6 @@
     return result.ok
   }
 
-  const clearRefusalWhenOk = (result) => {
-    if (result.ok) refusal = null
-  }
-
   // A rework path keeps its direction, so the way out is on the Rework stage.
   const reworkStageNumber = STAGE_NUMBER.REWORK
 
@@ -101,12 +103,10 @@
 
   // A moved row is a new DOM node, so focus goes back to the control it was on.
   function restoreFocus(stepId, control) {
-    const controlSelector = `[data-control="${control}"], [data-field="${control}"]`
-    listElement
-      .querySelector(
-        `[data-step-id="${CSS.escape(stepId)}"] :is(${controlSelector})`
-      )
-      ?.focus()
+    const item = listElement.querySelector(
+      `[data-step-id="${CSS.escape(stepId)}"]`
+    )
+    focusControl(item, controlSelector(control))
   }
 
   async function moveTo(stepId, toIndex, control) {
@@ -123,57 +123,39 @@
   }
 
   // The dragged step takes the position of the row it is dropped on.
-  let draggedId = $state(null)
-
-  function handleDrop(targetId) {
-    const stepId = draggedId
-    draggedId = null
-    if (stepId && stepId !== targetId) moveTo(stepId, indexOfRow(targetId))
-  }
+  const rowDrag = createRowDrag((stepId, targetId) =>
+    moveTo(stepId, indexOfRow(targetId))
+  )
 
   function handleKindChange(stepId, kind) {
     showRefusal(store.switchStepKind(stepId, kind))
   }
 
-  // The Undo toast of the last delete, and the version it was offered on. Any
-  // other change, or leaving the stage, closes it: Undo would then undo that
+  // Any other change closes the delete's Undo toast: Undo would then undo that
   // change instead of the delete.
-  let deleteToast = null
-
-  function closeDeleteToast() {
-    if (deleteToast) toastStore.dismiss(deleteToast.id)
-    deleteToast = null
-  }
-
-  $effect(() => {
-    // Read first, so the effect depends on the version even with no toast.
-    const version = store.activeVersion
-    if (deleteToast && version !== deleteToast.version) closeDeleteToast()
+  const deleteUndo = createDeleteUndo({
+    toastStore,
+    get store() {
+      return store
+    },
+    onannounce: (text) => onannounce?.(text),
   })
 
-  $effect(() => closeDeleteToast)
+  $effect(() => deleteUndo.closeIfStale())
 
-  function handleUndoDelete() {
-    const result = store.undo()
-    if (result.ok) onannounce?.(result.announcement)
-  }
+  // On unmount (leaving the Steps stage) the effect's cleanup closes the toast.
+  $effect(() => deleteUndo.close)
 
-  const focusFirstField = (item) => item?.querySelector('input')?.focus()
+  const focusFirstField = (item) => focusControl(item, 'input')
 
   // The row that takes the deleted step's place gets focus.
   async function handleDelete(stepId, label) {
     const index = indexOfRow(stepId)
     // A second delete replaces the first Undo, which would otherwise undo this one.
-    closeDeleteToast()
+    deleteUndo.close()
     if (!showRefusal(store.deleteStep(stepId))) return
     delete drafts[stepId]
-    const action = { label: 'Undo', onclick: handleUndoDelete }
-    deleteToast = {
-      id: toastStore.add(`${label} deleted`, TOAST_TYPE.INFO, undefined, {
-        action,
-      }),
-      version: store.activeVersion,
-    }
+    deleteUndo.offer(label)
     await tick()
     focusFirstField(listElement.children[Math.min(index, rows.length - 1)])
   }
@@ -211,13 +193,12 @@
             row.id
           )}
           oninsert={handleInsert}
-          onmove={handleMove}
-          ondragstart={(stepId) => (draggedId = stepId)}
-          ondragend={() => (draggedId = null)}
-          ondrop={handleDrop}
-          isAnyRowDragged={draggedId !== null}
-          moveUpReason={moveBlockReason(index, rows.length, MOVE_UP)}
-          moveDownReason={moveBlockReason(index, rows.length, MOVE_DOWN)}
+          move={{
+            onmove: handleMove,
+            upReason: moveBlockReason(index, rows.length, MOVE_UP),
+            downReason: moveBlockReason(index, rows.length, MOVE_DOWN),
+          }}
+          drag={rowDrag}
         />
       {/each}
     </ol>

@@ -1,4 +1,6 @@
 import { STEP_KIND } from '../../models/v2/constants.js'
+import { pathTouchesStep } from '../../models/v2/reworkPath.js'
+import { TIME_FIELDS } from '../../models/v2/step.js'
 
 /**
  * How a step is named in labels, questions and announcements: its name, or
@@ -16,8 +18,6 @@ const isEntered = (value) => value !== null && value !== undefined
 
 // A time range holds typ, and perhaps min and max; any of them is data.
 const hasRangeValue = (range) => Object.values(range ?? {}).some(isEntered)
-
-const TIME_FIELDS = ['processTime', 'waitTime', 'elapsedTime']
 
 /**
  * Whether any time is entered. These are the values a kind switch discards.
@@ -47,9 +47,7 @@ export const hasStepData = (row) =>
  * @returns {number}
  */
 export const countReworkPathsOf = (paths, stepId) =>
-  paths.filter(({ fromStepId, toStepId }) =>
-    [fromStepId, toStepId].includes(stepId)
-  ).length
+  paths.filter((path) => pathTouchesStep(path, stepId)).length
 
 /**
  * Whether deleting the step should ask first.

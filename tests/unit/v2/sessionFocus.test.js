@@ -1,5 +1,8 @@
 import { describe, it, expect, beforeEach } from 'vitest'
 import {
+  controlSelector,
+  fieldSelector,
+  focusControl,
   focusOpeningTarget,
   focusStageHeading,
 } from '../../../src/utils/session/focus.js'
@@ -35,5 +38,46 @@ describe('session focus', () => {
     focusOpeningTarget()
 
     expect(document.activeElement.dataset.testid).toBe('stage-heading')
+  })
+})
+
+describe('focusControl', () => {
+  beforeEach(() => {
+    document.body.innerHTML = ''
+  })
+
+  const row = (id) =>
+    `<li data-step-id="${id}">
+      <input data-field="name" />
+      <button data-control="delete">Delete</button>
+    </li>`
+
+  it('focuses the first match inside the container', () => {
+    document.body.innerHTML = `<ol>${row('a')}${row('b')}</ol>`
+    const second = document.querySelector('[data-step-id="b"]')
+
+    focusControl(second, fieldSelector('name'))
+
+    expect(document.activeElement).toBe(second.querySelector('input'))
+  })
+
+  it('finds a control by either its control or its field name', () => {
+    document.body.innerHTML = row('a')
+
+    focusControl(document.body, controlSelector('delete'))
+    expect(document.activeElement.dataset.control).toBe('delete')
+
+    focusControl(document.body, controlSelector('name'))
+    expect(document.activeElement.dataset.field).toBe('name')
+  })
+
+  it('does nothing when nothing matches or there is no container', () => {
+    document.body.innerHTML = row('a')
+    const before = document.activeElement
+
+    focusControl(document.body, controlSelector('missing'))
+    focusControl(undefined, controlSelector('delete'))
+
+    expect(document.activeElement).toBe(before)
   })
 })
