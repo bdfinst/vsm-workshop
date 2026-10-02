@@ -681,6 +681,28 @@ describe('workspaceStore: navigation', () => {
     expect(saved.revision).toBe(3)
   })
 
+  it('saves which version is viewed without bumping the revision or counting as unsaved', async () => {
+    const repository = createMemoryWorkspaceRepository({
+      raw: rawOf([referenceStream()]),
+    })
+    const store = await makeStore({ repository })
+    const current = store.streams[0].versions[0]
+    store.activeStore.createFutureVersion('90-day target')
+    const revision = store.revision
+    const listener = vi.fn()
+    store.subscribeCommit(listener)
+
+    store.activeStore.setActiveVersion(current.id)
+    await store.flushSaves()
+
+    expect(store.revision).toBe(revision)
+    expect(listener).not.toHaveBeenCalled()
+    expect(store.streams[0].activeVersionId).toBe(current.id)
+    expect((await savedIn(repository)).streams[0].activeVersionId).toBe(
+      current.id
+    )
+  })
+
   it('keeps the updatedAt the last edit left when navigating', async () => {
     const stream = { ...referenceStream(), updatedAt: '2020-01-01T00:00:00Z' }
     const repository = createMemoryWorkspaceRepository({ raw: rawOf([stream]) })
@@ -1074,6 +1096,16 @@ describe('workspaceStore: replaceWorkspace', () => {
     store.replaceWorkspace(createWorkspace())
 
     expect(store.changes).toEqual([])
+  })
+
+  it('shows the changes it is given, such as what upgrading an imported v1 map applied', async () => {
+    const store = await makeStore()
+
+    store.replaceWorkspace(createWorkspace(), {
+      changes: ['Intake step added'],
+    })
+
+    expect(store.changes).toEqual(['Intake step added'])
   })
 
   it('saves the replacement to the repository', async () => {

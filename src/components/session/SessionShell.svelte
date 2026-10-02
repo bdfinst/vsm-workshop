@@ -4,7 +4,10 @@
   import { isTextEntry, shortcutFor } from '../../utils/ui/keymap.js'
   import PlaceholderStage from './stages/PlaceholderStage.svelte'
   import { stageStatus } from '../../utils/session/stages.js'
-  import { focusStageHeading } from '../../utils/session/focus.js'
+  import {
+    focusOpeningTarget,
+    focusStageHeading,
+  } from '../../utils/session/focus.js'
   import ScopeStage from './stages/ScopeStage.svelte'
   import SessionHeader from './SessionHeader.svelte'
   import StageRail from './StageRail.svelte'
@@ -18,11 +21,15 @@
 
   // On a stage change, and on opening a stream, focus moves to the heading.
   // It depends on the id, not the stream: an edit makes a new stream object
-  // and must not pull focus off the field being edited.
+  // and must not pull focus off the field being edited. The first time, an
+  // upgrade notice above the shell is announced before the stage.
   let workRegion = $state()
+  let opened = false
   $effect(() => {
     void [streamId, stage]
-    focusStageHeading(workRegion)
+    if (opened) focusStageHeading(workRegion)
+    else focusOpeningTarget()
+    opened = true
   })
 
   // The id makes a repeated message a new node, so screen readers say it again.

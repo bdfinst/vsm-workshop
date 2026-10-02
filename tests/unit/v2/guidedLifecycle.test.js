@@ -4,6 +4,7 @@ import { createWorkspaceStore } from '../../../src/stores/v2/workspaceStore.svel
 import { createMemoryWorkspaceRepository } from '../../../src/persistence/v2/memoryWorkspaceRepository.js'
 import { serializeWorkspace } from '../../../src/persistence/v2/workspaceCodec.js'
 import { exportValueStream } from '../../../src/persistence/v2/valueStreamJson.js'
+import { createStep as createV1Step } from '../../../src/models/StepFactory.js'
 import {
   noV1Repository,
   referenceStream,
@@ -139,6 +140,32 @@ describe('guidedLifecycle', () => {
       expect(await repository.loadBackup()).toBe(UNREADABLE)
     })
 
+    it('importing a v1 map keeps what upgrading it changed, for the notice', async () => {
+      const { store, lifecycle } = await unreadableLaunch()
+      const v1Map = JSON.stringify({
+        id: 'v1-map',
+        name: 'Old map',
+        description: '',
+        steps: [createV1Step('Dev', { leadTime: 240, processTime: 60 })],
+        connections: [],
+        createdAt: '2024-01-15T10:00:00.000Z',
+        updatedAt: '2024-01-16T10:00:00.000Z',
+      })
+
+      const result = lifecycle.startFromImport(v1Map)
+
+      expect(result.ok).toBe(true)
+      expect(store.changes).toEqual(['Intake step added'])
+    })
+
+    it('importing a v2 map has no changes to tell', async () => {
+      const { store, lifecycle } = await unreadableLaunch()
+
+      lifecycle.startFromImport(exportValueStream(referenceStream()))
+
+      expect(store.changes).toEqual([])
+    })
+
     it('a file that is not a value stream is refused and the screen stays', async () => {
       const { store, lifecycle } = await unreadableLaunch()
 
@@ -216,6 +243,100 @@ describe('guidedLifecycle', () => {
       await lifecycle.start()
 
       expect(lifecycle.exitBlockedReason()).toBeNull()
+    })
+  })
+
+  describe('when the saved workspace could not be read at all', () => {
+    // The read fails, so nothing was backed up; the working copy may be intact.
+    const flakyRepository = (raw) => {
+      const inner = createMemoryWorkspaceRepository({ raw })
+      let failing = true
+      return {
+        ...inner,
+        heal: () => {
+          failing = false
+        },
+        load: async () => {
+          if (failing) throw new Error('no storage')
+          return inner.load()
+        },
+      }
+    }
+    const readFailedLaunch = async (raw = null) => {
+      const repository = flakyRepository(raw)
+      const launched = launchOver(repository)
+      await launched.lifecycle.start()
+      return { repository, ...launched }
+    }
+
+    it('says why leaving is blocked, and downloading cannot lift it', async () => {
+      const { lifecycle } = await readFailedLaunch()
+
+      expect(lifecycle.exitBlockedReason()).toBe(
+        "Couldn't read your saved data. Try again."
+      )
+      lifecycle.noteUnreadableDownloaded()
+      expect(lifecycle.exitBlockedReason()).toBe(
+        "Couldn't read your saved data. Try again."
+      )
+    })
+
+    it('starting empty is refused with that reason and nothing is replaced', async () => {
+      const { store, lifecycle } = await readFailedLaunch()
+
+      const result = lifecycle.startEmpty()
+
+      expect(result).toEqual(refused)
+      expect(store.status).toBe('unreadable')
+      expect(store.streams).toHaveLength(0)
+    })
+
+    it('importing is refused with that reason and nothing is replaced', async () => {
+      const { store, lifecycle, repository } = await readFailedLaunch()
+      repository.heal()
+
+      const result = lifecycle.startFromImport(
+        exportValueStream(referenceStream({ name: 'Imported' }))
+      )
+      await store.flushSaves()
+
+      expect(result).toEqual(refused)
+      expect(store.status).toBe('unreadable')
+      expect(await repository.load()).toBeNull()
+    })
+
+    it('retrying opens the intact working copy once the read works', async () => {
+      const saved = referenceStream({ name: 'Intact' })
+      const { store, lifecycle, repository } = await readFailedLaunch(
+        serializeWorkspace(workspaceOf([saved]))
+      )
+      repository.heal()
+
+      await lifecycle.retry()
+
+      expect(store.status).toBe('ready')
+      expect(store.streams.map((stream) => stream.name)).toEqual(['Intact'])
+      expect(lifecycle.exitBlockedReason()).toBeNull()
+    })
+
+    it('retrying into an empty workspace creates the first stream, once', async () => {
+      const { store, lifecycle, repository } = await readFailedLaunch()
+      repository.heal()
+
+      await lifecycle.retry()
+
+      expect(store.status).toBe('ready')
+      expect(store.streams).toHaveLength(1)
+      expect(store.screen).toBe('stream')
+    })
+
+    it('a retry that fails again stays on the unreadable screen', async () => {
+      const { store, lifecycle } = await readFailedLaunch()
+
+      await lifecycle.retry()
+
+      expect(store.status).toBe('unreadable')
+      expect(store.unreadable.readFailed).toBe(true)
     })
   })
 })

@@ -485,6 +485,38 @@ describe('valueStreamStore: switch a step kind', () => {
     expect(step.waitTime).toEqual({ typ: null })
   })
 
+  it('a team step that is not a handoff is still not one after a round trip through outside', () => {
+    const { store } = openStream()
+    const id = stepNamed(store, 'Code review').id
+    expect(stepNamed(store, 'Code review').isHandoff).toBe(false)
+
+    store.switchStepKind(id, 'outside')
+    expect(stepNamed(store, 'Code review').isHandoff).toBe(true)
+    store.switchStepKind(id, 'team')
+
+    expect(stepNamed(store, 'Code review').isHandoff).toBe(false)
+  })
+
+  it('a team step the user marked as a handoff stays one after a round trip through outside', () => {
+    const { store } = openStream()
+    const id = stepNamed(store, 'Code review').id
+    store.updateStep(id, { isHandoff: true })
+
+    store.switchStepKind(id, 'outside')
+    store.switchStepKind(id, 'team')
+
+    expect(stepNamed(store, 'Code review').isHandoff).toBe(true)
+  })
+
+  it('a step that was outside from the start is not a handoff when it becomes a team step', () => {
+    const { store } = openStream()
+    store.addStep({ name: 'Vendor', kind: 'outside' })
+
+    store.switchStepKind(stepNamed(store, 'Vendor').id, 'team')
+
+    expect(stepNamed(store, 'Vendor').isHandoff).toBe(false)
+  })
+
   it('refuses to switch Intake', () => {
     const { store, persist } = openStream()
 
@@ -609,6 +641,7 @@ describe('valueStreamStore: future versions', () => {
     })
     expect(store.activeVersion.kind).toBe('current')
     expect(persist).toHaveBeenCalledTimes(1)
+    expect(persist).toHaveBeenCalledWith(store.stream, { navigation: true })
     expect(store.setActiveVersion('nope')).toEqual(refused)
     expect(persist).toHaveBeenCalledTimes(1)
   })

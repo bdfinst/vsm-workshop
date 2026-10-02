@@ -14,6 +14,9 @@
 
   let raw = $derived(workspaceStore.unreadable?.raw ?? null)
   let reason = $derived(workspaceStore.unreadable?.reason ?? '')
+  // The read itself failed: the saved data may be fine, so the way forward is
+  // to try again, not to replace it.
+  let readFailed = $derived(workspaceStore.unreadable?.readFailed === true)
 
   // Leaving replaces the only copy when it could not be backed up, so it
   // waits for a download; null when nothing is in the way.
@@ -70,6 +73,16 @@
   <p class="mt-1 text-gray-600" data-testid="unreadable-reason">{reason}</p>
 
   <div class="mt-4 flex flex-col items-start gap-4">
+    {#if readFailed}
+      <button
+        type="button"
+        class={buttonClass}
+        data-testid="try-again-button"
+        onclick={() => lifecycle.retry()}
+      >
+        Try again
+      </button>
+    {/if}
     <button
       type="button"
       class={buttonClass}
@@ -88,7 +101,7 @@
       onchange={handleFileChosen}
       data-testid="import-value-stream-input"
     />
-    {#if raw !== null}
+    {#if !readFailed && raw !== null}
       <button
         type="button"
         class={buttonClass}
@@ -128,7 +141,7 @@
           onconfirm={handleConfirm}
           oncancel={handleCancel}
         >
-          {#if raw !== null}
+          {#if !readFailed && raw !== null}
             <button
               type="button"
               class="mb-3 px-3 py-1.5 text-sm text-blue-700 underline focus:outline-none focus:ring-2 focus:ring-blue-500"

@@ -45,13 +45,21 @@ const removePathsWhere = (version, matches) => {
   return before - version.reworkPaths.length
 }
 
-// A snapshot is the whole stream minus `session`, plus the stage the user was
-// on when the edit was made. Undo restores data, never the stage.
+// A snapshot is the whole stream minus `session` and `activeVersionId`, plus
+// the stage the user was on when the edit was made. Undo restores data, never
+// the stage or which version is being viewed.
 const dataOf = (stream) => {
   const data = { ...stream }
   delete data.session
+  delete data.activeVersionId
   return data
 }
+
+// The version to land on when the one being viewed is gone.
+const viewableVersionId = (versions, wanted) =>
+  versions.some((version) => version.id === wanted)
+    ? wanted
+    : versions.find((version) => version.kind === VERSION_KIND.CURRENT).id
 
 // What each Scope field is called in an undo announcement.
 const SCOPE_LABELS = {
@@ -66,10 +74,16 @@ const SCOPE_LABEL = 'scope'
 const scopeLabel = (fields) =>
   fields.length === 1 ? (SCOPE_LABELS[fields[0]] ?? SCOPE_LABEL) : SCOPE_LABEL
 
-// `label` says what the edit was, when it is worth saying.
-const announce = (verb, stage, currentStage, label) => {
-  if (stage === currentStage) return label ? `${verb}: ${label}` : verb
-  return `${verb}: ${label ?? 'change'} on the ${STAGE_NAMES[stage - 1]} stage`
+// `label` says what the edit was, when it is worth saying. `versionName` is
+// given when the edit was in a version other than the one being viewed.
+const announce = ({ verb, stage, currentStage, label, versionName }) => {
+  const otherStage = stage !== currentStage
+  const parts = []
+  if (label) parts.push(label)
+  else if (versionName || otherStage) parts.push('change')
+  if (versionName) parts.push(`in ${versionName}`)
+  if (otherStage) parts.push(`on the ${STAGE_NAMES[stage - 1]} stage`)
+  return parts.length ? `${verb}: ${parts.join(' ')}` : verb
 }
 
 /**
@@ -88,6 +102,10 @@ export const createValueStreamStore = ({ stream, persist }) => {
   // `updateStepPosition`, which skips `commit` and so the history (v1 D2).
   const history = createUndoStore((x) => structuredClone($state.snapshot(x)))
 
+  // A team step's handoff flag, as it was when the step went outside (an outside
+  // step is always a handoff), so going back to team restores it.
+  const handoffBeforeOutside = {}
+
   const activeVersion = $derived(
     current.versions.find((version) => version.id === current.activeVersionId)
   )
@@ -101,6 +119,7 @@ export const createValueStreamStore = ({ stream, persist }) => {
         data: dataOf(current),
         stage: current.session.activeStage,
         label: options?.label,
+        versionId: options?.versionId,
       })
     }
     current = draft
@@ -118,7 +137,7 @@ export const createValueStreamStore = ({ stream, persist }) => {
     const check = validateVersion(version, draft.versions)
     if (!check.valid) return refuse(firstMessage(check))
 
-    commit(draft)
+    commit(draft, { versionId: draft.activeVersionId })
     return { ok: true, ...outcome }
   }
 
@@ -216,13 +235,16 @@ export const createValueStreamStore = ({ stream, persist }) => {
         return { error: `${step.name} is already a ${kind} step` }
       }
       const blank = createStep({ kind })
+      if (kind === STEP_KIND.OUTSIDE) {
+        handoffBeforeOutside[stepId] = step.isHandoff
+      }
       const kept = Object.fromEntries(
         Object.entries(step).filter(([field]) => !TIME_FIELDS.includes(field))
       )
       version.steps[index] = {
         ...kept,
         kind,
-        isHandoff: blank.isHandoff || step.isHandoff,
+        isHandoff: blank.isHandoff || handoffBeforeOutside[stepId] === true,
         ...Object.fromEntries(
           TIME_FIELDS.filter((f) => f in blank).map((f) => [f, blank[f]])
         ),
@@ -247,13 +269,14 @@ export const createValueStreamStore = ({ stream, persist }) => {
     return { ok: true, versionId: future.id }
   }
 
+  // Navigation, like a stage change: saved, but not an undo step or an edit.
   const setActiveVersion = (versionId) => {
     if (!current.versions.some((version) => version.id === versionId)) {
       return refuse(VERSION_MISSING_MESSAGE)
     }
     const draft = $state.snapshot(current)
     draft.activeVersionId = versionId
-    commit(draft)
+    commit(draft, { navigation: true })
     return { ok: true }
   }
 
@@ -323,8 +346,8 @@ export const createValueStreamStore = ({ stream, persist }) => {
     return { ok: true }
   }
 
-  // The snapshot keeps the stage of its edit through undo and redo, so the
-  // announcement names where the change happened.
+  // The snapshot keeps the stage and version of its edit through undo and redo,
+  // so the announcement names where the change happened.
   const travel = (verb, peek, move) => {
     const entry = peek()
     if (!entry) return refuse(`Nothing to ${verb.toLowerCase()}`)
@@ -332,17 +355,30 @@ export const createValueStreamStore = ({ stream, persist }) => {
       data: dataOf(current),
       stage: entry.stage,
       label: entry.label,
+      versionId: entry.versionId,
     })
-    current = { ...restored.data, session: current.session }
+    const viewed = viewableVersionId(
+      restored.data.versions,
+      current.activeVersionId
+    )
+    current = {
+      ...restored.data,
+      session: current.session,
+      activeVersionId: viewed,
+    }
     save()
+    const elsewhere = entry.versionId && entry.versionId !== viewed
     return {
       ok: true,
-      announcement: announce(
+      announcement: announce({
         verb,
-        entry.stage,
-        current.session.activeStage,
-        entry.label
-      ),
+        stage: entry.stage,
+        currentStage: current.session.activeStage,
+        label: entry.label,
+        versionName: elsewhere
+          ? current.versions.find((v) => v.id === entry.versionId)?.label
+          : null,
+      }),
     }
   }
 

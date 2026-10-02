@@ -31,7 +31,12 @@
     data-testid="upgrade-notice"
   >
     <div class="flex items-start justify-between gap-4">
-      <h2 id="upgrade-notice-title" class="font-semibold text-blue-900">
+      <h2
+        id="upgrade-notice-title"
+        class="font-semibold text-blue-900"
+        tabindex="-1"
+        data-testid="upgrade-notice-title"
+      >
         Map upgraded to the new format
       </h2>
       <button

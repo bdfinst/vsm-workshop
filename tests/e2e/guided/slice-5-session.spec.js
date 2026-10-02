@@ -108,7 +108,13 @@ test.describe('Session header (step 5.2)', () => {
   })
 })
 
-const NOUNS = [/name/i, /trigger/i, /end point/i, /unit of work/i]
+// The reasons Next gives, word for word as the Gherkin quotes them.
+const REASON_ALL = 'Add a name, trigger, end point and unit of work'
+const REASON_NAME = 'Add a name'
+const REASON_TRIGGER = 'Add a trigger'
+const REASON_END_POINT = 'Add an end point'
+const REASON_UNIT = 'Add a unit of work'
+const REASON_NAME_AND_TRIGGER = 'Add a name and a trigger'
 
 const nextButton = (page) => page.getByRole('button', { name: 'Next' })
 
@@ -129,15 +135,11 @@ const COMPLETE_SCOPE = {
   unit: 'story',
 }
 
-// Asserts what Next's description names: only the given fields.
-const expectReasonNames = async (page, named) => {
+// Next is disabled, and its accessible description is exactly the reason.
+const expectReason = async (page, reason) => {
   const next = nextButton(page)
-  await expect(next).toBeDisabled()
-  for (const noun of NOUNS) {
-    const mentioned = named.some((n) => n.source === noun.source)
-    if (mentioned) await expect(next).toHaveAccessibleDescription(noun)
-    else await expect(next).not.toHaveAccessibleDescription(noun)
-  }
+  await expect(next).toHaveAttribute('aria-disabled', 'true')
+  await expect(next).toHaveAccessibleDescription(reason)
 }
 
 test.describe('Scope stage (step 5.3)', () => {
@@ -159,25 +161,25 @@ test.describe('Scope stage (step 5.3)', () => {
       'step'
     )
     await expect(rail.locator('[aria-current="step"]')).toHaveCount(1)
-    await expectReasonNames(page, NOUNS)
+    await expectReason(page, REASON_ALL)
     await expect(field(page, 'Unit of work')).toHaveValue('')
   })
 
-  // [field, the fillScope key to leave out, the noun the reason names]
+  // [field, the fillScope key to leave out, the reason Next gives]
   const MISSING = [
-    ['name', 'name', /name/i],
-    ['trigger', 'trigger', /trigger/i],
-    ['end point', 'endPoint', /end point/i],
-    ['unit of work', 'unit', /unit of work/i],
+    ['name', 'name', REASON_NAME],
+    ['trigger', 'trigger', REASON_TRIGGER],
+    ['end point', 'endPoint', REASON_END_POINT],
+    ['unit of work', 'unit', REASON_UNIT],
   ]
-  for (const [missing, omit, noun] of MISSING) {
+  for (const [missing, omit, reason] of MISSING) {
     test(`Each missing Scope field is named: ${missing}`, async ({ page }) => {
       await page.goto(GUIDED_URL)
       const { [omit]: _omitted, ...rest } = COMPLETE_SCOPE
 
       await fillScope(page, rest)
 
-      await expectReasonNames(page, [noun])
+      await expectReason(page, reason)
     })
   }
 
@@ -189,7 +191,7 @@ test.describe('Scope stage (step 5.3)', () => {
       unit: COMPLETE_SCOPE.unit,
     })
 
-    await expectReasonNames(page, [/name/i, /trigger/i])
+    await expectReason(page, REASON_NAME_AND_TRIGGER)
   })
 
   test('Whitespace-only name counts as empty', async ({ page }) => {
@@ -197,7 +199,7 @@ test.describe('Scope stage (step 5.3)', () => {
 
     await fillScope(page, { ...COMPLETE_SCOPE, name: '   ' })
 
-    await expectReasonNames(page, [/name/i])
+    await expectReason(page, REASON_NAME)
   })
 
   test('Completing Scope moves to Steps', async ({ page }) => {
@@ -370,7 +372,9 @@ test.describe('Stage rail and header scenarios (step 5.4)', () => {
     const timerWords = /timer|timebox|time left|countdown/i
 
     for (const status of await rail(page).getByRole('listitem').all()) {
-      await status.getByRole('button').click()
+      const stage = status.getByRole('button')
+      await stage.click()
+      await expect(stage).toHaveAttribute('aria-current', 'step')
       await expect(page.getByTestId('work-region')).toBeVisible()
       await expect(page.locator('body')).not.toContainText(timerWords)
       await expect(page.locator('[role="timer"]')).toHaveCount(0)
@@ -403,8 +407,7 @@ test.describe('Stage rail and header scenarios (step 5.4)', () => {
     await undo.click()
 
     await expect(mapName(page)).toHaveValue('Checkout delivery')
-    await expect(liveRegion(page)).toContainText(/undo/i)
-    await expect(liveRegion(page)).toContainText(/map name/i)
+    await expect(liveRegion(page)).toHaveText('Undo: map name')
 
     await page.keyboard.press('Control+Shift+Z')
 
@@ -439,10 +442,20 @@ test.describe('Stage rail and header scenarios (step 5.4)', () => {
   })
 
   test('Reload resumes the session', async ({ page, seed }) => {
-    await seed(workspaceAtStage(2))
+    await seed(workspaceAtStage(1))
+    await nextButton(page).click()
+    await expect(stageItem(page, 'steps')).toHaveAttribute(
+      'aria-current',
+      'step'
+    )
     await renameMap(page, 'Checkout v2')
-    // The write to the working copy is async; reload once it has landed.
-    await expect.poll(() => savedWorkingCopy(page)).toContain('Checkout v2')
+    // The writes to the working copy are async; reload once they have landed.
+    await expect
+      .poll(async () => {
+        const saved = await savedWorkspace(page)
+        return [saved?.streams[0].name, saved?.streams[0].session.activeStage]
+      })
+      .toEqual(['Checkout v2', 2])
 
     await page.reload()
 
@@ -943,5 +956,142 @@ test.describe('Unreadable data that could not be backed up (data safety)', () =>
     })
 
     await expect(mapName(page)).toHaveValue('Imported delivery')
+  })
+})
+
+test.describe('Launch and notices (slice 5 re-review)', () => {
+  test('HomeScreen is never shown on a first launch', async ({ page }) => {
+    await page.addInitScript(() => {
+      window.__homeScreenSeen = false
+      const selector = '[data-testid="home-screen"]'
+      new MutationObserver((records) => {
+        for (const record of records) {
+          for (const node of record.addedNodes) {
+            if (
+              node.nodeType === 1 &&
+              (node.matches(selector) || node.querySelector(selector))
+            ) {
+              window.__homeScreenSeen = true
+            }
+          }
+        }
+      }).observe(document, { childList: true, subtree: true })
+    })
+
+    await page.goto(GUIDED_URL)
+
+    await expect(stageItem(page, 'scope')).toHaveAttribute(
+      'aria-current',
+      'step'
+    )
+    expect(await page.evaluate(() => window.__homeScreenSeen)).toBe(false)
+  })
+
+  test('Opening without a notice puts focus on the stage heading', async ({
+    page,
+  }) => {
+    await page.goto(GUIDED_URL)
+
+    await expect(stageHeading(page)).toBeFocused()
+  })
+
+  test('Opening with an upgrade notice puts focus on the notice so it is announced', async ({
+    page,
+    seedV1,
+    axe,
+  }) => {
+    await seedV1(v1MapWithoutIntake())
+
+    await expect(page.getByTestId('upgrade-notice-title')).toBeFocused()
+    await expect(page.getByTestId('upgrade-notice-title')).toHaveText(
+      'Map upgraded to the new format'
+    )
+    await axe()
+  })
+
+  test('Importing a v1 map from the unreadable screen shows the upgrade notice', async ({
+    page,
+    seed,
+  }) => {
+    await seed(UNREADABLE_TEXT)
+
+    await page.getByTestId('import-value-stream-input').setInputFiles({
+      name: 'v1-map.json',
+      mimeType: 'application/json',
+      buffer: Buffer.from(JSON.stringify(v1MapWithoutIntake())),
+    })
+
+    const notice = page.getByTestId('upgrade-notice')
+    await expect(notice).toBeVisible()
+    await expect(notice.getByRole('listitem')).toHaveText(['Intake step added'])
+    await expect(unreadableScreen(page)).toHaveCount(0)
+  })
+})
+
+/** Runs in the page: reads from the working copy fail until the test lets them. */
+const failReads = () => {
+  window.__failReads = true
+  const get = IDBObjectStore.prototype.get
+  IDBObjectStore.prototype.get = function (...args) {
+    if (window.__failReads) throw new DOMException('Gone', 'UnknownError')
+    return get.apply(this, args)
+  }
+}
+
+const READ_FAILED_REASON = "Couldn't read your saved data. Try again."
+
+test.describe('Saved data that could not be read at all (data safety)', () => {
+  test('Try again opens the intact working copy; until then nothing can replace it', async ({
+    page,
+    seed,
+    axe,
+  }) => {
+    await page.addInitScript(failReads)
+    await seed(workspaceAtStage(2))
+    const tryAgain = page.getByTestId('try-again-button')
+    const importButton = page.getByRole('button', {
+      name: 'Import value stream',
+    })
+
+    await expect(unreadableScreen(page)).toBeVisible()
+    await expect(page.getByTestId('backup-required-reason')).toHaveText(
+      READ_FAILED_REASON
+    )
+    await expect(
+      page.getByRole('button', { name: 'Download the unreadable data' })
+    ).toHaveCount(0)
+    await expect(importButton).toHaveAttribute('aria-disabled', 'true')
+    await expect(importButton).toHaveAccessibleDescription(READ_FAILED_REASON)
+    await axe()
+
+    await startEmptyButton(page).click()
+    const confirm = confirmation(page).getByRole('button', {
+      name: 'Start empty',
+    })
+    await expect(confirm).toHaveAttribute('aria-disabled', 'true')
+    await expect(
+      confirmation(page).getByRole('button', {
+        name: 'Download the unreadable data',
+      })
+    ).toHaveCount(0)
+    await confirm.click({ force: true })
+    await expect(unreadableScreen(page)).toBeVisible()
+    await page.keyboard.press('Escape')
+
+    await tryAgain.click()
+    await expect(unreadableScreen(page)).toBeVisible()
+    await expect(tryAgain).toBeVisible()
+
+    await page.evaluate(() => {
+      window.__failReads = false
+    })
+    await tryAgain.click()
+
+    await expect(unreadableScreen(page)).toHaveCount(0)
+    await expect(stageItem(page, 'steps')).toHaveAttribute(
+      'aria-current',
+      'step'
+    )
+    await expect(mapName(page)).toHaveValue('Checkout delivery')
   })
 })

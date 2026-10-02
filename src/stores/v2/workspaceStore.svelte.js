@@ -125,7 +125,11 @@ export const createWorkspaceStore = ({
     if (!stored) return
     if (options?.navigation || options?.positionOnly) {
       const quiet = options.navigation
-        ? { ...stored, session: stream.session }
+        ? {
+            ...stored,
+            session: stream.session,
+            activeVersionId: stream.activeVersionId,
+          }
         : { ...stream, updatedAt: stored.updatedAt }
       streams = replaceById(streams, quiet)
       enqueueSave()
@@ -336,11 +340,12 @@ export const createWorkspaceStore = ({
   // already the saved copy.
   // It refuses while the saved workspace could not be read at all: the working
   // copy may be intact, and replacing it would destroy the only copy.
-  const replaceWorkspace = (workspace) => {
+  // `changes` is what upgrading the workspace's content applied, for the notice.
+  const replaceWorkspace = (workspace, { changes: applied = [] } = {}) => {
     if (unreadable?.readFailed === true) return refuse(READ_FAILED_MESSAGE)
     replacements += 1
     adopt(workspace)
-    changes = []
+    changes = applied
     unreadable = null
     status = 'ready'
     enqueueSave()

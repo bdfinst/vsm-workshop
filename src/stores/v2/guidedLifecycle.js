@@ -10,20 +10,24 @@ import { refuse } from '../../models/v2/result.js'
 
 export const BACKUP_FIRST_MESSAGE =
   "Your unreadable data isn't backed up yet. Download it first."
+export const READ_FAILED_MESSAGE = "Couldn't read your saved data. Try again."
 
 /**
  * Create the lifecycle for one workspace store.
  * @param {Object} options
  * @param {Object} options.store - The workspace store
- * @returns {{start: function(): Promise<void>, startEmpty: function(): Object,
+ * @returns {{start: function(): Promise<void>, retry: function(): Promise<void>,
+ *   startEmpty: function(): Object,
  *   startFromImport: function(string): Object,
  *   exitBlockedReason: function(): ?string,
  *   noteUnreadableDownloaded: function(): void}} `start` runs the launch once;
- *   calling it again returns the same promise. `startEmpty` and
- *   `startFromImport` are the ways out of an unreadable workspace; both refuse
- *   while `exitBlockedReason` gives a reason. Leaving replaces the working
- *   copy, so when the unreadable data could not be backed up, that copy is the
- *   only one: leaving waits until the user has downloaded it.
+ *   calling it again returns the same promise. `retry` loads again after the
+ *   saved workspace could not be read. `startEmpty` and `startFromImport` are
+ *   the ways out of an unreadable workspace; both refuse while
+ *   `exitBlockedReason` gives a reason. Leaving replaces the working copy, so
+ *   when the unreadable data could not be backed up, that copy is the only
+ *   one: leaving waits until the user has downloaded it. When the read itself
+ *   failed the working copy may be intact, so leaving waits for a retry.
  */
 export const createGuidedLifecycle = ({ store }) => {
   let launch = null
@@ -45,6 +49,7 @@ export const createGuidedLifecycle = ({ store }) => {
 
   const exitBlockedReason = () => {
     const unreadable = store.unreadable
+    if (unreadable?.readFailed === true) return READ_FAILED_MESSAGE
     const mustDownload =
       unreadable?.backupFailed === true &&
       unreadable.raw !== null &&
@@ -57,6 +62,11 @@ export const createGuidedLifecycle = ({ store }) => {
     noteUnreadableDownloaded: () => store.markUnreadableDownloaded(),
     start: () => {
       if (!launch) launch = run()
+      return launch
+    },
+    // Loads again, and opens the first stream if the workspace turns out empty.
+    retry: () => {
+      launch = run()
       return launch
     },
     // Leaves the unreadable screen for an empty workspace. The backup stays.
@@ -77,7 +87,8 @@ export const createGuidedLifecycle = ({ store }) => {
         createWorkspace({
           streams: [result.stream],
           activeStreamId: result.stream.id,
-        })
+        }),
+        { changes: result.changes }
       )
       return { ok: true }
     },

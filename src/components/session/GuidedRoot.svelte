@@ -9,13 +9,23 @@
 
   const lifecycle = createGuidedLifecycle({ store: workspaceStore })
 
-  onMount(() => {
-    lifecycle.start()
+  // The launch also creates the first stream, so nothing but the loading
+  // placeholder shows until it has finished: HomeScreen never flashes up on a
+  // first launch.
+  let launched = $state(false)
+
+  onMount(async () => {
+    await lifecycle.start()
+    launched = true
   })
 </script>
 
 <NoticeRegion />
-{#if workspaceStore.status === 'unreadable'}
+{#if !launched}
+  <p class="p-4 text-gray-600" role="status" data-testid="guided-loading">
+    Loading your workspace
+  </p>
+{:else if workspaceStore.status === 'unreadable'}
   <UnreadableScreen {lifecycle} />
 {:else if workspaceStore.status === 'ready'}
   {#if workspaceStore.screen === 'home'}
