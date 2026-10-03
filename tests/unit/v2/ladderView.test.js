@@ -1,4 +1,4 @@
-import { describe, it, expect } from 'vitest'
+import { describe, it, expect, vi } from 'vitest'
 import { TONE } from '../../../src/utils/ui/flaggedSteps.js'
 import {
   LABEL_CHAR_WIDTH,
@@ -286,10 +286,6 @@ describe('textWidthOf', () => {
     expect(textWidthOf('')).toBe(0)
   })
 
-  it('takes an ordinary character at LABEL_CHAR_WIDTH', () => {
-    expect(textWidthOf('code ride')).toBe('code ride'.length * LABEL_CHAR_WIDTH)
-  })
-
   // Scenario Outline: A label character is measured by its class
   it.each([
     { kind: 'an ordinary character', text: 'e', ems: 2 / 3 },
@@ -299,21 +295,33 @@ describe('textWidthOf', () => {
     { kind: 'a lower-case w', text: 'w', ems: 0.9 },
     { kind: 'a wide capital W', text: 'W', ems: 1 },
     { kind: 'a wide capital M', text: 'M', ems: 1 },
+    { kind: 'a wide capital with an accent', text: 'Ŵ', ems: 1 },
+    { kind: 'a lower-case w with an accent', text: 'ẃ', ems: 0.9 },
+    { kind: 'a lower-case m with an accent', text: 'ḿ', ems: 0.9 },
+    { kind: 'wide punctuation: an em dash', text: '—', ems: 1 },
+    { kind: 'wide punctuation: a percent sign', text: '%', ems: 1 },
+    { kind: 'wide punctuation: an at sign', text: '@', ems: 1 },
+    { kind: 'wide punctuation: an ellipsis', text: '…', ems: 1 },
+    { kind: 'an ampersand, as broad as a capital', text: '&', ems: 0.72 },
     { kind: 'an East Asian wide character', text: '価', ems: 1 },
     { kind: 'an emoji', text: '🚀', ems: 1.3 },
     { kind: 'an emoji with a skin tone, one glyph', text: '👍🏽', ems: 1.3 },
-    { kind: 'a flag, one glyph', text: '🇯🇵', ems: 1.3 },
-    {
-      kind: 'a family joined by zero-width joiners, one glyph',
-      text: '👨‍👩‍👧',
-      ems: 1.3,
-    },
     {
       kind: 'an emoji with a presentation selector, one glyph',
       text: '❤️',
       ems: 1.3,
     },
-    { kind: 'a letter with a combining accent', text: 'e\u0301', ems: 2 / 3 },
+    {
+      kind: 'a flag, a glyph for each of its two letters',
+      text: '🇯🇵',
+      ems: 2.6,
+    },
+    {
+      kind: 'a family joined by zero-width joiners, a glyph for each person',
+      text: '👨‍👩‍👧',
+      ems: 3.9,
+    },
+    { kind: 'a letter with a combining accent', text: 'é', ems: 2 / 3 },
   ])(
     'A label character is measured by its class: $kind at $ems em',
     ({ text, ems }) => {
@@ -321,14 +329,8 @@ describe('textWidthOf', () => {
     }
   )
 
-  it('takes a digit, a space and punctuation as ordinary characters', () => {
-    expect(textWidthOf('7 %.')).toBe(4 * LABEL_CHAR_WIDTH)
-  })
-
-  it('takes a CJK character at a full em, wider than an average one', () => {
-    expect([...CJK_NAME]).toHaveLength(20)
-    expect(textWidthOf(CJK_NAME)).toBe(20 * LABEL_FONT_SIZE)
-    expect(textWidthOf(CJK_NAME)).toBeGreaterThan(20 * LABEL_CHAR_WIDTH)
+  it('takes a digit, a space and ordinary punctuation as ordinary characters', () => {
+    expect(textWidthOf('7 ,.')).toBe(4 * LABEL_CHAR_WIDTH)
   })
 
   it.each([
@@ -346,12 +348,8 @@ describe('textWidthOf', () => {
     expect(textWidthOf('\u{20BB7}\u{20BB7}')).toBe(2 * LABEL_FONT_SIZE)
   })
 
-  it.each(['W', 'M'])('takes the wide capital %s at a full em', (capital) => {
-    expect(textWidthOf(capital)).toBe(LABEL_FONT_SIZE)
-  })
-
   it('adds the classes up in a mixed name', () => {
-    // Q and A are capitals; the two spaces are ordinary; 自, 動, 化, W and M are a full em;
+    // Q and A are capitals; the three spaces are ordinary; 自, 動, 化, W and M are a full em;
     // m is a wide lower-case letter; the rocket is an emoji.
     expect(textWidthOf('QA 自動化 WM m🚀')).toBeCloseTo(
       2 * CAPITAL_WIDTH +
@@ -361,6 +359,44 @@ describe('textWidthOf', () => {
         1.3 * LABEL_FONT_SIZE,
       10
     )
+  })
+})
+
+describe('textWidthOf where Intl.Segmenter is missing', () => {
+  // An engine without it (Firefox before 125) must still load the session and
+  // measure labels, by code point, which can only be wider.
+  const MIXED = ['Ship it', 'Ŵ', 'Ç', 'é', '🚀', '👍🏽', '🇯🇵', '👨‍👩‍👧', '❤️']
+
+  const measuredWithoutSegmenter = async (texts) => {
+    const original = Intl.Segmenter
+    Intl.Segmenter = undefined
+    try {
+      vi.resetModules()
+      const { textWidthOf: measure } =
+        await import('../../../src/utils/ui/ladderView.js')
+      return texts.map(measure)
+    } finally {
+      Intl.Segmenter = original
+      vi.resetModules()
+    }
+  }
+
+  it('loads and measures a label by code point', async () => {
+    const [plain] = await measuredWithoutSegmenter(['Ship it'])
+
+    expect(plain).toBe(textWidthOf('Ship it'))
+  })
+
+  it.each(MIXED)('never measures %s narrower than with it', async (text) => {
+    const [fallback] = await measuredWithoutSegmenter([text])
+
+    expect(fallback).toBeGreaterThanOrEqual(textWidthOf(text))
+  })
+
+  it('measures a combining accent as a character of its own, which is wider', async () => {
+    const [fallback] = await measuredWithoutSegmenter(['é'])
+
+    expect(fallback).toBe(2 * LABEL_CHAR_WIDTH)
   })
 })
 

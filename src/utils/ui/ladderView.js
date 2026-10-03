@@ -131,14 +131,24 @@ const WIDE_RANGES = [
 const WIDE_CAPITALS = new Set(['W', 'M'])
 // The lower-case letters that run well past the average.
 const WIDE_LOWERCASE = new Set(['m', 'w'])
+// Punctuation drawn nearly an em wide: the em dash, percent sign, at sign and
+// ellipsis.
+const WIDE_PUNCTUATION = new Set(['—', '%', '@', '…'])
+// Symbols as broad as a capital.
+const CAPITAL_WIDTH_SYMBOLS = new Set(['&'])
 const CAPITAL = /^\p{Lu}/u
 // A glyph from the emoji fonts: pictographs, flags (regional indicators), and
 // anything made emoji by a presentation selector or a keycap.
-const EMOJI = /\p{Extended_Pictographic}|\p{Regional_Indicator}|\uFE0F|\u20E3/u
+const EMOJI = /\p{Extended_Pictographic}|\p{Regional_Indicator}|️|⃣/u
+// What is drawn as a glyph of its own in an emoji sequence: a pictograph or a
+// regional indicator. A skin-tone modifier and a presentation selector are not:
+// they change the glyph before them.
+const EMOJI_GLYPH = /\p{Extended_Pictographic}|\p{Regional_Indicator}/gu
 
 // Widths of the classes, in ems of LABEL_FONT_SIZE, probed in the label font
 // (IBM Plex Sans semibold) and rounded up so the estimate stays on the wide
-// side: the widest capitals (H, N, O, G, Q) are 0.72 em, m is 0.89, w 0.82 and
+// side: the widest capitals (H, N, O, G, Q) are 0.72 em, & 0.71, m is 0.89, w
+// 0.82, the wide punctuation (%, @, the ellipsis, the em dash) up to 0.96 and
 // an emoji 1.25 in the system emoji fonts. Everything else is the ordinary
 // LABEL_CHAR_WIDTH.
 const CAPITAL_EMS = 0.72
@@ -146,37 +156,58 @@ const WIDE_LOWERCASE_EMS = 0.9
 const FULL_EM = 1
 const EMOJI_EMS = 1.3
 
-// Splits text into what a reader sees as one character: a skin-toned or joined
-// emoji, a flag or a letter with its accent is one.
-const segmenter = new Intl.Segmenter()
-const graphemesOf = (text) =>
-  Array.from(segmenter.segment(text), ({ segment }) => segment)
-
-const isWide = (grapheme) => {
-  const code = grapheme.codePointAt(0)
-  return (
-    WIDE_CAPITALS.has(grapheme) ||
-    WIDE_RANGES.some(([from, to]) => code >= from && code <= to)
-  )
+// Splits text into what a reader sees as one character: a skin-toned emoji or
+// a letter with its accent is one. Made on first use, and by code point where
+// the engine has no Intl.Segmenter (Firefox before 125): that can only count
+// more characters, so the estimate stays wide.
+let segmenter
+const graphemesOf = (text) => {
+  if (typeof Intl.Segmenter !== 'function') return [...text]
+  segmenter = segmenter ?? new Intl.Segmenter()
+  return Array.from(segmenter.segment(text), ({ segment }) => segment)
 }
 
+const isWide = (grapheme, base) =>
+  WIDE_CAPITALS.has(base) ||
+  WIDE_PUNCTUATION.has(base) ||
+  WIDE_RANGES.some(([from, to]) => {
+    const code = grapheme.codePointAt(0)
+    return code >= from && code <= to
+  })
+
+// A flag or a family can be drawn as several glyphs on a platform without the
+// sequence, so each pictograph and regional indicator is charged on its own;
+// the estimate errs wide so a label never clips on any platform. A skin-tone
+// sequence and a presentation-selector emoji are one glyph everywhere.
+const emojiWidthOf = (grapheme) =>
+  Math.max(grapheme.match(EMOJI_GLYPH)?.length ?? 0, 1) *
+  EMOJI_EMS *
+  LABEL_FONT_SIZE
+
 const widthOfGrapheme = (grapheme) => {
-  if (EMOJI.test(grapheme)) return EMOJI_EMS * LABEL_FONT_SIZE
-  if (isWide(grapheme)) return FULL_EM * LABEL_FONT_SIZE
-  if (CAPITAL.test(grapheme)) return CAPITAL_EMS * LABEL_FONT_SIZE
-  if (WIDE_LOWERCASE.has(grapheme)) return WIDE_LOWERCASE_EMS * LABEL_FONT_SIZE
+  if (EMOJI.test(grapheme)) return emojiWidthOf(grapheme)
+  // The letter under any accent: Ŵ is a W, ḿ an m.
+  const base = grapheme.normalize('NFD')[0]
+  if (isWide(grapheme, base)) return FULL_EM * LABEL_FONT_SIZE
+  if (CAPITAL.test(grapheme) || CAPITAL_WIDTH_SYMBOLS.has(base)) {
+    return CAPITAL_EMS * LABEL_FONT_SIZE
+  }
+  if (WIDE_LOWERCASE.has(base)) return WIDE_LOWERCASE_EMS * LABEL_FONT_SIZE
   return LABEL_CHAR_WIDTH
 }
 
 /**
  * An estimate, in pixels, of how wide a label line is drawn. It weights each
- * character (a grapheme, so a joined emoji or an accented letter counts once)
- * by class: emoji at 1.3 em, East Asian wide and fullwidth characters and the
- * capitals W and M at a full em, the other capitals at 0.72 em, the lower-case
- * m and w at 0.9 em, and every other character at LABEL_CHAR_WIDTH. It is
- * pure, so it cannot read font metrics: it measures by class, from widths
- * probed in the label font, and errs on the wide side so labels never overlap
- * or clip. Needs Intl.Segmenter.
+ * character (a grapheme, so an accented letter or a skin-toned emoji counts
+ * once) by class: an emoji at 1.3 em for each glyph it can be drawn as (a flag
+ * is two, a family one per person), East Asian wide and fullwidth characters,
+ * the capitals W and M, and the em dash, percent sign, at sign and ellipsis at
+ * a full em, the other capitals and the ampersand at 0.72 em, the lower-case m
+ * and w at 0.9 em, and every other character at LABEL_CHAR_WIDTH. An accent
+ * does not change the class: Ŵ is a W. It is pure, so it cannot read font
+ * metrics: it measures by class, from widths probed in the label font, and
+ * errs on the wide side so labels never overlap or clip. Without
+ * Intl.Segmenter it counts code points, which is wider still.
  * @param {string} text
  * @returns {number} Pixels
  */
