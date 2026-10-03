@@ -16,7 +16,13 @@ import {
   exportValueStream,
   importValueStream,
 } from '../../persistence/v2/valueStreamJson.js'
-import { createValueStream } from '../../models/v2/valueStream.js'
+import {
+  BLANK_NAME_MESSAGE,
+  createValueStream,
+  displayName,
+  isBlankName,
+  normalizeName,
+} from '../../models/v2/valueStream.js'
 import { refuse } from '../../models/v2/result.js'
 import { createWorkspace } from '../../models/v2/workspace.js'
 import {
@@ -25,7 +31,6 @@ import {
 } from '../../models/v2/valueStreamCopy.js'
 
 export const NOT_READY_MESSAGE = 'The workspace is not ready yet'
-export const BLANK_NAME_MESSAGE = 'Add a name'
 export const STREAM_MISSING_MESSAGE = "That value stream isn't in the workspace"
 export const NOTHING_TO_RESTORE_MESSAGE = 'Nothing to restore'
 export const UNREADABLE_MESSAGE = "The saved workspace couldn't be read"
@@ -73,8 +78,10 @@ export const createWorkspaceStore = ({
   let base = createWorkspace()
   let queue = Promise.resolve()
   let listeners = []
-  // Restore tokens that can still be used.
-  let tokens = []
+  // The token of the most recent removal: the one thing Undo can restore. It
+  // lives here, not in a screen, so it outlasts a visit to another stream. A new
+  // removal replaces it, and `adopt` clears it.
+  let lastToken = $state.raw(null)
   // The load in progress, so a second `init` waits for it instead of starting another.
   let loading = null
   // Counts the workspaces swapped in, so a load that started before one knows it lost.
@@ -175,7 +182,7 @@ export const createWorkspaceStore = ({
     activeStreamId = workspace.activeStreamId
     revision = workspace.revision
     savedRevision = revision
-    tokens = []
+    lastToken = null
     showActive()
   }
 
@@ -266,11 +273,10 @@ export const createWorkspaceStore = ({
   const rename = whenReady((id, name) => {
     const index = streamAt(id)
     if (index === -1) return refuse(STREAM_MISSING_MESSAGE)
-    const trimmed = typeof name === 'string' ? name.trim() : ''
-    if (!trimmed) return refuse(BLANK_NAME_MESSAGE)
+    if (isBlankName(name)) return refuse(BLANK_NAME_MESSAGE)
     streams = replaceById(
       streams,
-      touchValueStream(streams[index], { name: trimmed })
+      touchValueStream(streams[index], { name: normalizeName(name) })
     )
     commit()
     // The open stream store holds its own copy, so it must start over from this
@@ -297,7 +303,7 @@ export const createWorkspaceStore = ({
     if (index === -1) return refuse(STREAM_MISSING_MESSAGE)
     const wasActive = id === activeStreamId
     const token = { stream: streams[index], index, wasActive }
-    tokens = [...tokens, token]
+    lastToken = token
     streams = streams.filter((stream) => stream.id !== id)
     if (wasActive) {
       activeStreamId = null
@@ -307,11 +313,14 @@ export const createWorkspaceStore = ({
     return { ok: true, token }
   })
 
+  // Each removal gets one try: a restore that cannot work (the id is in use
+  // again) drops its token, so Undo is over rather than offered again.
   const restore = whenReady((token) => {
-    const taken = streams.some((stream) => stream.id === token?.stream.id)
-    if (!tokens.includes(token) || taken)
+    if (!token || token !== lastToken) return refuse(NOTHING_TO_RESTORE_MESSAGE)
+    lastToken = null
+    if (streams.some((stream) => stream.id === token.stream.id)) {
       return refuse(NOTHING_TO_RESTORE_MESSAGE)
-    tokens = tokens.filter((t) => t !== token)
+    }
     const at = Math.min(token.index, streams.length)
     streams = [...streams.slice(0, at), token.stream, ...streams.slice(at)]
     // Undo puts back the active stream without leaving the screen it is on, but
@@ -323,6 +332,8 @@ export const createWorkspaceStore = ({
     commit()
     return { ok: true, streamId: token.stream.id }
   })
+
+  const restoreLast = whenReady(() => restore(lastToken))
 
   const importStream = whenReady((text) => {
     const result = importValueStream(
@@ -408,6 +419,12 @@ export const createWorkspaceStore = ({
     get saveError() {
       return saveError
     },
+    // What Undo would restore: the removed stream's id and display name, or null.
+    get lastRemoval() {
+      return lastToken
+        ? { streamId: lastToken.stream.id, name: displayName(lastToken.stream) }
+        : null
+    },
     snapshot,
     flushSaves: () => queue,
     subscribeCommit,
@@ -419,6 +436,7 @@ export const createWorkspaceStore = ({
     duplicate,
     remove,
     restore,
+    restoreLast,
     importStream,
     showChanges,
     exportStream,

@@ -248,6 +248,7 @@ describe.each([
     ['duplicate', (s) => s.duplicate('x')],
     ['remove', (s) => s.remove('x')],
     ['restore', (s) => s.restore({ stream: { id: 'x' }, index: 0 })],
+    ['restoreLast', (s) => s.restoreLast()],
     ['importStream', (s) => s.importStream('{}')],
     ['exportStream', (s) => s.exportStream('x')],
     ['goHome', (s) => s.goHome()],
@@ -826,7 +827,10 @@ describe('workspaceStore: create and rename', () => {
     const stream = referenceStream()
     const store = await makeStore({ streams: [stream] })
 
-    expect(store.rename(stream.id, '   ')).toEqual(refused)
+    expect(store.rename(stream.id, '   ')).toEqual({
+      ok: false,
+      error: 'Add a name',
+    })
     expect(store.streams[0].name).toBe('Checkout delivery')
     expect(store.revision).toBe(3)
   })
@@ -1028,6 +1032,131 @@ describe('workspaceStore: remove and restore', () => {
 
     expect(listener).toHaveBeenCalledTimes(2)
     expect(store.revision).toBe(5)
+  })
+})
+
+describe('workspaceStore: the last removal', () => {
+  const twoStreams = () =>
+    makeStore({
+      streams: [referenceStream({ name: 'A' }), referenceReworkStream()],
+    })
+
+  it('is null until something is removed', async () => {
+    const store = await twoStreams()
+
+    expect(store.lastRemoval).toBeNull()
+  })
+
+  it('says which stream Undo would restore, by id and display name', async () => {
+    const store = await twoStreams()
+    const [a] = store.streams
+
+    store.remove(a.id)
+
+    expect(store.lastRemoval).toEqual({ streamId: a.id, name: 'A' })
+  })
+
+  it('calls an unnamed removed stream "Untitled value stream"', async () => {
+    const unnamed = referenceStream({ name: '' })
+    const store = await makeStore({ streams: [unnamed, referenceStream()] })
+
+    store.remove(unnamed.id)
+
+    expect(store.lastRemoval).toEqual({
+      streamId: unnamed.id,
+      name: 'Untitled value stream',
+    })
+  })
+
+  it('restores the most recent removal in place and then has nothing left', async () => {
+    const [a, b, c] = ['A', 'B', 'C'].map((name) => referenceStream({ name }))
+    const store = await makeStore({ streams: [a, b, c] })
+    store.remove(b.id)
+
+    const result = store.restoreLast()
+
+    expect(result).toEqual({ ok: true, streamId: b.id })
+    expect(store.streams.map((s) => s.name)).toEqual(['A', 'B', 'C'])
+    expect(store.lastRemoval).toBeNull()
+  })
+
+  it('refuses when nothing was removed, and changes nothing', async () => {
+    const store = await twoStreams()
+    const revision = store.revision
+
+    expect(store.restoreLast()).toEqual(refused)
+
+    expect(store.streams).toHaveLength(2)
+    expect(store.revision).toBe(revision)
+  })
+
+  it('refuses a second restore of the same removal', async () => {
+    const store = await twoStreams()
+    store.remove(store.streams[0].id)
+    store.restoreLast()
+
+    expect(store.restoreLast()).toEqual(refused)
+
+    expect(store.streams).toHaveLength(2)
+  })
+
+  it('is replaced by a newer removal, so only the newest can be restored', async () => {
+    const [a, b, c] = ['A', 'B', 'C'].map((name) => referenceStream({ name }))
+    const store = await makeStore({ streams: [a, b, c] })
+    const first = store.remove(a.id).token
+    store.remove(b.id)
+
+    expect(store.lastRemoval).toEqual({ streamId: b.id, name: 'B' })
+    expect(store.restore(first)).toEqual(refused)
+    expect(store.restoreLast()).toMatchObject({ ok: true, streamId: b.id })
+    expect(store.streams.map((s) => s.name)).toEqual(['B', 'C'])
+    expect(store.restoreLast()).toEqual(refused)
+  })
+
+  it('survives opening another stream and going home', async () => {
+    const [a, b] = [referenceStream(), referenceReworkStream()]
+    const store = await makeStore({ streams: [a, b] })
+    store.remove(a.id)
+    store.open(b.id)
+    store.goHome()
+
+    expect(store.lastRemoval).toMatchObject({ streamId: a.id })
+    expect(store.restoreLast()).toMatchObject({ ok: true, streamId: a.id })
+    expect(store.streams.map((s) => s.id)).toEqual([a.id, b.id])
+    expect(store.activeStreamId).toBe(b.id)
+  })
+
+  it('is cleared by a restore that cannot work, so Undo is over', async () => {
+    const [a, b] = [referenceStream(), referenceReworkStream()]
+    const store = await makeStore({ streams: [a, b] })
+    const { text } = store.exportStream(b.id)
+    store.remove(b.id)
+    store.importStream(text)
+
+    expect(store.restoreLast()).toEqual(refused)
+
+    expect(store.lastRemoval).toBeNull()
+    expect(store.streams).toHaveLength(2)
+  })
+
+  it('is cleared when another workspace is opened', async () => {
+    const [a, b] = [referenceStream(), referenceReworkStream()]
+    const store = await makeStore({ streams: [a, b] })
+    store.remove(b.id)
+
+    store.replaceWorkspace(workspaceOf([referenceStream()], { id: 'other' }))
+
+    expect(store.lastRemoval).toBeNull()
+    expect(store.restoreLast()).toEqual(refused)
+    expect(store.streams).toHaveLength(1)
+  })
+
+  it('is not kept for a removal that was refused', async () => {
+    const store = await twoStreams()
+
+    store.remove('nope')
+
+    expect(store.lastRemoval).toBeNull()
   })
 })
 
