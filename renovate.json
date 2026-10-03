@@ -9,6 +9,9 @@
     "before 6am on monday"
   ],
   "prConcurrentLimit": 5,
+  "minimumReleaseAge": "3 days",
+  "internalChecksFilter": "strict",
+  "automerge": false,
   "labels": [
     "dependencies"
   ],
