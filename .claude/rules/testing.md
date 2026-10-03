@@ -261,17 +261,31 @@ npm run test:e2e:baseline -- <spec>  # another spec file
 ```
 
 `scripts/e2e-baseline.sh` does the whole job, on a Mac as well as on Linux. It
-copies the repo to a temp directory (without `node_modules`, `dist`, `.git` and
-the test output, so the container installs its own Linux builds with `npm ci`),
-regenerates the snapshots in the pinned image, copies the `*-snapshots/*.png`
-files back, then runs the spec again in CI mode (`CI=1`, production build served
-by `vite preview`) and fails if it does not pass. It removes the temp directory
-when it ends.
+copies the files git tracks or shows as untracked and not ignored (so `.env*`,
+`.mcp.json` and other ignored local files never reach the container) to a temp
+directory, without `node_modules`, `dist`, `.git` and the test output, so the
+container installs its own Linux builds with `npm ci`. It regenerates the
+snapshots in the pinned image, then runs the spec again in CI mode (`CI=1`,
+production build served by `vite preview`, no network). Only when that run
+passes does it copy the `*-snapshots/*.png` files (regular files only) back into
+`tests/e2e`, so unconfirmed baselines never reach the working tree. It removes
+the temp directory when it ends.
+
+If regeneration or the confirmation run fails, the script exits non-zero and
+leaves the repo untouched. It copies the Playwright `test-results` and
+`playwright-report` to a new temp directory outside the repo and prints its
+path; that directory is not deleted.
+
+The containers run as the host user with all capabilities dropped,
+`no-new-privileges` and `--shm-size=1g`; the confirmation run also has
+`--network none`.
 
 Commit the updated `tests/e2e/**/*-snapshots/*.png` files. The image reference
 (tag and digest) lives in `.github/workflows/ci.yml` and in the script, and
-Renovate moves both together with `@playwright/test` (see `renovate.json`). The
-image runs for the host's architecture; set `DOCKER_DEFAULT_PLATFORM=linux/amd64`
-to match the x86 runners CI uses.
+Renovate moves both together with `@playwright/test` (see `renovate.json`).
+
+The image runs as `linux/amd64`, as on CI's runners, so the baselines match CI.
+On Apple Silicon that is emulation and slower. `DOCKER_DEFAULT_PLATFORM=linux/arm64`
+runs it natively, but those baselines will not match CI; do not commit them.
 
 Run the suite locally (against your own browsers) with `npm run test:e2e`.
