@@ -1,3 +1,4 @@
+import { FLAG_LABEL } from './flaggedSteps.js'
 import { MIN_BOX_WIDTH, minutesOf } from './ladderLayout.js'
 
 /** Pixels per minute: a working day (480 min) is at least a minimum-width box. */
@@ -76,7 +77,7 @@ export const annotationsOf = (step) => [
     : []),
   ...step.flags.map((text) => ({
     text,
-    tone: text === 'lowest %C/A' ? 'crit' : 'warn',
+    tone: text === FLAG_LABEL.LOWEST_CA ? 'crit' : 'warn',
   })),
   ...step.missing.map((field) => ({
     text: `${MISSING_PREFIX} ${field}`,

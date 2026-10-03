@@ -15,6 +15,7 @@
   import StageRail from './StageRail.svelte'
   import LadderMap from '../map/LadderMap.svelte'
   import ViewSwitch from '../map/ViewSwitch.svelte'
+  import SummaryStrip from '../map/SummaryStrip.svelte'
 
   // Each stage's own component, by stage number; the rest are still placeholders.
   // Every stage is given the same props and uses the ones it needs: store,
@@ -137,7 +138,16 @@
       </div>
     </section>
   {/if}
-  <div data-testid="strip-region"></div>
+  <!-- Pinned to the bottom of the viewport, so it stays in view however far
+       the page or the ladder is scrolled. -->
+  <div class="sticky bottom-0 z-10" data-testid="strip-region">
+    {#if showMap}
+      <SummaryStrip
+        metrics={store.metrics}
+        workdayHours={stream.workdayHours}
+      />
+    {/if}
+  </div>
   <div class="sr-only" role="status" data-testid="live-region">
     {#key announcement.id}
       <span>{announcement.text}</span>

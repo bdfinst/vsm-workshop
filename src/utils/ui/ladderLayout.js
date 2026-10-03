@@ -1,5 +1,6 @@
 import { isOutside } from '../../models/v2/constants.js'
 import { calculateMetrics } from '../calculations/v2/index.js'
+import { flagLabelsOf } from './flaggedSteps.js'
 
 /** The narrowest a scaled box is drawn, in pixels, so a step with no time (or 0) stays visible. */
 export const MIN_BOX_WIDTH = 24
@@ -61,12 +62,6 @@ const outlineOf = (missing, outside, handoff) => {
 const segment = (minutes, x, width) =>
   minutes == null ? null : { x, width, minutes }
 
-const flagsOf = (stepId, { topWaits, lowestCA }) =>
-  [
-    topWaits[0]?.stepId === stepId && 'largest wait',
-    lowestCA?.stepId === stepId && 'lowest %C/A',
-  ].filter(Boolean)
-
 const assertPositive = (value, name, mode) => {
   if (!(value > 0)) {
     throw new RangeError(`${mode} mode needs a positive ${name}`)
@@ -100,7 +95,7 @@ const layoutStep = (step, x, size, flags) => {
     handoff,
     missing,
     outside,
-    flags: flagsOf(step.id, flags),
+    flags: flagLabelsOf(flags, step.id),
   }
 }
 
