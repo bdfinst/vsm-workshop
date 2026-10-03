@@ -51,6 +51,11 @@
     else renameError = result.error
   }
 
+  // A refusal is about what was typed, so it goes on the next edit.
+  function clearRenameError() {
+    renameError = null
+  }
+
   function handleRenameKeydown(event) {
     if (event.key !== 'Escape') return
     event.stopPropagation()
@@ -109,9 +114,11 @@
           bind:value={draft}
           bind:this={nameInput}
           placeholder={isBlankName(summary.rawName) ? summary.name : undefined}
+          aria-required="true"
           aria-invalid={renameError ? 'true' : undefined}
           aria-describedby={renameError ? errorId : undefined}
           data-testid="rename-input"
+          oninput={clearRenameError}
           onkeydown={handleRenameKeydown}
         />
         {#if renameError}

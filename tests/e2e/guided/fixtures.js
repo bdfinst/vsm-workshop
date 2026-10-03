@@ -29,6 +29,16 @@ export const GUIDED_URL = '/?ui=guided'
 export const streamName = (page) => page.getByTestId('stream-name-input')
 
 /**
+ * The name field of the home card's rename form, the other place a stream's
+ * name is edited. It is labelled "Value stream name" as the header's is, so it
+ * is found by label inside the rename form.
+ * @param {import('@playwright/test').Page} page
+ * @returns {import('@playwright/test').Locator}
+ */
+export const renameField = (page) =>
+  page.getByTestId('rename-form').getByLabel('Value stream name')
+
+/**
  * A workspace holding one value stream as the active stream, reached through
  * the given stage. Scope is filled in, as seeded maps are.
  * @param {number} stage - The stage the stream is on, and has reached (1-7)

@@ -7,7 +7,13 @@ import { createValueStream } from '../../../src/models/v2/valueStream.js'
 import { exportValueStream } from '../../../src/persistence/v2/valueStreamJson.js'
 import { createWorkspace } from '../../../src/models/v2/workspace.js'
 import { STAGE_NUMBER } from '../../../src/models/v2/constants.js'
-import { test, expect, savedWorkspace, streamName } from './fixtures.js'
+import {
+  test,
+  expect,
+  renameField,
+  savedWorkspace,
+  streamName,
+} from './fixtures.js'
 
 const DAY_MS = 24 * 60 * 60 * 1000
 const CHECKOUT_UPDATED_AT = '2026-03-10T09:00:00.000Z'
@@ -313,7 +319,7 @@ const chooseFromMenu = async (page, name, item) => {
 
 const renameStream = async (page, name, newName) => {
   await chooseFromMenu(page, name, 'Rename')
-  await page.getByLabel('Value stream name').fill(newName)
+  await renameField(page).fill(newName)
   await page.keyboard.press('Enter')
 }
 
@@ -528,7 +534,7 @@ test.describe('Manage value streams from the home screen (slice 9.2)', () => {
     await openAllValueStreams(page)
 
     await chooseFromMenu(page, 'Untitled value stream', 'Rename')
-    const nameField = page.getByLabel('Value stream name')
+    const nameField = renameField(page)
     await expect(nameField).toHaveValue('')
     await expect(nameField).toHaveAttribute(
       'placeholder',
@@ -553,6 +559,27 @@ test.describe('Manage value streams from the home screen (slice 9.2)', () => {
     await expect(menuButton(page, 'Untitled value stream')).toBeFocused()
   })
 
+  test('The refusal at home goes away when the name is typed again', async ({
+    page,
+    seed,
+  }) => {
+    await startOnHome(page, seed)
+    await renameStream(page, 'Onboarding', '   ')
+    await expect(page.getByTestId('rename-error')).toHaveText('Add a name')
+    await expect(renameField(page)).toHaveAttribute('aria-required', 'true')
+
+    await renameField(page).pressSequentially('N')
+
+    await expect(page.getByTestId('rename-error')).toHaveCount(0)
+    await expect(renameField(page)).not.toHaveAttribute('aria-invalid', 'true')
+    await expect(renameField(page)).not.toHaveAttribute(
+      'aria-describedby',
+      /.*/
+    )
+    await page.keyboard.press('Enter')
+    await expectValueStreams(page, ['Checkout delivery', 'N'])
+  })
+
   test('Saving a name that has not changed changes nothing', async ({
     page,
     seed,
@@ -560,7 +587,7 @@ test.describe('Manage value streams from the home screen (slice 9.2)', () => {
     await startOnHome(page, seed)
 
     await chooseFromMenu(page, 'Checkout delivery', 'Rename')
-    await page.getByLabel('Value stream name').fill('  Checkout delivery ')
+    await renameField(page).fill('  Checkout delivery ')
     await page.keyboard.press('Enter')
 
     await expect(page.getByTestId('rename-form')).toHaveCount(0)
@@ -585,7 +612,7 @@ test.describe('Manage value streams from the home screen (slice 9.2)', () => {
     await startOnHome(page, seed)
 
     await chooseFromMenu(page, 'Onboarding', 'Rename')
-    await page.getByLabel('Value stream name').fill('Something else')
+    await renameField(page).fill('Something else')
     await page.keyboard.press('Escape')
 
     await expect(page.getByTestId('rename-form')).toHaveCount(0)
@@ -600,7 +627,7 @@ test.describe('Manage value streams from the home screen (slice 9.2)', () => {
     await startOnHome(page, seed)
     await deleteStream(page, 'Checkout delivery')
     await chooseFromMenu(page, 'Onboarding', 'Rename')
-    await expect(page.getByLabel('Value stream name')).toBeFocused()
+    await expect(renameField(page)).toBeFocused()
 
     await page.keyboard.press('Control+z')
 
@@ -663,7 +690,7 @@ test.describe('Manage value streams from the home screen (slice 9.2)', () => {
     await confirmDialog(page).getByRole('button', { name: 'Cancel' }).click()
     await expect(confirmDialog(page)).toHaveCount(0)
     await chooseFromMenu(page, 'Onboarding', 'Rename')
-    await expect(page.getByLabel('Value stream name')).toBeVisible()
+    await expect(renameField(page)).toBeVisible()
     await axe()
   })
 
