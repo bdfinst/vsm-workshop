@@ -1815,12 +1815,12 @@ Feature: The ladder map measures labels true and can be shared
     Given a ladder map given 0.1 pixels per minute
     Then "Code review" wait is drawn 288 pixels wide, however wide the pane is
 
-  Scenario: A ladder map given a mode starts in it
-    Given a ladder map given the mode "equal"
+  Scenario: A ladder map given a ladder mode starts in it
+    Given a ladder map given the ladder mode "equal"
     Then "Equal width" is checked and every step is drawn the same width
 
-  Scenario: The mode choice can be hidden
-    Given a ladder map told to hide its mode choice
+  Scenario: The ladder mode choice can be hidden
+    Given a ladder map told to hide its ladder mode choice
     Then it has no "To scale" or "Equal width" control
 
   Scenario: Two ladder maps on one page share no ids
@@ -3236,7 +3236,7 @@ See each step's **Complexity** line. The `complex` steps are 3.1 (migration), 4.
 #### Wave 7
 
 - [x] Slice 10: Time ladder, map pane, summary strip (slice review done, findings fixed; 1854 unit tests, 238 guided e2e)
-  - [x] Slice 10 follow-up: MapPane, LadderStep and SummaryFigure extracted; ladder naming settled; labels measured by class; viewMode is the one view source; LadderMap takes pixelsPerMinute, ladderMode and showLadderModeToggle with per-instance ids (2065 unit tests, 248 guided e2e after trimming 11)
+  - [x] Slice 10 follow-up: MapPane, LadderStep and SummaryFigure extracted; ladder naming settled; labels measured by class; viewMode is the one view source; LadderMap takes pixelsPerMinute, ladderMode and showLadderModeToggle with per-instance ids (2079 unit tests, 249 guided e2e after trimming 11). PR C review fixes: labels measured where `Intl.Segmenter` is missing, by base letter and per emoji glyph, with wide punctuation; pixel constants in `ladderGeometry`; naming settled (`ladderMode`, `showLadderModeToggle`, `ladderPixelsPerMinute`, `valueSizeClass`); the e2e probe covers every label line, one character at a time
   - [x] Step 10.1: Pure ladder layout
   - [x] Step 10.2: LadderMap and the map pane in the shell
   - [x] Step 10.3: SummaryStrip

@@ -101,8 +101,8 @@ describe('LadderMap pixelsPerMinute', () => {
   })
 })
 
-describe('LadderMap mode', () => {
-  it('A ladder map given a mode starts in it', () => {
+describe('LadderMap ladderMode', () => {
+  it('A ladder map given a ladder mode starts in it', () => {
     restoreWidth = giveElementsClientWidth(900)
 
     const target = render({ ladderMode: LADDER_MODE.EQUAL })
@@ -133,7 +133,7 @@ describe('LadderMap mode', () => {
     expect(() => render({ ladderMode: 'fit' })).toThrow(RangeError)
   })
 
-  it('The mode choice can be hidden', () => {
+  it('The ladder mode choice can be hidden', () => {
     const target = render({ showLadderModeToggle: false })
 
     expect(target.querySelectorAll('input[type="radio"]')).toHaveLength(0)
