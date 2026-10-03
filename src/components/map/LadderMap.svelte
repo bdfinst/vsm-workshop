@@ -1,10 +1,15 @@
 <script>
-  import { sizeLadder } from '../../utils/ui/ladderLayout.js'
   import {
+    LADDER_MODE,
+    OUTLINE,
+    sizeLadder,
+  } from '../../utils/ui/ladderLayout.js'
+  import {
+    TONE,
     annotationsOf,
     equalWidthFor,
     labelLanes,
-    scaleToFit,
+    pixelsPerMinuteToFit,
   } from '../../utils/ui/ladderView.js'
 
   // LadderMap props: ladder (`store.ladder`, the pane-independent model of the
@@ -13,8 +18,8 @@
   let { ladder } = $props()
 
   const MODES = [
-    { value: 'scaled', label: 'To scale' },
-    { value: 'equal', label: 'Equal width' },
+    { value: LADDER_MODE.SCALED, label: 'To scale' },
+    { value: LADDER_MODE.EQUAL, label: 'Equal width' },
   ]
 
   // Pixels. Wait blocks sit above the track and process blocks below it; the
@@ -37,21 +42,22 @@
   const FIT_SLACK = 1
 
   const TONE_CLASS = {
-    handoff: 'fill-handoff-text',
-    warn: 'fill-warn-text',
-    crit: 'fill-crit-text',
-    muted: 'fill-muted-text',
+    [TONE.HANDOFF]: 'fill-handoff-text',
+    [TONE.WARN]: 'fill-warn-text',
+    [TONE.CRIT]: 'fill-crit-text',
+    [TONE.MUTED]: 'fill-muted-text',
   }
 
-  let mode = $state('scaled')
+  let mode = $state(LADDER_MODE.SCALED)
   let paneWidth = $state(0)
+  let modeLabel = $derived(MODES.find(({ value }) => value === mode).label)
 
   let available = $derived(Math.max(paneWidth - 2 * PAD_X - FIT_SLACK, 0))
   let layout = $derived(
     sizeLadder(
       ladder,
-      mode === 'scaled'
-        ? { mode, scale: scaleToFit(ladder, available) }
+      mode === LADDER_MODE.SCALED
+        ? { mode, pixelsPerMinute: pixelsPerMinuteToFit(ladder, available) }
         : { mode, width: equalWidthFor(ladder.steps.length, available) }
     )
   )
@@ -79,12 +85,12 @@
   let svgHeight = $derived(LABEL_TOP + laneCount * laneHeight)
 
   const outlineAttrs = {
-    solid: { stroke: 'none', 'stroke-width': 0 },
-    handoff: {
+    [OUTLINE.SOLID]: { stroke: 'none', 'stroke-width': 0 },
+    [OUTLINE.HANDOFF]: {
       class: 'stroke-map-handoff-outline',
       'stroke-width': 3,
     },
-    dashed: {
+    [OUTLINE.DASHED]: {
       class: 'stroke-map-dashed-outline',
       'stroke-width': 2,
       'stroke-dasharray': '6 4',
@@ -133,7 +139,7 @@
       height={svgHeight}
       viewBox="0 0 {svgWidth} {svgHeight}"
       role="group"
-      aria-label="Time ladder, {mode === 'scaled' ? 'to scale' : 'equal width'}"
+      aria-label="Time ladder, {modeLabel.toLowerCase()}"
       class="block max-w-none"
       data-testid="ladder-map"
     >
@@ -194,7 +200,7 @@
                 data-testid="ladder-process"
               />
             {/if}
-            {#if step.outside}
+            {#if step.outsideText}
               <rect
                 x={step.x}
                 y={WAIT_TOP}

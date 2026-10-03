@@ -1,11 +1,25 @@
 import { isOutside } from '../../models/v2/constants.js'
-import { calculateMetrics } from '../calculations/v2/index.js'
-import { flagLabelsOf } from './flaggedSteps.js'
+import { flagsOf } from './flaggedSteps.js'
+
+/** How a ladder is sized: `SCALED` by minutes, `EQUAL` one width for every box. */
+export const LADDER_MODE = Object.freeze({
+  SCALED: 'scaled',
+  EQUAL: 'equal',
+})
+
+/** How a step's box is outlined: plain, a handoff, or incomplete/outside. */
+export const OUTLINE = Object.freeze({
+  SOLID: 'solid',
+  HANDOFF: 'handoff',
+  DASHED: 'dashed',
+})
 
 /** The narrowest a scaled box is drawn, in pixels, so a step with no time (or 0) stays visible. */
-export const MIN_BOX_WIDTH = 24
+export const MIN_SCALED_BOX_WIDTH = 24
 
-const OUTSIDE_ENCODING = Object.freeze({
+const HANDOFF_TEXT = 'handoff'
+
+const OUTSIDE_TEXT = Object.freeze({
   label: 'elapsed · split unknown',
   text: 'outside',
 })
@@ -21,20 +35,23 @@ const OUTSIDE_TIMES = [['elapsedTime', 'elapsed time']]
 // scaled box is its wait, process or elapsed time side by side; an equal box
 // is one fixed width and both segments span all of it.
 const SIZERS = {
-  scaled:
-    ({ scale }) =>
+  [LADDER_MODE.SCALED]:
+    ({ pixelsPerMinute }) =>
     ({ wait, process, elapsed }) => {
-      const waitWidth = (wait ?? 0) * scale
-      const processWidth = (process ?? 0) * scale
-      const elapsedWidth = (elapsed ?? 0) * scale
+      const waitWidth = (wait ?? 0) * pixelsPerMinute
+      const processWidth = (process ?? 0) * pixelsPerMinute
+      const elapsedWidth = (elapsed ?? 0) * pixelsPerMinute
       return {
-        box: Math.max(waitWidth + processWidth + elapsedWidth, MIN_BOX_WIDTH),
+        box: Math.max(
+          waitWidth + processWidth + elapsedWidth,
+          MIN_SCALED_BOX_WIDTH
+        ),
         wait: waitWidth,
         process: processWidth,
         processOffset: waitWidth,
       }
     },
-  equal:
+  [LADDER_MODE.EQUAL]:
     ({ width }) =>
     () => ({
       box: width,
@@ -44,19 +61,19 @@ const SIZERS = {
     }),
 }
 
-export const minutesOf = (step) =>
+const minutesOf = (step) =>
   isOutside(step)
     ? { elapsed: step.elapsedTime?.typ }
     : { wait: step.waitTime?.typ, process: step.processTime?.typ }
 
-const missingTimes = (step) =>
+const missingTimeLabelsOf = (step) =>
   (isOutside(step) ? OUTSIDE_TIMES : TEAM_TIMES)
     .filter(([field]) => step[field]?.typ == null)
     .map(([, label]) => label)
 
-const outlineOf = (missing, outside, handoff) => {
-  if (missing.length > 0 || outside) return 'dashed'
-  return handoff ? 'handoff' : 'solid'
+const outlineOf = (missingTimeLabels, outsideText, handoffText) => {
+  if (missingTimeLabels.length > 0 || outsideText) return OUTLINE.DASHED
+  return handoffText ? OUTLINE.HANDOFF : OUTLINE.SOLID
 }
 
 const segment = (minutes, x, width) =>
@@ -68,30 +85,33 @@ const assertPositive = (value, name, mode) => {
   }
 }
 
-const sizerFor = ({ mode, scale, width }) => {
+const sizerFor = ({ mode, pixelsPerMinute, width }) => {
   if (!Object.hasOwn(SIZERS, mode)) {
     throw new RangeError(`Unknown ladder mode: ${mode}`)
   }
-  if (mode === 'scaled') assertPositive(scale, 'scale', mode)
-  else assertPositive(width, 'width', mode)
-  return SIZERS[mode]({ scale, width })
+  if (mode === LADDER_MODE.SCALED) {
+    assertPositive(pixelsPerMinute, 'pixelsPerMinute', mode)
+  } else {
+    assertPositive(width, 'width', mode)
+  }
+  return SIZERS[mode]({ pixelsPerMinute, width })
 }
 
 // What a step looks like whatever the pane: its minutes, encodings and flags.
 const modelStep = (step, flags) => {
-  const missing = missingTimes(step)
-  const outside = isOutside(step) ? OUTSIDE_ENCODING : null
-  const handoff = step.isHandoff && !outside ? 'handoff' : null
+  const missingTimeLabels = missingTimeLabelsOf(step)
+  const outsideText = isOutside(step) ? OUTSIDE_TEXT : null
+  const handoffText = step.isHandoff && !outsideText ? HANDOFF_TEXT : null
 
   return {
     stepId: step.id,
     name: step.name,
     minutes: minutesOf(step),
-    outline: outlineOf(missing, outside, handoff),
-    handoff,
-    missing,
-    outside,
-    flags: flagLabelsOf(flags, step.id),
+    outline: outlineOf(missingTimeLabels, outsideText, handoffText),
+    handoffText,
+    missingTimeLabels,
+    outsideText,
+    flags: flagsOf(flags, step.id),
   }
 }
 
@@ -108,32 +128,39 @@ const layoutStep = ({ minutes, ...encodings }, x, size) => {
 
 /**
  * The part of a time ladder that does not depend on the pane: per step its
- * `minutes` (`{wait, process}` or `{elapsed}`, null when not entered),
- * `outline`, `handoff`, `missing`, `outside` and `flags` (see ladderLayout).
- * The value stream store derives this once per change, so a pane or a mode
- * switch only has to size it with `sizeLadder`. Pure.
+ * `stepId`, `name`, `minutes` (`{wait, process}` or `{elapsed}`, null when not
+ * entered), `outline` (an OUTLINE), `handoffText` ('handoff' or null, outside
+ * steps included), `missingTimeLabels` (the names of the times not entered,
+ * e.g. 'wait time'), `outsideText` (`{label, text}` for a hatched outside
+ * block, or null) and `flags` (`{kind, label, tone}` for 'largest wait'
+ * and/or 'lowest %C/A'). The value stream store derives this once per change,
+ * so a pane or a mode switch only has to size it with `sizeLadder`. Pure.
  * @param {Object} version - A v2 map version ({ steps, reworkPaths })
- * @param {Object} [flags] - `metrics.flags` for this version; worked out with calculateMetrics when not given
+ * @param {Object} flags - `metrics.flags` for this version
  * @returns {{steps: Object[]}}
  */
-export const ladderModel = (
-  version,
-  flags = calculateMetrics(version).flags
-) => ({ steps: version.steps.map((step) => modelStep(step, flags)) })
+export const ladderModel = (version, flags) => ({
+  steps: version.steps.map((step) => modelStep(step, flags)),
+})
 
 /**
- * Size a ladder model for a pane: the boxes and segments an SVG draws. Cheap
- * (one pass over the steps) and pure. See ladderLayout for the result.
+ * Size a ladder model for a pane: the boxes and segments an SVG draws, with
+ * nothing left to work out. Pure; no store or DOM. Step order is the
+ * version's, boxes sit side by side from x 0, and the layout never shrinks to
+ * fit: `totalWidth` grows with the steps and fitting or zooming is the
+ * caller's job. Per step: the model's fields except `minutes`, plus `x`,
+ * `width` (the box), and `wait` (drawn above the track) and `process` (below
+ * it) as `{x, width, minutes}` or null when that time is not entered.
  * @param {{steps: Object[]}} model - From ladderModel
  * @param {Object} options
- * @param {string} options.mode - 'scaled' (widths proportional to minutes) or 'equal' (every box `width` wide)
- * @param {number} [options.scale] - Pixels per minute; required for scaled mode
+ * @param {string} options.mode - A LADDER_MODE: SCALED (widths proportional to minutes) or EQUAL (every box `width` wide)
+ * @param {number} [options.pixelsPerMinute] - Required for scaled mode
  * @param {number} [options.width] - Width of every box in pixels; required for equal mode
  * @returns {{totalWidth: number, steps: Object[]}}
- * @throws {RangeError} For an unknown mode, or a missing or non-positive scale or width
+ * @throws {RangeError} For an unknown mode, or a missing, non-finite or non-positive pixelsPerMinute or width
  */
-export const sizeLadder = (model, { mode, scale, width }) => {
-  const size = sizerFor({ mode, scale, width })
+export const sizeLadder = (model, { mode, pixelsPerMinute, width }) => {
+  const size = sizerFor({ mode, pixelsPerMinute, width })
   const { steps, totalWidth } = model.steps.reduce(
     (acc, step) => {
       const laid = layoutStep(step, acc.totalWidth, size)
@@ -146,29 +173,3 @@ export const sizeLadder = (model, { mode, scale, width }) => {
   )
   return { totalWidth, steps }
 }
-
-/**
- * Lay out a map version as a time ladder: the boxes, segments, encodings and
- * flags an SVG can draw directly, with nothing left to work out. Pure; no
- * store or DOM. Step order is the version's, boxes sit side by side from x 0,
- * and the layout never shrinks to fit: `totalWidth` grows with the steps and
- * fitting or zooming is the caller's job. It is `sizeLadder` over
- * `ladderModel`; code that already has the model should size that instead.
- *
- * Per step: `stepId`, `name`, `x`, `width` (the box); `wait` (drawn above the
- * track) and `process` (below it) as `{x, width, minutes}` or null when that
- * time is not entered; `outline` ('solid' | 'handoff' | 'dashed'); `handoff`
- * ('handoff' or null); `missing` (the names of the times not entered, e.g.
- * 'wait time'); `outside` (`{label, text}` for a hatched outside block, or
- * null); `flags` ('largest wait' and/or 'lowest %C/A').
- * @param {Object} version - A v2 map version ({ steps, reworkPaths })
- * @param {Object} options
- * @param {string} options.mode - 'scaled' (widths proportional to minutes) or 'equal' (every box `width` wide)
- * @param {number} [options.scale] - Pixels per minute; required for scaled mode
- * @param {number} [options.width] - Width of every box in pixels; required for equal mode
- * @param {Object} [options.flags] - `metrics.flags` for this version; worked out with calculateMetrics when not given
- * @returns {{totalWidth: number, steps: Object[]}}
- * @throws {RangeError} For an unknown mode, or a missing or non-positive scale or width
- */
-export const ladderLayout = (version, { flags, ...view }) =>
-  sizeLadder(ladderModel(version, flags), view)

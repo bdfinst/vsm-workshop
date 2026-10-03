@@ -145,25 +145,40 @@ describe('summaryModel', () => {
     expect(hero).toMatchObject({ text: 'not available', incomplete: false })
   })
 
-  it('has no callouts for a map with no waits', () => {
+  it('has no flagged steps for a map with no waits', () => {
     const steps = referenceSteps().map((step) => ({
       ...step,
       waitTime: { typ: null },
     }))
 
-    expect(summaryOf(steps).callouts).toEqual([])
+    expect(summaryOf(steps).flagged).toEqual([])
   })
 
-  it('calls out only the largest wait when nothing is below 100 %C/A', () => {
-    expect(summaryOf(referenceSteps()).callouts).toEqual([
-      { label: 'largest wait', name: 'Code review' },
+  it('flags only the largest wait when nothing is below 100 %C/A', () => {
+    expect(summaryOf(referenceSteps()).flagged).toEqual([
+      {
+        kind: 'largest-wait',
+        label: 'largest wait',
+        tone: 'warn',
+        name: 'Code review',
+      },
     ])
   })
 
-  it('calls out the same step for the largest wait and the lowest %C/A', () => {
-    expect(summaryOf(reworkSteps()).callouts).toEqual([
-      { label: 'largest wait', name: 'Code review' },
-      { label: 'lowest %C/A', name: 'Code review' },
+  it('flags the same step for the largest wait and the lowest %C/A', () => {
+    expect(summaryOf(reworkSteps()).flagged).toEqual([
+      {
+        kind: 'largest-wait',
+        label: 'largest wait',
+        tone: 'warn',
+        name: 'Code review',
+      },
+      {
+        kind: 'lowest-ca',
+        label: 'lowest %C/A',
+        tone: 'crit',
+        name: 'Code review',
+      },
     ])
   })
 })

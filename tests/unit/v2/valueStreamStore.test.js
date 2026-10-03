@@ -814,16 +814,16 @@ describe('valueStreamStore: derived ladder and metrics', () => {
     expect(deployProcess(store)).toBe(30)
   })
 
-  it('takes the ladder flags from the metrics it already derived', () => {
+  it('flags on the ladder the steps that metrics.flags names', () => {
     const { store } = openStream(referenceReworkStream())
+    const codeReviewId = stepNamed(store, 'Code review').id
 
-    expect(ladderStep(store, 'Code review').flags).toEqual([
-      'largest wait',
-      'lowest %C/A',
-    ])
-    expect(store.metrics.flags.lowestCA.stepId).toBe(
-      stepNamed(store, 'Code review').id
-    )
+    expect(store.metrics.flags.topWaits[0].stepId).toBe(codeReviewId)
+    expect(store.metrics.flags.lowestCA.stepId).toBe(codeReviewId)
+    expect(
+      ladderStep(store, 'Code review').flags.map(({ label }) => label)
+    ).toEqual(['largest wait', 'lowest %C/A'])
+    expect(ladderStep(store, 'Development').flags).toEqual([])
   })
 
   it('refreshes the ladder and the metrics after an edit', () => {

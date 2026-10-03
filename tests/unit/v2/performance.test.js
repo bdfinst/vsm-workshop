@@ -2,7 +2,11 @@ import { describe, it, expect } from 'vitest'
 import { flushSync } from 'svelte'
 import { performance } from 'node:perf_hooks'
 import { calculateMetrics } from '../../../src/utils/calculations/v2/index.js'
-import { ladderModel, sizeLadder } from '../../../src/utils/ui/ladderLayout.js'
+import {
+  LADDER_MODE,
+  ladderModel,
+  sizeLadder,
+} from '../../../src/utils/ui/ladderLayout.js'
 import {
   openStream,
   pathBetween,
@@ -20,7 +24,7 @@ const STEP_COUNT = 40
 const PATHS_PER_STEP = 2
 const WARM_UP_RUNS = 5
 const MEASURED_RUNS = 20
-const SCALE = 0.1
+const PIXELS_PER_MINUTE = 0.1
 
 // 40 team steps (Intake first) at %C/A 90, each with two rework paths that go backward
 // (to the step before it and to Intake; the first steps can only go back to
@@ -85,7 +89,10 @@ describe('recalculation budget', () => {
 
     const median = medianMs(() => {
       const { flags } = calculateMetrics(version)
-      sizeLadder(ladderModel(version, flags), { mode: 'scaled', scale: SCALE })
+      sizeLadder(ladderModel(version, flags), {
+        mode: LADDER_MODE.SCALED,
+        pixelsPerMinute: PIXELS_PER_MINUTE,
+      })
     })
 
     console.log(`metrics + layout: median ${median.toFixed(2)} ms`)

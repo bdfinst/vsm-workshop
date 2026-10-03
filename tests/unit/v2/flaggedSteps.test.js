@@ -1,9 +1,10 @@
 import { describe, it, expect } from 'vitest'
 import { calculateMetrics } from '../../../src/utils/calculations/v2/index.js'
 import {
-  FLAG_LABEL,
-  flagLabelsOf,
+  FLAG_KIND,
+  TONE,
   flaggedSteps,
+  flagsOf,
 } from '../../../src/utils/ui/flaggedSteps.js'
 import {
   referenceSteps,
@@ -20,11 +21,15 @@ describe('flaggedSteps', () => {
 
     expect(flaggedSteps(flags)).toEqual([
       expect.objectContaining({
-        label: FLAG_LABEL.LARGEST_WAIT,
+        kind: FLAG_KIND.LARGEST_WAIT,
+        label: 'largest wait',
+        tone: TONE.WARN,
         name: 'Code review',
       }),
       expect.objectContaining({
-        label: FLAG_LABEL.LOWEST_CA,
+        kind: FLAG_KIND.LOWEST_CA,
+        label: 'lowest %C/A',
+        tone: TONE.CRIT,
         name: 'Code review',
       }),
     ])
@@ -33,8 +38,8 @@ describe('flaggedSteps', () => {
   it('names no lowest %C/A when no step is below 100', () => {
     const { flags } = calculateMetrics(versionOf(referenceSteps()))
 
-    expect(flaggedSteps(flags).map(({ label }) => label)).toEqual([
-      FLAG_LABEL.LARGEST_WAIT,
+    expect(flaggedSteps(flags).map(({ kind }) => kind)).toEqual([
+      FLAG_KIND.LARGEST_WAIT,
     ])
   })
 
@@ -62,16 +67,16 @@ describe('flaggedSteps', () => {
   })
 })
 
-describe('flagLabelsOf', () => {
-  it('lists the labels of the flags on one step, and none for others', () => {
+describe('flagsOf', () => {
+  it('lists the flags on one step, and none for others', () => {
     const version = versionOf(reworkSteps())
     const { flags } = calculateMetrics(version)
     const idOf = (name) => version.steps.find((s) => s.name === name).id
 
-    expect(flagLabelsOf(flags, idOf('Code review'))).toEqual([
-      'largest wait',
-      'lowest %C/A',
+    expect(flagsOf(flags, idOf('Code review'))).toEqual([
+      { kind: 'largest-wait', label: 'largest wait', tone: 'warn' },
+      { kind: 'lowest-ca', label: 'lowest %C/A', tone: 'crit' },
     ])
-    expect(flagLabelsOf(flags, idOf('Deploy'))).toEqual([])
+    expect(flagsOf(flags, idOf('Deploy'))).toEqual([])
   })
 })

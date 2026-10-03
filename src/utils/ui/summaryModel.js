@@ -48,12 +48,12 @@ const flowEfficiencyFigure = (flowEfficiency) => {
  * @returns {{
  *   hero: {id: string, label: string, text: string, incomplete: boolean, note: ?string, context: string},
  *   rows: {id: string, label: string, text: string, incomplete: boolean, note: ?string}[],
- *   callouts: {label: string, name: string}[]
+ *   flagged: {kind: string, label: string, tone: string, name: string}[]
  * }} `hero` is flow efficiency: a range when any time is a range or outside the
  *   team, "not available" when the lead time is 0. `rows` are lead time,
  *   process time, rolled %C/A and handoffs, in that order. `note` names the
- *   step an incomplete figure waits on. `callouts` are the flagged steps,
- *   with no entry for a flag that has no step.
+ *   step an incomplete figure waits on. `flagged` are the flagged steps (a
+ *   `tone` each), with no entry for a flag that has no step.
  */
 export const summaryModel = (metrics, workdayHours) => {
   const duration = (range) => formatDurationRange(range, workdayHours)
@@ -72,8 +72,10 @@ export const summaryModel = (metrics, workdayHours) => {
       ),
       figure('handoffs', 'Handoffs', metrics.handoffCount, String),
     ],
-    callouts: flaggedSteps(metrics.flags).map(({ label, name }) => ({
+    flagged: flaggedSteps(metrics.flags).map(({ kind, label, tone, name }) => ({
+      kind,
       label,
+      tone,
       name,
     })),
   }

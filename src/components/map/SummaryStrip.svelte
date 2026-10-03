@@ -1,6 +1,6 @@
 <script>
   import { summaryModel } from '../../utils/ui/summaryModel.js'
-  import { FLAG_LABEL } from '../../utils/ui/flaggedSteps.js'
+  import { TONE } from '../../utils/ui/flaggedSteps.js'
 
   // SummaryStrip props: metrics (`store.metrics`, read as it is, never worked
   // out again) and workdayHours (the stream's working day, for durations).
@@ -13,9 +13,9 @@
   let expanded = $state(false)
 
   const MORE_ID = 'summary-more'
-  const CALLOUT_TONE = {
-    [FLAG_LABEL.LARGEST_WAIT]: 'text-warn-text',
-    [FLAG_LABEL.LOWEST_CA]: 'text-crit-text',
+  const FLAG_TEXT_CLASS = {
+    [TONE.WARN]: 'text-warn-text',
+    [TONE.CRIT]: 'text-crit-text',
   }
 
   const valueClass = (figure, size) =>
@@ -76,17 +76,17 @@
         {/each}
       </dl>
 
-      {#if summary.callouts.length > 0}
+      {#if summary.flagged.length > 0}
         <ul
           class="m-0 mt-2 p-0 list-none flex flex-wrap gap-x-6 gap-y-1"
           aria-label="Flagged steps"
         >
-          {#each summary.callouts as callout (callout.label)}
+          {#each summary.flagged as flag (flag.kind)}
             <li class="text-sm" data-testid="summary-flag">
-              <span class="font-medium {CALLOUT_TONE[callout.label]}"
-                >{callout.label}</span
+              <span class="font-medium {FLAG_TEXT_CLASS[flag.tone]}"
+                >{flag.label}</span
               >
-              <strong class="text-map-text">{callout.name}</strong>
+              <strong class="text-map-text">{flag.name}</strong>
             </li>
           {/each}
         </ul>
