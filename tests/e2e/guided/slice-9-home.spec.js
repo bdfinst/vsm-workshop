@@ -365,7 +365,7 @@ test.describe('Manage value streams from the home screen (slice 9.2)', () => {
 
     await renameStream(page, 'Onboarding', '   ')
 
-    await expect(page.getByText('Add a name')).toBeVisible()
+    await expect(page.getByTestId('rename-error')).toHaveText('Add a name')
     await expectValueStreams(page, ['Checkout delivery', 'Onboarding'])
   })
 
@@ -854,9 +854,10 @@ test.describe('Import and export one value stream (slice 9.3)', () => {
     // The upgraded map has not reached Steps yet, so its steps are read from
     // the saved workspace rather than from the Steps stage.
     await expect
-      .poll(async () =>
-        withoutIds((await savedStreams(page))[2]).steps.map((s) => s.name)
-      )
+      .poll(async () => {
+        const imported = (await savedStreams(page))[2]
+        return imported ? withoutIds(imported).steps.map((s) => s.name) : null
+      })
       .toEqual(['Intake', 'Dev'])
     await openStream(page, 'Checkout delivery')
     await stageButton(page, 'Steps').click()
@@ -1208,11 +1209,13 @@ test.describe('Import and export one value stream (slice 9.3)', () => {
 
 test.describe('Name rules and undo across visits (slice 9 follow-up)', () => {
   // Two places to change a name. `rename` types the name and stays where it
-  // was typed; `backHome` then leaves that place for the home screen.
+  // was typed, `error` finds the refusal shown there and `backHome` then leaves
+  // that place for the home screen.
   const PLACES = [
     {
       place: 'the home screen',
       rename: (page, typed) => renameStream(page, 'Onboarding', typed),
+      error: (page) => page.getByTestId('rename-error'),
       backHome: (page) => page.keyboard.press('Escape'),
     },
     {
@@ -1222,6 +1225,7 @@ test.describe('Name rules and undo across visits (slice 9 follow-up)', () => {
         await streamName(page).fill(typed)
         await streamName(page).press('Enter')
       },
+      error: (page) => page.getByTestId('name-error'),
       backHome: (page) => openAllValueStreams(page),
     },
   ]
@@ -1232,7 +1236,7 @@ test.describe('Name rules and undo across visits (slice 9 follow-up)', () => {
   // Typed text a name cannot be: only space, and nothing at all.
   const BLANK_NAMES = ['   ', '']
 
-  for (const { place, rename, backHome } of PLACES) {
+  for (const { place, rename, error, backHome } of PLACES) {
     test(`A name is trimmed the same way at home and in the header: ${place}`, async ({
       page,
       seed,
@@ -1260,7 +1264,7 @@ test.describe('Name rules and undo across visits (slice 9 follow-up)', () => {
 
         await rename(page, typed)
 
-        await expect(page.getByText('Add a name')).toBeVisible()
+        await expect(error(page)).toHaveText('Add a name')
         await backHome(page)
         await expectValueStreams(page, ['Checkout delivery', 'Onboarding'])
         // Saves are written in order, so once this later one is there a save of
@@ -1300,14 +1304,18 @@ test.describe('Name rules and undo across visits (slice 9 follow-up)', () => {
     ])
   })
 
-  for (const shortcut of ['Control+z', 'Meta+z']) {
-    test(`Undo restores a deleted value stream after a visit to another: ${shortcut}`, async ({
+  for (const [label, chord] of [
+    ['Ctrl+Z', 'Control+z'],
+    ['Cmd+Z', 'Meta+z'],
+  ]) {
+    test(`Undo restores a deleted value stream after a visit to another: ${label}`, async ({
       page,
       seed,
     }) => {
       const { second } = await openBackground(page, seed)
       await openAllValueStreams(page)
       await deleteStream(page, 'Checkout delivery')
+      await expect(toast(page)).toContainText('Checkout delivery deleted')
 
       await openStream(page, 'Onboarding')
       await expect(streamName(page)).toHaveValue('Onboarding')
@@ -1315,7 +1323,7 @@ test.describe('Name rules and undo across visits (slice 9 follow-up)', () => {
 
       // The toast closed with the visit; the shortcut is what is left.
       await expect(toast(page)).toHaveCount(0)
-      await page.keyboard.press(shortcut)
+      await page.keyboard.press(chord)
 
       await expectValueStreams(page, ['Checkout delivery', 'Onboarding'])
       await expect(cardOf(page, 'Checkout delivery')).toContainText('5 steps')

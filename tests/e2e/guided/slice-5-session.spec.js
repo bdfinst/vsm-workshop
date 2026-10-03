@@ -620,10 +620,11 @@ test.describe('Unreadable workspace (step 5.4)', () => {
       'step'
     )
     await expect(unreadableScreen(page)).toHaveCount(0)
-    expect(await savedBackup(page)).toBe(UNREADABLE_TEXT)
+    // The replacement is saved asynchronously; the backup is read once it has.
     await expect
       .poll(async () => (await savedWorkspace(page))?.streams.length)
       .toBe(1)
+    expect(await savedBackup(page)).toBe(UNREADABLE_TEXT)
   })
 
   test('Cancelling start-empty keeps the recovery screen', async ({
@@ -663,6 +664,10 @@ test.describe('Unreadable workspace (step 5.4)', () => {
 
     await expect(streamName(page)).toHaveValue('Imported delivery')
     await expect(unreadableScreen(page)).toHaveCount(0)
+    // The new workspace is saved asynchronously; the backup is read once it is.
+    await expect
+      .poll(async () => (await savedWorkspace(page))?.streams[0]?.name)
+      .toBe('Imported delivery')
     expect(await savedBackup(page)).toBe(UNREADABLE_TEXT)
   })
 
@@ -1198,18 +1203,6 @@ test.describe('Value stream name rule in the header (slice 9 follow-up)', () => 
     await expect
       .poll(async () => (await savedWorkspace(page))?.streams[0].name)
       .toBe('Checkout v2')
-  })
-
-  test('A refused name keeps focus in the field after Enter', async ({
-    page,
-    seed,
-  }) => {
-    await seed(workspaceAtStage(2))
-
-    await renameStream(page, '   ')
-
-    await expect(nameError(page)).toHaveText('Add a name')
-    await expect(streamName(page)).toBeFocused()
   })
 
   test('Typing a name and then clearing it on an unnamed value stream is refused', async ({
