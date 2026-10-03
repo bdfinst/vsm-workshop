@@ -21,8 +21,8 @@ const FIX_REASON = 'Fix the times that show an error'
 
 let mounted = null
 
-const render = (steps) => {
-  const { store } = openStream(streamOf(versionOf(steps)))
+const render = (stepRows) => {
+  const { store } = openStream(streamOf(versionOf(stepRows)))
   mounted = mount(TimeStage, {
     target: document.body,
     props: { store, onnext: vi.fn() },
@@ -68,7 +68,7 @@ const enter = (name, testid, text) => {
   leave(name, testid)
 }
 
-const steps = () => [
+const defaultSteps = () => [
   team('Intake', 30, 30),
   team('Development', 1.5, 120),
   team('Deploy', 60, 60),
@@ -76,7 +76,7 @@ const steps = () => [
 
 describe('TimeStage when the store refuses an edit', () => {
   it('shows why, keeps the typed text and holds Next', () => {
-    render(steps())
+    render(defaultSteps())
     expect(nextButton()).not.toHaveAttribute('aria-disabled')
 
     enter('Development', 'wait-time', '3')
@@ -88,7 +88,7 @@ describe('TimeStage when the store refuses an edit', () => {
   })
 
   it('keeps the refusal and Next held when another field is saved', () => {
-    const store = render(steps())
+    const store = render(defaultSteps())
     enter('Development', 'wait-time', '3')
 
     // Development's process time reads in hours, so this is 2 hours.
@@ -99,8 +99,8 @@ describe('TimeStage when the store refuses an edit', () => {
     expect(nextButton()).toHaveAttribute('aria-disabled', 'true')
   })
 
-  it('keeps the refusal when another field is committed with no change', () => {
-    render(steps())
+  it('keeps the refusal when another field is committed unchanged', () => {
+    render(defaultSteps())
     enter('Development', 'wait-time', '3')
 
     // Deploy's process time of 60 minutes already reads as "1" hour.
@@ -111,7 +111,7 @@ describe('TimeStage when the store refuses an edit', () => {
   })
 
   it('clears the refusal and frees Next once the same field saves', () => {
-    const store = render(steps())
+    const store = render(defaultSteps())
     enter('Development', 'wait-time', '3')
     enter('Development', 'process-time', '2')
 
@@ -125,7 +125,7 @@ describe('TimeStage when the store refuses an edit', () => {
 
 describe('TimeStage when the refused field goes away', () => {
   it('frees Next and drops the reason when its step is removed', () => {
-    const store = render(steps())
+    const store = render(defaultSteps())
     enter('Development', 'wait-time', '3')
 
     store.deleteStep(stepNamed(store, 'Development').id)
@@ -136,7 +136,7 @@ describe('TimeStage when the refused field goes away', () => {
   })
 
   it('drops the reason when its step switches to the other kind', () => {
-    const store = render(steps())
+    const store = render(defaultSteps())
     enter('Development', 'wait-time', '3')
 
     store.switchStepKind(stepNamed(store, 'Development').id, 'outside')

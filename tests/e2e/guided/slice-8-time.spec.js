@@ -63,22 +63,37 @@ const savedStep = async (page, name) =>
 
 /**
  * Type a duration into one of a row's time fields, then leave the last field
- * so the edit is saved. `timeField` is "process", "wait" or "elapsed"; `unit` is
+ * so the edit is saved. `timeStem` is "process", "wait" or "elapsed"; `unit` is
  * "minutes", "hours" or "days"; the unit is set before the numbers, which are
  * read in it.
  */
-const enterTime = async (row, timeField, { typ, min, max, unit }) => {
-  const id = `${timeField}-time`
-  if (unit) await row.getByTestId(`${id}-unit-select`).selectOption(unit)
+const enterTime = async (row, timeStem, { typ, min, max, unit }) => {
+  const testidPrefix = `${timeStem}-time`
+  if (unit) await row.getByTestId(`${testidPrefix}-unit-select`).selectOption(unit)
   const fields = [
-    [`${id}-input`, typ],
-    [`${id}-min-input`, min],
-    [`${id}-max-input`, max],
+    [`${testidPrefix}-input`, typ],
+    [`${testidPrefix}-min-input`, min],
+    [`${testidPrefix}-max-input`, max],
   ].filter(([, text]) => text !== undefined)
   for (const [testid, text] of fields) {
     await row.getByTestId(testid).fill(text)
   }
   await row.getByTestId(fields.at(-1)[0]).press('Tab')
+}
+
+/**
+ * Waits until every earlier edit has been saved. A later valid edit landing
+ * proves saves are done, so a check that a value was not saved does not just
+ * read the state before the write arrives.
+ */
+const settleSaves = async (page) => {
+  await enterTime(rowOf(page, 'Intake'), 'process', {
+    typ: '5',
+    unit: 'minutes',
+  })
+  await expect
+    .poll(() => savedStep(page, 'Intake'))
+    .toMatchObject({ processTime: { typ: 5 } })
 }
 
 // Next is disabled, and its accessible description is exactly the reason.
@@ -178,7 +193,7 @@ test.describe('The Time stage', () => {
     {
       description: 'process time -1 minutes',
       message: "Process time can't be negative",
-      timeField: 'process',
+      timeStem: 'process',
       testid: 'process-time',
       entry: { typ: '-1', unit: 'minutes' },
       saved: TYPICAL_TIMES.team,
@@ -186,7 +201,7 @@ test.describe('The Time stage', () => {
     {
       description: 'wait time "abc"',
       message: 'Enter a number',
-      timeField: 'wait',
+      timeStem: 'wait',
       testid: 'wait-time',
       entry: { typ: 'abc' },
       saved: TYPICAL_TIMES.team,
@@ -194,7 +209,7 @@ test.describe('The Time stage', () => {
     {
       description: 'wait time min 3 days and typical 2',
       message: "Min can't be more than typical",
-      timeField: 'wait',
+      timeStem: 'wait',
       testid: 'wait-time-min',
       entry: { typ: '2', min: '3', unit: 'days' },
       // The valid typical is saved as it is left; the refused min is not.
@@ -203,7 +218,7 @@ test.describe('The Time stage', () => {
     {
       description: 'wait time typical 5 days and max 2',
       message: "Max can't be less than typical",
-      timeField: 'wait',
+      timeStem: 'wait',
       testid: 'wait-time-max',
       entry: { typ: '5', max: '2', unit: 'days' },
       // The valid typical is saved as it is left; the refused max is not.
@@ -214,7 +229,7 @@ test.describe('The Time stage', () => {
   for (const {
     description,
     message,
-    timeField,
+    timeStem,
     testid,
     entry,
     saved,
@@ -229,7 +244,7 @@ test.describe('The Time stage', () => {
       await expect(development).toBeVisible()
       await expect(nextButton(page)).toBeEnabled()
 
-      await enterTime(development, timeField, entry)
+      await enterTime(development, timeStem, entry)
 
       await expect(development.getByTestId(`${testid}-error`)).toHaveText(
         message
@@ -239,15 +254,7 @@ test.describe('The Time stage', () => {
       await expect(invalid).toHaveAccessibleDescription(message)
       await expectReason(page, 'Fix the times that show an error')
 
-      // A later valid edit landing proves the app had saved by the time the
-      // refused value is checked, so "not saved" is not just "not saved yet".
-      await enterTime(rowOf(page, 'Intake'), 'process', {
-        typ: '5',
-        unit: 'minutes',
-      })
-      await expect
-        .poll(() => savedStep(page, 'Intake'))
-        .toMatchObject({ processTime: { typ: 5 } })
+      await settleSaves(page)
       const { processTime, waitTime } = await savedStep(page, 'Development')
       expect({ processTime, waitTime }).toEqual(saved)
     })
@@ -364,15 +371,7 @@ test.describe('The Time stage', () => {
     await expect(development.getByTestId('wait-time-input')).toHaveValue(
       String((2 * WORKDAY_MINUTES) / HOUR_MINUTES)
     )
-    // A later edit landing proves the app had saved by now, so "unchanged" is
-    // not just "not saved yet".
-    await enterTime(rowOf(page, 'Intake'), 'process', {
-      typ: '5',
-      unit: 'minutes',
-    })
-    await expect
-      .poll(() => savedStep(page, 'Intake'))
-      .toMatchObject({ processTime: { typ: 5 } })
+    await settleSaves(page)
     expect((await savedStep(page, 'Development')).waitTime).toEqual({
       typ: 2 * WORKDAY_MINUTES,
     })

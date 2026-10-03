@@ -2166,7 +2166,7 @@ Feature: Table and canvas views
 
   Scenario: Table lists every step field and figure
     When I switch the map pane to "Table"
-    Then each step row shows name, description, performer, kind, handoff, process, wait or elapsed time with min and max, source, %C/A, reject rate, notes and flags
+    Then each step row shows name, description, performer, kind, handoff, process and wait time with min and max, or the single elapsed time, source, %C/A, reject rate, notes and flags
     And "Security review" shows "outside" with a hatched pattern
     And the rework paths table lists "Code review → Intake" with depth 3, 20% of items, 100% of rejects, 9.6 days and 1.9 days
 
@@ -2891,7 +2891,7 @@ See each step's **Complexity** line. The `complex` steps are 3.1 (migration), 4.
 
 #### Wave 6
 
-- [ ] Slice 8: Time stage
+- [x] Slice 8: Time stage (slice review done, findings fixed; 1477 unit tests, 142 guided e2e)
   - [x] Step 8.1: DurationInput
   - [x] Step 8.2: Time stage
 - [ ] Slice 9: Workspace home screen
