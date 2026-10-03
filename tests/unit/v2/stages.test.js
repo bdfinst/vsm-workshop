@@ -62,17 +62,17 @@ describe('clampStage', () => {
     ['1', 1, 1],
     ['4', 4, 4],
     ['7', 7, 7],
-    ['8', 8, 7],
-    ['0', 0, 1],
-    ['-3', -3, 1],
-    ['2.5', 2.5, 1],
-    ['the text "3"', '3', 1],
-    ['undefined', undefined, 1],
-    ['null', null, 1],
-    ['NaN', NaN, 1],
-    ['Infinity', Infinity, 1],
-    ['-Infinity', -Infinity, 1],
-  ])('turns %s into stage %i', (_label, stage, expected) => {
+    ['8', 7, 8],
+    ['0', 1, 0],
+    ['-3', 1, -3],
+    ['2.5', 1, 2.5],
+    ['the text "3"', 1, '3'],
+    ['undefined', 1, undefined],
+    ['null', 1, null],
+    ['NaN', 1, NaN],
+    ['Infinity', 1, Infinity],
+    ['-Infinity', 1, -Infinity],
+  ])('turns %s into stage %i', (_label, expected, stage) => {
     expect(clampStage(stage)).toBe(expected)
   })
 })

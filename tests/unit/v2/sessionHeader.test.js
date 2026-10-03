@@ -1,13 +1,13 @@
 import { describe, it, expect, vi, afterEach } from 'vitest'
-import { mount, unmount, flushSync } from 'svelte'
+import { mount, unmount, flushSync, tick } from 'svelte'
 import { createValueStream } from '../../../src/models/v2/valueStream.js'
 import { createValueStreamStore } from '../../../src/stores/v2/valueStreamStore.svelte.js'
 import SessionHeader from '../../../src/components/session/SessionHeader.svelte'
 
-// double-waiver: B1 - the workspaceStore singleton opens the IndexedDB working copy at import
 const workspaceStore = vi.hoisted(() => ({
   startNew: vi.fn(),
 }))
+// double-waiver: B1 - the workspaceStore singleton can only become ready through init() against IndexedDB, and SessionHeader imports it directly (no injection seam)
 vi.mock('../../../src/stores/v2/workspaceStore.svelte.js', () => ({
   workspaceStore,
 }))
@@ -63,7 +63,7 @@ describe('SessionHeader File menu', () => {
     item().click()
 
     await vi.waitFor(() => expect(item()).toBeNull())
-    await new Promise((resolve) => setTimeout(resolve))
+    await tick()
     expect(file).not.toHaveFocus()
     expect(workspaceStore.startNew).toHaveBeenCalledOnce()
   })
