@@ -361,7 +361,7 @@ New modules live under `v2/` directories with canonical identifier names (`creat
     A step whose shares don't sum to 100 is flagged, and the flag shows the current sum.
 
 13. A metric that depends on a missing value shows "incomplete" and names the first such step, never a number.
-14. The largest wait and the lowest %C/A each carry a flag on the ladder, and the summary strip names the same step for each.
+14. The largest wait and the lowest %C/A each carry a flag on the ladder, and the summary strip's flagged-steps list names the same step for each.
 15. Every edit, including step delete with paths and future-state create or delete, can be undone and redone from the toolbar or the keyboard.
 
 **Views**

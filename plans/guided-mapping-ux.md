@@ -1725,7 +1725,7 @@ Feature: Live time-ladder map
 #### Step 10.3: SummaryStrip
 
 **Complexity**: standard
-**IMPLEMENT**: Write `SummaryStrip`: the hero flow efficiency with its context sentence, the secondary row, the flag callouts from `flags.js`, the incomplete states, and a collapsed mode under 640 px.
+**IMPLEMENT**: Write `SummaryStrip`: the hero flow efficiency with its context sentence, the secondary row, the flagged-steps list (from `metrics.flags`, through `flaggedSteps`), the incomplete states, and a collapsed mode under 640 px.
 **TEST**: The visibility, flags, incomplete, outside, summary, long-stream, narrow-screen and Intake-only scenarios, plus axe. They need the strip, so they run here.
 **REFACTOR**: Make the ladder and the strip read flags from the same selector.
 **Files**: `src/components/map/SummaryStrip.svelte`
@@ -1741,6 +1741,102 @@ Feature: Live time-ladder map
 **Commit**: `perf(map): derived ladder model within the 200 ms budget`
 
 **Early dry run (non-gating):** Once Slice 10 is merged, run one facilitated stage-flow dry run (Scope to Time, with the ladder) on the Slice 6 standalone file with someone new to value stream mapping. Record the findings as "Early findings" in `docs/ux/pilot-results.md`. It gates nothing; findings feed Slices 11–15 as plan amendments.
+
+#### Slice 10 follow-up
+
+The refactors and view-state items deferred from the Slice 10 review. Items 1–5 and 9 change no behaviour: the existing unit and e2e tests pass unchanged except for renamed ids, and the extraction is held by a component test written first. Items 6–8 change what the map shows or accepts, so their scenarios come first. The user's "implement all deferred items" is the approval.
+
+```gherkin
+# Vitest: tests/unit/v2 (width estimate, store, components in jsdom)
+# Playwright: tests/e2e/guided (labels as the browser draws them)
+Feature: The ladder map measures labels true and can be shared
+  As a team
+  I want every label to stay whole on the map, and the map to be reusable
+  So that no name is clipped and Slices 13 and 14 can show two maps side by side
+
+  Scenario Outline: A label character is measured by its class
+    When a label line is "<text>"
+    Then its estimated width is <ems> em at the label size
+    Examples:
+      | class                                    | text   | ems  |
+      | an ordinary character                    | e      | 0.67 |
+      | a capital                                | H      | 0.72 |
+      | a lower-case m                           | m      | 0.9  |
+      | a lower-case w                           | w      | 0.9  |
+      | the wide capitals                        | W      | 1    |
+      | the wide capitals                        | M      | 1    |
+      | an East Asian wide character             | 価     | 1    |
+      | an emoji                                 | 🚀     | 1.3  |
+      | an emoji with a skin tone, one glyph     | 👍🏽    | 1.3  |
+      | a flag, one glyph                        | 🇯🇵    | 1.3  |
+      | a family joined by zero-width joiners    | 👨‍👩‍👧 | 1.3  |
+      | a letter with a combining accent         | é      | 0.67 |
+
+  Scenario: Names heavy in capitals, m and w never overlap
+    Given steps named with runs of "H", "N", "O", "m" and "w" in crowded boxes
+    Then no label overlaps the label beside it on its lane
+
+  Scenario: An emoji in the last step's name stays inside the map
+    Given the last step is named "Ship it 🚀🎉"
+    Then its label ends inside the map, To scale and Equal width
+
+  Scenario: The estimate is never narrower than the browser draws
+    Given steps named with emoji, with runs of "m" and "w", and in capitals
+    Then each name's estimated width is at least the width the browser draws
+
+  Scenario: The session opens on the Map view
+    Then the session's view is "map"
+    And the Map tab of the map pane is selected
+
+  Scenario: A view the pane does not offer yet shows the Map
+    Given the session's view is "table"
+    Then the Map tab of the map pane is selected and the ladder is shown
+
+  Scenario: Choosing a view sets the session's view
+    When I choose the "Map" tab
+    Then the session's view is "map"
+
+  Scenario: A ladder map pinned to a scale ignores the pane width
+    Given a ladder map given 0.1 pixels per minute
+    Then "Code review" wait is drawn 288 pixels wide, however wide the pane is
+
+  Scenario: A ladder map given a mode starts in it
+    Given a ladder map given the mode "equal"
+    Then "Equal width" is checked and every step is drawn the same width
+
+  Scenario: The mode choice can be hidden
+    Given a ladder map told to hide its mode choice
+    Then it has no "To scale" or "Equal width" control
+
+  Scenario: Two ladder maps on one page share no ids
+    Given two ladder maps on one page
+    Then no id appears twice on the page
+    And each map's description and hatch fill point at its own
+    And each map's mode choice is its own radio group
+
+  Scenario: Choosing a mode on one map leaves the other alone
+    Given two ladder maps on one page, both "To scale"
+    When I choose "Equal width" on the first
+    Then the second is still "To scale"
+
+  Scenario: A single map with no options draws as before
+    Given a ladder map given only its model
+    Then it fits the pane To scale and offers the mode choice
+
+  Scenario: Each version's ladder model carries its own flags
+    Given "Current" where "Code review" has the largest wait and "Draft" where "Deploy" has it
+    When a ladder model is built for each from that version's own flags
+    Then "Current" flags "Code review" and "Draft" flags "Deploy"
+```
+
+**Decisions (follow-up):**
+
+- **One word per concept.** A _model_ is what does not depend on the pane (`ladderModel(version, flags)`, `store.ladderModel`, the `ladderModel` prop of `LadderMap`). A _layout_ is a model sized for a pane (`sizeLadder` returns it, `layoutLabels` returns a `labelLayout`). Widths say what they are: `boxWidth` (a step's column, in layout steps, in `sizeLadder`'s equal-mode option and in `equalBoxWidthFor`), `textWidth` (a label line), `scrollerWidth` (the ladder's scroll region, which the fit reads), `totalWidth` (the whole ladder). A layout step's `wait` and `process` are `waitBlock` and `processBlock` (`{x, width, minutes}`): the blocks drawn above and below the track. Minutes are `waitMinutes` and `processMinutes`. The test ids follow: `ladder-wait-block`, `ladder-process-block`.
+- **`ladderModel` stays in `utils/ui`, in its own file.** It builds encodings (outline, texts, tones) from `metrics.flags` through `flaggedSteps`, which is view vocabulary. `utils/calculations` never imports `utils/ui`, so a move there would drag `TONE` and `flaggedSteps` after it or invert the import direction. The store already imports `utils/ui` (`vsmDataStore`, `sessionUIStore`), and the 200 ms benchmark passes with it deriving the model next to the metrics. Splitting it out of `ladderLayout.js` makes the file say what it holds: `ladderModel.js` (what to draw) and `ladderLayout.js` (where, for a pane).
+- **Labels are measured by class, from the browser.** Widths probed in IBM Plex Sans 600 at 12 px: capitals H, N, O, G, Q 8.5 to 8.6 px (0.72 em), m 10.7, w 9.8, W 11.4, M 9.8, and an emoji 15 px (1.25 em; skin-tone, flag and joined sequences are one glyph of that width). Emoji are taken at 1.3 em for margin. Graphemes are counted with `Intl.Segmenter`, so a joined emoji or an accented letter counts once. The estimate stays on the wide side by design: lowercase letters, spaces and narrow punctuation stay at the ordinary two thirds of an em.
+- **View state.** `sessionUIStore.viewMode` is the one source of which view shows: `'map'` joins `VIEW_MODES` and is the default (it was `'table'`, which no view yet drew). `MapPane` reads it; `ViewSwitch` has no defaults of its own. A view the pane does not offer yet falls back to the Map.
+- **A shareable `LadderMap`.** Optional props: `pixelsPerMinute` (a pinned scale in To scale mode; absent, the map fits its pane), `mode` (bindable; defaults to To scale) and `showModeToggle` (default true). Ids (`desc`, hatch pattern, radio group `name`) come from `$props.id()`, so two maps never collide. Test ids repeat across maps by design; tests scope by the pane they mean.
+- **Per-version model.** `ladderModel(version, flags)` already takes the flags computed for that version and works nothing out; this follow-up pins it with a test and hoists the flagged-steps lookup out of the per-step loop. The store keeps deriving `ladderModel` for the active version only.
 
 ### Slice 11: Save to file, save status and unsaved-changes warning
 
