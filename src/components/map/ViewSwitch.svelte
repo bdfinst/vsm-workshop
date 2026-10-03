@@ -1,13 +1,8 @@
 <script>
   // ViewSwitch props: views (the choices, each { id, label }), current (the
   // chosen id), onselect(id), and panelId (the id of the panel the tabs show).
-  // The Map is the only view until Slice 13 adds the others.
-  let {
-    views = [{ id: 'map', label: 'Map' }],
-    current = 'map',
-    onselect = () => {},
-    panelId,
-  } = $props()
+  // The pane owns them: it reads `current` from the session's `viewMode`.
+  let { views, current, onselect, panelId } = $props()
 </script>
 
 <div

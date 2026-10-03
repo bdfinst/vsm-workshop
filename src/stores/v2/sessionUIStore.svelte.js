@@ -6,7 +6,17 @@
 
 import { resolveUiMode } from '../../utils/ui/resolveUiMode.js'
 
-const VIEW_MODES = ['table', 'canvas']
+/**
+ * The views the map pane can show. The one source of which view shows: the
+ * view switch and the pane read it from the store.
+ */
+export const VIEW_MODE = Object.freeze({
+  MAP: 'map',
+  TABLE: 'table',
+  CANVAS: 'canvas',
+})
+
+const VIEW_MODES = Object.values(VIEW_MODE)
 
 /**
  * Create the session UI store.
@@ -17,7 +27,7 @@ const VIEW_MODES = ['table', 'canvas']
  */
 export const createSessionUIStore = ({ search, defaultUi }) => {
   const uiMode = resolveUiMode(search, defaultUi)
-  let viewMode = $state('table')
+  let viewMode = $state(VIEW_MODE.MAP)
   // null lets the ladder fit its width; a number is a fixed scale.
   let ladderScale = $state(null)
   let showLoopShading = $state(false)

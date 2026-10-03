@@ -2525,7 +2525,7 @@ Feature: Table and canvas views
 
 **Notes carried from the Slice 10 review:**
 
-- `ViewSwitch` ships with only a `map` view id. Slice 13 adds `'map'` to `sessionUIStore`'s `VIEW_MODES` (and makes it the default), and drives `ViewSwitch` from `sessionUIStore.viewMode` and `setViewMode` instead of its own props defaults.
+- Done in the Slice 10 follow-up: `'map'` is in `sessionUIStore`'s `VIEW_MODE` (and is the default), and `MapPane` drives `ViewSwitch` from `sessionUIStore.viewMode` and `setViewMode`. Slice 13 adds the Table and Canvas entries to the `VIEWS` list in `MapPane` and a branch for each view in its panel; a mode the pane does not list shows the Map.
 
 **Steps:**
 
