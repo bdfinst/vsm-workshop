@@ -1229,10 +1229,12 @@ Feature: Several value streams in one workspace
     And "Time" is the current stage
 
   Scenario: A reload after visiting home reopens the value stream
-    When I open "All value streams"
+    Given I am on the home screen
+    When I open "Onboarding"
+    And I open "All value streams"
     And I reload the page
-    Then the value stream name is "Checkout delivery"
-    And "Review" is the current stage
+    Then the value stream name is "Onboarding"
+    And "Steps" is the current stage
 
   Scenario: Launch with no active value stream shows the home screen
     Given no value stream is active
@@ -1322,6 +1324,7 @@ Feature: Several value streams in one workspace
       | method              |
       | "Undo" on the toast |
       | Ctrl+Z              |
+      | Cmd+Z               |
 
   Scenario: Deleting every value stream shows the empty home screen
     Given I am on the home screen
@@ -1458,27 +1461,6 @@ Feature: One name rule and an undo that survives a visit
     And "Checkout delivery" is the active value stream at the "Review" stage
     And the app is open
 
-  Scenario: A blank name is refused in the header
-    Given I have opened "Onboarding"
-    When I change the value stream name to "   "
-    Then I see "Add a name"
-    And the value stream name is "Onboarding"
-    And there is nothing to undo
-    And focus is in the value stream name field
-
-  Scenario: Typing a name and then clearing it on an unnamed value stream is refused
-    Given I have started a new value stream
-    When I type "Checkout" in the value stream name field, clear it and leave the field
-    Then I see "Add a name"
-    And the value stream name field is empty
-
-  Scenario: A refusal does not follow the user to a new value stream
-    Given I have opened "Onboarding"
-    And I have changed the value stream name to "   "
-    When I choose "New value stream" from the "File" menu
-    Then I do not see "Add a name"
-    And the value stream name field is empty and is not marked invalid
-
   # Refusing a whitespace-only rename from the home screen is the Slice 9 scenario
   # "A blank name is refused"; it keeps its place and its message "Add a name".
 
@@ -1523,6 +1505,15 @@ Feature: One name rule and an undo that survives a visit
     When I press Escape
     Then I see value streams "Checkout delivery, Untitled value stream"
 
+  Scenario: The refusal at home goes away when the name is typed again
+    Given I am on the home screen
+    And I have changed the name of "Onboarding" to "   " from the home screen
+    When I type "N" in the name field
+    Then I do not see "Add a name"
+    And the name field is announced as required
+    When I press Enter
+    Then I see value streams "Checkout delivery, N"
+
   Scenario Outline: Undo restores a deleted value stream after a visit to another
     Given I am on the home screen
     When I delete "Checkout delivery" and confirm
@@ -1562,6 +1553,57 @@ Feature: One name rule and an undo that survives a visit
     Then the browser keeps Ctrl+Z
 ```
 
+The header name field is checked on its own workspace, a single value stream, so these scenarios do not use the Background above.
+
+```gherkin
+# Playwright: tests/e2e/guided
+Feature: The header name field follows the name rule
+  As a facilitator
+  I want a blank name refused in the header with a message I can see and act on
+  So that I never leave a value stream without a name by accident
+
+  Scenario: A blank name is refused in the header
+    Given the open value stream is "Checkout delivery" at the "Steps" stage
+    When I change the value stream name to "   "
+    Then I see "Add a name"
+    And the value stream name is "Checkout delivery"
+    And there is nothing to undo
+
+  Scenario: A blank name is refused when the field is left, not only on Enter
+    Given the open value stream is "Checkout delivery" at the "Steps" stage
+    When I clear the value stream name and press Tab
+    Then I see "Add a name"
+    And the value stream name is "Checkout delivery"
+    And focus is in the value stream name field
+
+  Scenario: The refusal goes away when the name is typed again
+    Given the open value stream is "Checkout delivery" at the "Steps" stage
+    And I have changed the value stream name to "   "
+    When I type "Checkout v2" in the value stream name field
+    Then I do not see "Add a name"
+    When I press Enter
+    Then the value stream name is "Checkout v2"
+
+  Scenario: A name saved from the header is trimmed
+    Given the open value stream is "Checkout delivery" at the "Steps" stage
+    When I change the value stream name to "  Checkout v2  "
+    Then the value stream name is "Checkout v2"
+    And the saved name is "Checkout v2"
+
+  Scenario: Typing a name and then clearing it on an unnamed value stream is refused
+    Given I have started a new value stream
+    When I type "Checkout" in the value stream name field, clear it and leave the field
+    Then I see "Add a name"
+    And the value stream name field is empty
+
+  Scenario: A refusal does not follow the user to a new value stream
+    Given the open value stream is "Checkout delivery" at the "Steps" stage
+    And I have changed the value stream name to "   "
+    When I choose "New value stream" from the "File" menu
+    Then I do not see "Add a name"
+    And the value stream name field is empty and is not marked invalid
+```
+
 **Decisions** (settled with the owner):
 
 - One editor per property: a value stream's name is edited only in the header and in the home card's rename. The Scope stage has no name field. Its Next gate still needs a name and says "Add a name in the header"; while the stream is unnamed Scope shows the line "Name this value stream in the header." (test id `scope-name-hint`).
@@ -1571,7 +1613,7 @@ Feature: One name rule and an undo that survives a visit
 - Typing a blank name is refused everywhere, even over an unnamed stream: an explicit blank entry is an edit to blank. An untouched field is not an edit, so leaving the header field alone keeps a new stream unnamed. Saving the card rename of an unnamed stream empty is an explicit blank, and is refused.
 - Names are normalized when a stream is created (`createValueStream`), imported (`withReadableFields`) or migrated from v1 (which goes through `createValueStream`). The stream a card or file name is derived from is found by id.
 - New value streams still start unnamed and show "Untitled value stream"; existing unnamed streams are unchanged. Only editing a name to blank is refused. A duplicate of an unnamed stream is named "Untitled value stream (copy)".
-- The header refuses a blank name with "Add a name" under the field, keeps the previous name, does not commit and keeps focus in the field. The message clears on the next keystroke and when another value stream is opened (the header is keyed by stream id).
+- The header refuses a blank name with "Add a name" under the field, keeps the previous name, does not commit and keeps focus in the field (Enter never leaves it; when the field is left with Tab, focus is brought back). The message clears on the next keystroke and when another value stream is opened (the header is keyed by stream id).
 - `workspaceStore` owns the last removal: `lastRemoval` (stream id and display name, or null) and `restoreLast()`. A new removal replaces the previous one, a failed restore clears it and opening or adopting another workspace clears it. `remove` returns only `{ ok: true }`: there is no token, and `restoreLast` is the only way to restore.
 - After the home screen is left and reached again, Ctrl/Cmd+Z restores the last delete. The Undo toast does not come back; the shortcut is what works.
 - The name field is labelled "Value stream name" everywhere (test id `stream-name-input` in the header). "Map" stays for the diagram and its version.
