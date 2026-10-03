@@ -4,7 +4,7 @@ import {
   calculateWaitShare,
 } from './totals.js'
 import { calculateRework, reworkAdjustedLeadTime, rolledCA } from './rework.js'
-import { topWaits, topPaths, lowestCA } from './flags.js'
+import { topWaits, largestWait, topPaths, lowestCA } from './flags.js'
 
 /**
  * All v2 metrics for one map version. Pure: minutes in, minutes out (percentages
@@ -23,8 +23,6 @@ export const calculateMetrics = ({ steps, reworkPaths }) => {
     rework.timeOnRework
   )
 
-  const waits = topWaits(steps)
-
   return {
     totals,
     flowEfficiency: calculateFlowEfficiency(totals),
@@ -39,8 +37,8 @@ export const calculateMetrics = ({ steps, reworkPaths }) => {
     stepCount: totals.stepCount,
     handoffCount: totals.handoffCount,
     flags: {
-      topWaits: waits,
-      largestWait: waits[0] ?? null,
+      topWaits: topWaits(steps),
+      largestWait: largestWait(steps),
       topPaths: topPaths(rework.paths),
       lowestCA: lowestCA(steps),
     },

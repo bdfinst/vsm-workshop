@@ -23,6 +23,13 @@ export const topWaits = (steps) =>
     .slice(0, TOP_COUNT)
 
 /**
+ * The team step with the largest wait, the first on a tie.
+ * @param {Object[]} steps - v2 steps, in order
+ * @returns {{stepId: string, name: string, wait: number}|null} Null when no team step has a wait above 0
+ */
+export const largestWait = (steps) => topWaits(steps)[0] ?? null
+
+/**
  * The rework paths with the most added time per item. Paths whose added time
  * is incomplete or 0 are left out; ties keep path order.
  * @param {Object[]} pathRows - `paths` from calculateRework
@@ -40,12 +47,11 @@ export const topPaths = (pathRows) =>
  * @param {Object[]} steps - v2 steps, in order
  * @returns {{stepId: string, name: string, pctCA: number}|null} Null when no step has a %C/A below 100
  */
-export const lowestCA = (steps) => {
-  return steps
+export const lowestCA = (steps) =>
+  steps
     .filter((step) => !isOutside(step) && hasRejects(step))
     .map((step) => ({ stepId: step.id, name: step.name, pctCA: step.pctCA }))
     .reduce(
       (found, row) => (found && found.pctCA <= row.pctCA ? found : row),
       null
     )
-}

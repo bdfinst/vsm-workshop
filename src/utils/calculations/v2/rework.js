@@ -106,7 +106,11 @@ const analyzePath = (steps, indexOfStep, path) => {
  */
 export const calculateRework = (steps, reworkPaths) => {
   // Built once: each path looks up two steps, and a version holds many paths.
-  const indexById = new Map(steps.map((step, index) => [step.id, index]))
+  // A repeated id keeps its first index, as `findIndex` would.
+  const indexById = new Map()
+  steps.forEach((step, index) => {
+    if (!indexById.has(step.id)) indexById.set(step.id, index)
+  })
   const indexOfStep = (id) => indexById.get(id) ?? -1
   const analyses = reworkPaths.map((path) =>
     analyzePath(steps, indexOfStep, path)
