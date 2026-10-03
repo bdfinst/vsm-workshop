@@ -256,35 +256,50 @@ same Docker image CI uses**, never with a bare local `playwright test
 --update-snapshots`, or the new baselines won't match CI:
 
 ```bash
-npm run test:e2e:baseline   # runs --update-snapshots inside the pinned image
+npm run test:e2e:baseline            # visual.spec.js
+npm run test:e2e:baseline -- <spec>  # another spec file
 ```
 
-Commit the updated `tests/e2e/**/*-snapshots/*.png` files. Keep the image tag in
-`test:e2e:baseline` and `.github/workflows/ci.yml` in sync with the
-`@playwright/test` version in `package.json`.
+`scripts/e2e-baseline.sh` does the whole job, on a Mac as well as on Linux. It
+copies the files git tracks (minus tracked files deleted in the working tree) and
+the files git shows as untracked and not ignored, except untracked `.env*`
+entries, to a temp directory, without `node_modules`, `dist`, `.git` and the test
+output. Ignored local files such as `.mcp.json` and untracked env files never
+reach the container; a tracked `.env*` file does, so the build matches CI. Any
+rsync error aborts the run. The container installs its own Linux builds with
+`npm ci`. It regenerates the snapshots in the pinned image, then runs the spec
+again in CI mode (`CI=1`, production build served by `vite preview`, no network).
+Only when that run passes does it copy the snapshots back, so unconfirmed
+baselines never reach the working tree. It removes the temp directory when it
+ends.
 
-**Server mode.** In CI (`CI` set) Playwright serves the production build with
-`vite preview`; without `CI` it uses the dev server, which baseline regeneration
-runs. The two rendered the same on the last check (all visual tests passed
-against the preview server with baselines made on the dev server), but nothing
-enforces that. After regenerating baselines, confirm them against the production
-build in the pinned image.
+The copy-back (`scripts/e2e-baseline-lib.sh`) takes only regular
+`tests/e2e/**/*-snapshots/*.png` files, walked NUL-safely. It first checks every
+candidate: the relative path must match
+`^tests/e2e/[A-Za-z0-9._/-]+-snapshots/[A-Za-z0-9._-]+\.png$` with no `..`
+segment, `tests` and `tests/e2e` in the temp copy must not be symlinks, and the
+destination file and its parent directories in the repo must not be symlinks.
+One refusal fails the whole copy and the repo is untouched. Each file is then
+written to a temp name beside its destination and renamed into place.
+`npm run test:shell` runs `tests/shell/e2e-baseline-copy-back.sh`, which feeds
+that code hostile names and symlinks (no Docker needed); it is not part of
+`npm test`.
 
-On a Mac, `test:e2e:baseline` mounts the host `node_modules`, which has no Linux
-build of esbuild or rollup, so neither the dev server nor a build starts in the
-container. Work from a copy of the repo and let the container run `npm ci`. The
-image's Node (v24.13.0 at v1.58.2) matches `.nvmrc`. To regenerate, then to
-confirm against the production build:
+If regeneration, the confirmation run or the copy-back checks fail, the script
+exits non-zero and leaves the repo untouched. It copies the Playwright `test-results` and
+`playwright-report` to a new temp directory outside the repo and prints its
+path; that directory is not deleted.
 
-```bash
-rsync -a --exclude node_modules --exclude dist --exclude .git ./ /tmp/visualcheck/
-docker run --rm --ipc=host -v /tmp/visualcheck:/work -w /work \
-  mcr.microsoft.com/playwright:v<version>-noble sh -c \
-  'npm ci && npx playwright test visual.spec.js --update-snapshots'
-# copy the updated tests/e2e/visual.spec.js-snapshots/*.png back, then:
-docker run --rm --ipc=host -e CI=1 -v /tmp/visualcheck:/work -w /work \
-  mcr.microsoft.com/playwright:v<version>-noble sh -c \
-  'npm run build && npm run build:standalone && npx playwright test visual.spec.js'
-```
+The containers run as the host user with all capabilities dropped,
+`no-new-privileges` and `--shm-size=1g`; the confirmation run also has
+`--network none`.
+
+Commit the updated `tests/e2e/**/*-snapshots/*.png` files. The image reference
+(tag and digest) lives in `.github/workflows/ci.yml` and in the script, and
+Renovate moves both together with `@playwright/test` (see `renovate.json`).
+
+The image runs as `linux/amd64`, as on CI's runners, so the baselines match CI.
+On Apple Silicon that is emulation and slower. `DOCKER_DEFAULT_PLATFORM=linux/arm64`
+runs it natively, but those baselines will not match CI; do not commit them.
 
 Run the suite locally (against your own browsers) with `npm run test:e2e`.
