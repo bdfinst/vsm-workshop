@@ -152,9 +152,14 @@ const EMOJI_GLYPH = /\p{Extended_Pictographic}|\p{Regional_Indicator}/gu
 // capital is 0.73; & is 0.71, m 0.89, w 0.82, the wide punctuation (%, @, the
 // ellipsis, the em dash) up to 0.96 and an emoji 1.25 in the system emoji
 // fonts. Everything else is the ordinary LABEL_CHAR_WIDTH.
-const CAPITAL_EMS = 0.73
-const WIDE_LOWERCASE_EMS = 0.9
+// The Linux CI image rounds each advance to a whole pixel: capitals and & draw
+// at 9 px and m at 11 px there, against 8.64 and 10.7 on macOS.
+const CAPITAL_EMS = 0.76
+const WIDE_LOWERCASE_EMS = 0.92
 const FULL_EM = 1
+// East Asian wide characters are one em in the label font's own CJK glyphs, but
+// the fallback font on the Linux CI image draws a run of them 0.7% wider.
+const EAST_ASIAN_EMS = 1.05
 const EMOJI_EMS = 1.3
 
 // Splits text into what a reader sees as one character: a skin-toned emoji or
@@ -168,9 +173,9 @@ const graphemesOf = (text) => {
   return Array.from(segmenter.segment(text), ({ segment }) => segment)
 }
 
-const isWide = (grapheme, base) =>
-  WIDE_CAPITALS.has(base) ||
-  WIDE_PUNCTUATION.has(base) ||
+const isFullEm = (base) => WIDE_CAPITALS.has(base) || WIDE_PUNCTUATION.has(base)
+
+const isEastAsianWide = (grapheme) =>
   WIDE_RANGES.some(([from, to]) => {
     const code = grapheme.codePointAt(0)
     return code >= from && code <= to
@@ -189,7 +194,8 @@ const widthOfGrapheme = (grapheme) => {
   if (EMOJI.test(grapheme)) return emojiWidthOf(grapheme)
   // The letter under any accent: Ŵ is a W, ḿ an m.
   const base = grapheme.normalize('NFD')[0]
-  if (isWide(grapheme, base)) return FULL_EM * LABEL_FONT_SIZE
+  if (isEastAsianWide(grapheme)) return EAST_ASIAN_EMS * LABEL_FONT_SIZE
+  if (isFullEm(base)) return FULL_EM * LABEL_FONT_SIZE
   if (CAPITAL.test(grapheme) || CAPITAL_WIDTH_SYMBOLS.has(base)) {
     return CAPITAL_EMS * LABEL_FONT_SIZE
   }
@@ -201,10 +207,11 @@ const widthOfGrapheme = (grapheme) => {
  * An estimate, in pixels, of how wide a label line is drawn. It weights each
  * character (a grapheme, so an accented letter or a skin-toned emoji counts
  * once) by class: an emoji at 1.3 em for each glyph it can be drawn as (a flag
- * is two, a family one per person), East Asian wide and fullwidth characters,
- * the capitals W and M, and the em dash, percent sign, at sign and ellipsis at
- * a full em, the other capitals and the ampersand at 0.73 em, the lower-case m
- * and w at 0.9 em, and every other character at LABEL_CHAR_WIDTH. An accent
+ * is two, a family one per person), East Asian wide and fullwidth characters
+ * at 1.05 em, the capitals W and M, and the em dash, percent sign, at sign and
+ * ellipsis at a full em, the other capitals and the ampersand at 0.76 em, the
+ * lower-case m
+ * and w at 0.92 em, and every other character at LABEL_CHAR_WIDTH. An accent
  * does not change the class: Ŵ is a W. It is pure, so it cannot read font
  * metrics: it measures by class, from widths probed in the label font, and
  * errs on the wide side so labels never overlap or clip in the scripts that

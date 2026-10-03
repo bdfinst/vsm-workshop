@@ -35,9 +35,10 @@ import {
   withoutWait,
 } from './fixtures.js'
 
-const CJK_NAME = '価値流れ図の作成と改善のための手順書一覧' // 20 characters, each a full em
+const CJK_NAME = '価値流れ図の作成と改善のための手順書一覧' // 20 characters, each 1.05 em
+const EAST_ASIAN_WIDTH = 1.05 * LABEL_FONT_SIZE
 
-const CAPITAL_WIDTH = 0.73 * LABEL_FONT_SIZE
+const CAPITAL_WIDTH = 0.76 * LABEL_FONT_SIZE
 
 const REFERENCE_MINUTES = 9030 // every wait and process minute of the reference map
 
@@ -289,21 +290,21 @@ describe('textWidthOf', () => {
   // Scenario Outline: A label character is measured by its class
   it.each([
     { kind: 'an ordinary character', text: 'e', ems: 2 / 3 },
-    { kind: 'a capital', text: 'H', ems: 0.73 },
-    { kind: 'a capital with an accent', text: 'É', ems: 0.73 },
-    { kind: 'a lower-case m', text: 'm', ems: 0.9 },
-    { kind: 'a lower-case w', text: 'w', ems: 0.9 },
+    { kind: 'a capital', text: 'H', ems: 0.76 },
+    { kind: 'a capital with an accent', text: 'É', ems: 0.76 },
+    { kind: 'a lower-case m', text: 'm', ems: 0.92 },
+    { kind: 'a lower-case w', text: 'w', ems: 0.92 },
     { kind: 'a wide capital W', text: 'W', ems: 1 },
     { kind: 'a wide capital M', text: 'M', ems: 1 },
     { kind: 'a wide capital with an accent', text: 'Ŵ', ems: 1 },
-    { kind: 'a lower-case w with an accent', text: 'ẃ', ems: 0.9 },
-    { kind: 'a lower-case m with an accent', text: 'ḿ', ems: 0.9 },
+    { kind: 'a lower-case w with an accent', text: 'ẃ', ems: 0.92 },
+    { kind: 'a lower-case m with an accent', text: 'ḿ', ems: 0.92 },
     { kind: 'wide punctuation: an em dash', text: '—', ems: 1 },
     { kind: 'wide punctuation: a percent sign', text: '%', ems: 1 },
     { kind: 'wide punctuation: an at sign', text: '@', ems: 1 },
     { kind: 'wide punctuation: an ellipsis', text: '…', ems: 1 },
-    { kind: 'an ampersand, as broad as a capital', text: '&', ems: 0.73 },
-    { kind: 'an East Asian wide character', text: '価', ems: 1 },
+    { kind: 'an ampersand, as broad as a capital', text: '&', ems: 0.76 },
+    { kind: 'an East Asian wide character', text: '価', ems: 1.05 },
     { kind: 'an emoji', text: '🚀', ems: 1.3 },
     { kind: 'an emoji with a skin tone, one glyph', text: '👍🏽', ems: 1.3 },
     {
@@ -340,22 +341,26 @@ describe('textWidthOf', () => {
     ['fullwidth Latin', 'Ａ'],
     ['CJK punctuation', '、'],
     ['a CJK character outside the Basic Multilingual Plane', '\u{20BB7}'],
-  ])('takes %s at a full em', (_, character) => {
-    expect(textWidthOf(character)).toBe(LABEL_FONT_SIZE)
+  ])('takes %s at 1.05 em', (_, character) => {
+    expect(textWidthOf(character)).toBeCloseTo(EAST_ASIAN_WIDTH, 10)
   })
 
   it('counts a character outside the Basic Multilingual Plane once, not as two halves', () => {
-    expect(textWidthOf('\u{20BB7}\u{20BB7}')).toBe(2 * LABEL_FONT_SIZE)
+    expect(textWidthOf('\u{20BB7}\u{20BB7}')).toBeCloseTo(
+      2 * EAST_ASIAN_WIDTH,
+      10
+    )
   })
 
   it('adds the classes up in a mixed name', () => {
-    // Q and A are capitals; the three spaces are ordinary; 自, 動, 化, W and M are a full em;
+    // Q and A are capitals; the three spaces are ordinary; 自, 動 and 化 are East Asian wide; W and M are a full em;
     // m is a wide lower-case letter; the rocket is an emoji.
     expect(textWidthOf('QA 自動化 WM m🚀')).toBeCloseTo(
       2 * CAPITAL_WIDTH +
         3 * LABEL_CHAR_WIDTH +
-        5 * LABEL_FONT_SIZE +
-        0.9 * LABEL_FONT_SIZE +
+        3 * EAST_ASIAN_WIDTH +
+        2 * LABEL_FONT_SIZE +
+        0.92 * LABEL_FONT_SIZE +
         1.3 * LABEL_FONT_SIZE,
       10
     )
@@ -427,7 +432,7 @@ describe('layoutLabels', () => {
 
     const { labels } = layoutLabels(steps)
 
-    expect(labels[0].labelWidth).toBe(20 * LABEL_FONT_SIZE)
+    expect(labels[0].labelWidth).toBeCloseTo(20 * EAST_ASIAN_WIDTH, 10)
   })
 
   it('lists the name first and then the annotations', () => {
@@ -540,8 +545,9 @@ describe('labelOverhangFor', () => {
   it('counts a CJK name by the em', () => {
     const model = modelOf([team(CJK_NAME, 60, 60)])
 
-    expect(labelOverhangFor(model.steps, MIN_SCALED_BOX_WIDTH)).toBe(
-      LABEL_INSET + 20 * LABEL_FONT_SIZE - MIN_SCALED_BOX_WIDTH
+    expect(labelOverhangFor(model.steps, MIN_SCALED_BOX_WIDTH)).toBeCloseTo(
+      LABEL_INSET + 20 * EAST_ASIAN_WIDTH - MIN_SCALED_BOX_WIDTH,
+      10
     )
   })
 
