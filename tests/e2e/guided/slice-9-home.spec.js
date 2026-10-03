@@ -7,7 +7,7 @@ import { createValueStream } from '../../../src/models/v2/valueStream.js'
 import { exportValueStream } from '../../../src/persistence/v2/valueStreamJson.js'
 import { createWorkspace } from '../../../src/models/v2/workspace.js'
 import { STAGE_NUMBER } from '../../../src/models/v2/constants.js'
-import { test, expect, savedWorkspace } from './fixtures.js'
+import { test, expect, savedWorkspace, streamName } from './fixtures.js'
 
 const DAY_MS = 24 * 60 * 60 * 1000
 const CHECKOUT_UPDATED_AT = '2026-03-10T09:00:00.000Z'
@@ -72,7 +72,6 @@ const openBackground = async (page, seed, options = {}) => {
   return { checkout, second }
 }
 
-const streamName = (page) => page.getByTestId('stream-name-input')
 const cardLinks = (page) => page.getByTestId('stream-card-link')
 const homeHeading = (page) =>
   page.getByRole('heading', { name: 'All value streams', level: 1 })
@@ -95,6 +94,17 @@ const expectValueStreams = (page, names) =>
 
 const expectCurrentStage = (page, name) =>
   expect(stageButton(page, name)).toHaveAttribute('aria-current', 'step')
+
+/** Presses Ctrl+Z and checks the page left it to the browser (not prevented). */
+const pressesCtrlZUnhandled = async (page) => {
+  await page.evaluate(() => {
+    window.addEventListener('keydown', (event) => {
+      window.ctrlZPrevented = event.defaultPrevented
+    })
+  })
+  await page.keyboard.press('Control+z')
+  expect(await page.evaluate(() => window.ctrlZPrevented)).toBe(false)
+}
 
 test.describe('Several value streams in one workspace (slice 9.1)', () => {
   // "Created 3 Mar" is the day in UTC, so run in a zone a whole day ahead of it.
@@ -503,7 +513,7 @@ test.describe('Manage value streams from the home screen (slice 9.2)', () => {
     await expect(streamName(page)).toHaveValue('')
   })
 
-  test('Renaming an unnamed value stream without typing keeps it unnamed', async ({
+  test('Saving the rename of an unnamed value stream without a name is refused', async ({
     page,
     seed,
   }) => {
@@ -525,6 +535,12 @@ test.describe('Manage value streams from the home screen (slice 9.2)', () => {
       'Untitled value stream'
     )
     await page.keyboard.press('Enter')
+
+    await expect(page.getByTestId('rename-error')).toHaveText('Add a name')
+    await expect(nameField).toHaveAttribute('aria-invalid', 'true')
+    await expect(nameField).toBeVisible()
+
+    await page.keyboard.press('Escape')
 
     await expect(nameField).toHaveCount(0)
     await expectValueStreams(page, [
@@ -1121,13 +1137,7 @@ test.describe('Import and export one value stream (slice 9.3)', () => {
     await expectValueStreams(page, ['Checkout delivery', 'Onboarding'])
 
     // A later Ctrl+Z is the browser's: the home screen does not swallow it.
-    await page.evaluate(() => {
-      window.addEventListener('keydown', (event) => {
-        window.ctrlZPrevented = event.defaultPrevented
-      })
-    })
-    await page.keyboard.press('Control+z')
-    expect(await page.evaluate(() => window.ctrlZPrevented)).toBe(false)
+    await pressesCtrlZUnhandled(page)
   })
 
   test('The File menu items have no accessibility violations', async ({
@@ -1192,6 +1202,9 @@ test.describe('Name rules and undo across visits (slice 9 follow-up)', () => {
   const savedNames = async (page) =>
     (await savedStreams(page)).map((stream) => stream.name)
 
+  // Typed text a name cannot be: only space, and nothing at all.
+  const BLANK_NAMES = ['   ', '']
+
   for (const { place, rename, backHome } of PLACES) {
     test(`A name is trimmed the same way at home and in the header: ${place}`, async ({
       page,
@@ -1211,65 +1224,85 @@ test.describe('Name rules and undo across visits (slice 9 follow-up)', () => {
         .toEqual(['Checkout delivery', 'New hire onboarding'])
     })
 
-    test(`A blank name is refused the same way at home and in the header: ${place}`, async ({
-      page,
-      seed,
-    }) => {
-      await startOnHome(page, seed)
+    for (const typed of BLANK_NAMES) {
+      test(`A blank name is refused the same way at home and in the header: ${place}, ${JSON.stringify(typed)}`, async ({
+        page,
+        seed,
+      }) => {
+        await startOnHome(page, seed)
 
-      await rename(page, '   ')
+        await rename(page, typed)
 
-      await expect(page.getByText('Add a name')).toBeVisible()
-      await backHome(page)
-      await expectValueStreams(page, ['Checkout delivery', 'Onboarding'])
-      // Saves are written in order, so once this later one is there a save of
-      // the refused name would be too.
-      await duplicateStream(page, 'Checkout delivery')
-      await expect.poll(() => savedNames(page)).toHaveLength(3)
-      expect(await savedNames(page)).toEqual([
-        'Checkout delivery',
-        'Checkout delivery (copy)',
-        'Onboarding',
-      ])
-    })
-  }
-
-  const pressesCtrlZUnhandled = async (page) => {
-    await page.evaluate(() => {
-      window.addEventListener('keydown', (event) => {
-        window.ctrlZPrevented = event.defaultPrevented
+        await expect(page.getByText('Add a name')).toBeVisible()
+        await backHome(page)
+        await expectValueStreams(page, ['Checkout delivery', 'Onboarding'])
+        // Saves are written in order, so once this later one is there a save of
+        // the refused name would be too.
+        await duplicateStream(page, 'Checkout delivery')
+        await expect.poll(() => savedNames(page)).toHaveLength(3)
+        expect(await savedNames(page)).toEqual([
+          'Checkout delivery',
+          'Checkout delivery (copy)',
+          'Onboarding',
+        ])
       })
-    })
-    await page.keyboard.press('Control+z')
-    expect(await page.evaluate(() => window.ctrlZPrevented)).toBe(false)
+    }
   }
 
-  test('Undo restores a deleted value stream after a visit to another', async ({
+  test("Leaving a new value stream's name field alone keeps it unnamed", async ({
     page,
     seed,
   }) => {
-    const { second } = await openBackground(page, seed)
+    await openBackground(page, seed)
+    await (await fileMenuItem(page, 'New value stream')).click()
+    await expectCurrentStage(page, 'Scope')
+    await expect(page.getByRole('heading', { name: 'Scope' })).toBeFocused()
+
+    await streamName(page).focus()
+    await streamName(page).press('Tab')
+
+    // Focus moved on, so leaving the field really happened.
+    await expect(page.getByRole('button', { name: 'Undo' })).toBeFocused()
+    await expect(page.getByTestId('name-error')).toHaveCount(0)
+    await expect(streamName(page)).toHaveValue('')
     await openAllValueStreams(page)
-    await deleteStream(page, 'Checkout delivery')
-
-    await openStream(page, 'Onboarding')
-    await expect(streamName(page)).toHaveValue('Onboarding')
-    await openAllValueStreams(page)
-
-    // The toast closed with the visit; the shortcut is what is left.
-    await expect(toast(page)).toHaveCount(0)
-    await page.keyboard.press('Control+z')
-
-    await expectValueStreams(page, ['Checkout delivery', 'Onboarding'])
-    await expect(cardOf(page, 'Checkout delivery')).toContainText('5 steps')
-    await expect(page.getByTestId('home-live-region')).toHaveText(
-      'Checkout delivery restored'
-    )
-    // The stream opened since stays the active one.
-    await expect
-      .poll(async () => (await savedWorkspace(page)).activeStreamId)
-      .toBe(second.id)
+    await expectValueStreams(page, [
+      'Checkout delivery',
+      'Onboarding',
+      'Untitled value stream',
+    ])
   })
+
+  for (const shortcut of ['Control+z', 'Meta+z']) {
+    test(`Undo restores a deleted value stream after a visit to another: ${shortcut}`, async ({
+      page,
+      seed,
+    }) => {
+      const { second } = await openBackground(page, seed)
+      await openAllValueStreams(page)
+      await deleteStream(page, 'Checkout delivery')
+
+      await openStream(page, 'Onboarding')
+      await expect(streamName(page)).toHaveValue('Onboarding')
+      await openAllValueStreams(page)
+
+      // The toast closed with the visit; the shortcut is what is left.
+      await expect(toast(page)).toHaveCount(0)
+      await page.keyboard.press(shortcut)
+
+      await expectValueStreams(page, ['Checkout delivery', 'Onboarding'])
+      await expect(cardOf(page, 'Checkout delivery')).toContainText('5 steps')
+      await expect(page.getByTestId('home-live-region')).toHaveText(
+        'Checkout delivery restored'
+      )
+      // Saves are written in order, so once this later one is there the save
+      // of the restore is too, and the active stream it left can be read.
+      await duplicateStream(page, 'Onboarding')
+      await expect.poll(async () => (await savedStreams(page)).length).toBe(3)
+      // The stream opened since stays the active one.
+      expect((await savedWorkspace(page)).activeStreamId).toBe(second.id)
+    })
+  }
 
   test('A second delete replaces the first undo', async ({ page, seed }) => {
     await startOnHome(page, seed)

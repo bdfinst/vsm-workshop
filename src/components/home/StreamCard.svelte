@@ -1,6 +1,6 @@
 <script>
   import { tick } from 'svelte'
-  import { isBlankName, normalizeName } from '../../models/v2/valueStream.js'
+  import { isBlankName } from '../../models/v2/valueStream.js'
   import { controlSelector, focusControl } from '../../utils/session/focus.js'
   import StreamMenu from './StreamMenu.svelte'
 
@@ -42,14 +42,10 @@
     focusControl(item, controlSelector('menu-button'))
   }
 
-  // Saving the name as it already is changes nothing: no new "updated" time and
-  // no lost undo history, and an unnamed stream stays unnamed.
+  // The store decides: a blank name is refused with a message, and the name as
+  // it already is changes nothing, so either way there is nothing to check here.
   function handleRenameSubmit(event) {
     event.preventDefault()
-    if (normalizeName(draft) === normalizeName(summary.rawName)) {
-      endRename()
-      return
-    }
     const result = onrename(draft)
     if (result.ok) endRename()
     else renameError = result.error
