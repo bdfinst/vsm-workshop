@@ -19,6 +19,7 @@
   let draft = $state(null)
   // Set when the name was refused (blank); the field then shows the stored name.
   let nameError = $state('')
+  let nameInput = $state()
   let name = $derived(draft ?? store.stream.name)
   let label = $derived(store.activeVersion.label)
 
@@ -36,11 +37,16 @@
     nameError = ''
   }
 
-  function commitName() {
+  // A refusal leaves the field, so focus goes back to it: the message is about
+  // that field. After a tick, so it also wins over where Tab was moving focus.
+  async function commitName() {
     if (draft === null) return
     const result = store.setName(draft)
     nameError = result.ok ? '' : result.error
     draft = null
+    if (result.ok) return
+    await tick()
+    nameInput?.focus()
   }
 
   function handleNameKeydown(event) {
@@ -213,7 +219,9 @@
         type="text"
         class="px-3 py-1 border border-gray-300 rounded-md font-semibold focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
         placeholder="Value stream name"
+        aria-required="true"
         value={name}
+        bind:this={nameInput}
         aria-invalid={nameError ? 'true' : undefined}
         aria-describedby={nameError ? 'stream-name-error' : undefined}
         data-testid="stream-name-input"

@@ -97,12 +97,15 @@
     class="bg-white border-b border-gray-200 p-4"
     data-testid="session-header"
   >
+    <!-- Keyed by stream, so a refusal or a draft never follows the user to another one. -->
     {#if store}
-      <SessionHeader
-        {store}
-        onundo={shortcutActions.undo}
-        onredo={shortcutActions.redo}
-      />
+      {#key streamId}
+        <SessionHeader
+          {store}
+          onundo={shortcutActions.undo}
+          onredo={shortcutActions.redo}
+        />
+      {/key}
     {/if}
   </header>
   <div class="flex-1 flex flex-col lg:flex-row gap-4 p-4">

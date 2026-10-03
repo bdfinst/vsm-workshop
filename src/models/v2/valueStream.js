@@ -11,7 +11,7 @@ export const createValueStream = (overrides = {}) => {
   const versions = overrides.versions ?? [createMapVersion()]
   const now = new Date().toISOString()
 
-  return {
+  const stream = {
     schemaVersion: 2,
     id: crypto.randomUUID(),
     name: '',
@@ -26,8 +26,8 @@ export const createValueStream = (overrides = {}) => {
     createdAt: now,
     updatedAt: now,
     ...overrides,
-    name: normalizeName(overrides.name),
   }
+  return { ...stream, name: normalizeName(stream.name) }
 }
 
 /** What a value stream with no name is listed as. */

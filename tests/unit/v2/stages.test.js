@@ -120,7 +120,7 @@ describe('scopeReason', () => {
   })
 
   it.each([
-    ['name', 'Add a name'],
+    ['name', 'Add a name in the header'],
     ['trigger', 'Add a trigger'],
     ['endPoint', 'Add an end point'],
     ['unitOfWork', 'Add a unit of work'],
@@ -129,25 +129,29 @@ describe('scopeReason', () => {
   })
 
   it('lists several missing fields together in one reason', () => {
-    expect(scopeReason(['name', 'trigger'])).toBe('Add a name and a trigger')
+    expect(scopeReason(['name', 'trigger'])).toBe(
+      'Add a name in the header and a trigger'
+    )
     expect(scopeReason(['endPoint', 'unitOfWork'])).toBe(
       'Add an end point and a unit of work'
     )
     expect(scopeReason(['name', 'endPoint', 'unitOfWork'])).toBe(
-      'Add a name, an end point and a unit of work'
+      'Add a name in the header, an end point and a unit of work'
     )
   })
 
   it('names all four, without repeating the article, when everything is missing', () => {
     expect(scopeReason(missingScopeFields(createValueStream()))).toBe(
-      'Add a name, trigger, end point and unit of work'
+      'Add a name in the header, trigger, end point and unit of work'
     )
   })
 
   it('treats a whitespace-only name as missing', () => {
     const stream = createValueStream({ ...filledScope, name: '   ' })
 
-    expect(scopeReason(missingScopeFields(stream))).toBe('Add a name')
+    expect(scopeReason(missingScopeFields(stream))).toBe(
+      'Add a name in the header'
+    )
   })
 })
 

@@ -1,7 +1,13 @@
 import { createMapVersion } from '../../../src/models/v2/mapVersion.js'
 import { createReworkPath } from '../../../src/models/v2/reworkPath.js'
 import { createStep } from '../../../src/models/v2/step.js'
-import { test, expect, savedWorkspace, workspaceAtStage } from './fixtures.js'
+import {
+  test,
+  expect,
+  savedWorkspace,
+  streamName,
+  workspaceAtStage,
+} from './fixtures.js'
 
 const rows = (page) => page.getByTestId('step-row')
 const row = (page, position) => rows(page).nth(position - 1)
@@ -777,7 +783,7 @@ test.describe('Deleting a step', () => {
 
   const undoButton = (page) => undoToast(page).getByRole('button', TOAST_UNDO)
   const moveMouseAway = (page) => page.mouse.move(0, 0)
-  const focusElsewhere = (page) => page.getByTestId('stream-name-input').focus()
+  const focusElsewhere = (page) => streamName(page).focus()
 
   test('The Undo toast waits while the pointer is on it', async ({
     page,

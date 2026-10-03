@@ -21,6 +21,14 @@ export const V1_STORAGE_KEY = 'vsm-data-storage'
 export const GUIDED_URL = '/?ui=guided'
 
 /**
+ * The value stream name field in the header: the one place a stream's name is
+ * edited (the home card's rename is the other). Scope has no name field.
+ * @param {import('@playwright/test').Page} page
+ * @returns {import('@playwright/test').Locator}
+ */
+export const streamName = (page) => page.getByTestId('stream-name-input')
+
+/**
  * A workspace holding one value stream as the active stream, reached through
  * the given stage. Scope is filled in, as seeded maps are.
  * @param {number} stage - The stage the stream is on, and has reached (1-7)
