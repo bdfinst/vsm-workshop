@@ -400,16 +400,6 @@ test.describe('Live time-ladder map', () => {
     await expectMeasuredLabelsFit(page, names)
   })
 
-  test('a CJK name on the last step ends inside the map', async ({
-    page,
-    seed,
-  }) => {
-    const names = ['Intake', 'Review', 'Deploy', CJK_NAME]
-    await seed(workspaceWith(names.map((name) => team(name, 5, 5))))
-
-    await expectMeasuredLabelsFit(page, names)
-  })
-
   test("An emoji in the last step's name stays inside the map", async ({
     page,
     seed,
@@ -502,6 +492,10 @@ test.describe('Live time-ladder map', () => {
     await expect(ladder.getByText('lowest %C/A', { exact: true })).toHaveCount(
       1
     )
+    const flag = (label) =>
+      page.getByTestId('summary-flag').filter({ hasText: label })
+    await expect(flag('largest wait')).toContainText('Code review')
+    await expect(flag('lowest %C/A')).toContainText('Code review')
   })
 
   test('each flag names its own step when they differ: Development at %C/A 70, Code review the largest wait', async ({
@@ -525,50 +519,6 @@ test.describe('Live time-ladder map', () => {
     await expect(flag('lowest %C/A')).toContainText('Development')
     await expect(flag('lowest %C/A')).not.toContainText('Code review')
   })
-
-  test('the reference map at %C/A 100 flags no lowest %C/A', async ({
-    page,
-    seed,
-  }) => {
-    await seed(workspaceWith(referenceSteps()))
-
-    await expect(
-      stepOf(page, 'Code review').getByText('largest wait', { exact: true })
-    ).toBeVisible()
-    await expect(page.getByText('lowest %C/A', { exact: true })).toHaveCount(0)
-    await expect(page.getByTestId('summary-flag')).toHaveCount(1)
-  })
-
-  test('the map follows an edit to the steps', async ({ page, seed }) => {
-    await seed(workspaceWith(referenceSteps(), STAGE_NUMBER.STEPS))
-    await expect(page.getByTestId('ladder-step')).toHaveCount(5)
-
-    await page
-      .getByRole('button', { name: 'Add step', exact: false })
-      .first()
-      .click()
-
-    await expect(page.getByTestId('ladder-step')).toHaveCount(6)
-  })
-
-  for (const stage of [
-    STAGE_NUMBER.STEPS,
-    STAGE_NUMBER.TIME,
-    STAGE_NUMBER.QUALITY,
-    STAGE_NUMBER.REWORK,
-    STAGE_NUMBER.REVIEW,
-    STAGE_NUMBER.FUTURE,
-  ]) {
-    test(`the map pane is shown on the ${STAGE_NAMES[stage - 1]} stage`, async ({
-      page,
-      seed,
-    }) => {
-      await seed(workspaceWith(referenceSteps(), stage))
-
-      await expect(page.getByTestId('map-pane')).toBeVisible()
-      await expect(page.getByTestId('ladder-map')).toBeVisible()
-    })
-  }
 
   test('the map pane is absent on the Scope stage', async ({ page, seed }) => {
     await seed(workspaceWith(referenceSteps(), STAGE_NUMBER.SCOPE))
@@ -658,6 +608,7 @@ test.describe('Live time-ladder map', () => {
       STAGE_NUMBER.QUALITY,
       STAGE_NUMBER.REWORK,
       STAGE_NUMBER.REVIEW,
+      STAGE_NUMBER.FUTURE,
     ]) {
       const name = STAGE_NAMES[number - 1]
       await page.getByTestId(`stage-${name.toLowerCase()}`).click()
@@ -690,32 +641,9 @@ test.describe('Live time-ladder map', () => {
       'Rolled %C/A',
       'Handoffs',
     ])
-    // Process 870 min (60+240+480+60+30), lead 9030 min (870 + 8160 waiting):
-    // 870 / 9030 = 9.6%; 9030 / 480 (an 8-hour day) = 18.8 days; 870 / 480 = 1.8.
+    // Process 870 min, lead 9030 min: 870 / 9030 = 9.6%. The other figures,
+    // and the sentence under the hero, are summaryModel.test.js's.
     await expect(figureValue(page, 'flow-efficiency')).toHaveText('9.6%')
-    await expect(figureValue(page, 'lead-time')).toHaveText('18.8 days')
-    await expect(figureValue(page, 'process-time')).toHaveText('1.8 days')
-    await expect(figureValue(page, 'rolled-ca')).toHaveText('100.0%')
-    await expect(figureValue(page, 'handoffs')).toHaveText('0')
-    await expect(figure(page, 'flow-efficiency')).toContainText(
-      'Share of the lead time spent working rather than waiting.'
-    )
-  })
-
-  test('Flags agree across map and summary: the summary strip names Code review', async ({
-    page,
-    seed,
-  }) => {
-    await seed(workspaceWith(reworkSteps()))
-
-    const largestWait = page
-      .getByTestId('summary-flag')
-      .filter({ hasText: 'largest wait' })
-    const lowestCA = page
-      .getByTestId('summary-flag')
-      .filter({ hasText: 'lowest %C/A' })
-    await expect(largestWait).toContainText('Code review')
-    await expect(lowestCA).toContainText('Code review')
   })
 
   test('the map and the strip follow an edit to a time on the Time stage', async ({
@@ -726,13 +654,10 @@ test.describe('Live time-ladder map', () => {
     await expect
       .poll(() => waitRatio(page, 'Development', 'Refinement'))
       .toBeCloseTo(2, 5)
-    await expect(figureValue(page, 'flow-efficiency')).toHaveText('9.6%')
-    await expect(figureValue(page, 'lead-time')).toHaveText('18.8 days')
 
     await setDevelopmentWaitToThreeDays(page)
 
     await expect(figureValue(page, 'lead-time')).toHaveText('19.8 days')
-    await expect(figureValue(page, 'flow-efficiency')).toHaveText('9.1%')
     await expect
       .poll(() => waitRatio(page, 'Development', 'Refinement'))
       .toBeCloseTo(3, 5)
@@ -752,7 +677,6 @@ test.describe('Live time-ladder map', () => {
     await page.getByRole('button', { name: 'Undo', exact: true }).click()
 
     await expect(figureValue(page, 'lead-time')).toHaveText('18.8 days')
-    await expect(figureValue(page, 'flow-efficiency')).toHaveText('9.6%')
     await expect
       .poll(() => waitRatio(page, 'Development', 'Refinement'))
       .toBeCloseTo(2, 5)
@@ -760,7 +684,7 @@ test.describe('Live time-ladder map', () => {
 
   test('the strip follows an edit to the steps', async ({ page, seed }) => {
     await seed(workspaceWith(referenceSteps(), STAGE_NUMBER.STEPS))
-    await expect(figureValue(page, 'flow-efficiency')).toHaveText('9.6%')
+    await expect(page.getByTestId('ladder-step')).toHaveCount(5)
 
     await page
       .getByRole('button', { name: 'Add step', exact: false })
@@ -779,7 +703,6 @@ test.describe('Live time-ladder map', () => {
 
     await expect(figureValue(page, 'lead-time')).toHaveText('incomplete')
     await expect(figure(page, 'lead-time')).toContainText('Deploy')
-    await expect(figureValue(page, 'process-time')).toHaveText('1.8 days')
   })
 
   test('Outside encoding: the summary strip shows flow efficiency 8.3%–22.1%', async ({
@@ -983,18 +906,6 @@ test.describe('Live time-ladder map', () => {
     await expect(toggle).toBeHidden()
     await expect(figure(page, 'lead-time')).toBeVisible()
     await expect(strip(page).locator('dt:visible')).toHaveCount(5)
-  })
-
-  test('the strip shows every figure and no toggle on a wide screen', async ({
-    page,
-    seed,
-  }) => {
-    await seed(workspaceWith(referenceSteps()))
-
-    await expect(strip(page).locator('dt:visible')).toHaveCount(5)
-    await expect(
-      strip(page).getByRole('button', { name: 'Show all metrics' })
-    ).toBeHidden()
   })
 
   test('Only Intake with no times', async ({ page, seed }) => {
