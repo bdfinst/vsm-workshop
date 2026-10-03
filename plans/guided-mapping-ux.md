@@ -1387,7 +1387,7 @@ Feature: Several value streams in one workspace
 - Deleting every stream shows "No value streams yet". A reload with an empty workspace then creates a stream at Scope.
 - `exportFileName` replaces each of `\ / : * ? " < > |` with "-", with no collapsing or trimming.
 - An imported stream is appended at the end. Duplicate names are allowed and a clashing id is replaced. Tests tell identical names apart by position.
-- `workspaceStore.startNew()` is the one "new value stream" action (a stream with no name, opened at once) for the home button and the File menu. Duplicate, import and export answer with `{ ok, streamId, name }`, where `name` is the name the stream is listed by, so callers never look it up by id.
+- `workspaceStore.startNew()` is the one "new value stream" action (a stream with no name, opened at once) for the home button and the File menu. Create, start-new, restore, duplicate, import and export answer with `{ ok, streamId, name }`, where `name` is the name the stream is listed by, so callers never look it up by id.
 
 **Steps:**
 
