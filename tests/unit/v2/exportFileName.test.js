@@ -92,18 +92,39 @@ describe('exportFileName', () => {
   it('caps a long name, leaving room for the extension', () => {
     const fileName = exportFileName('a'.repeat(500))
 
-    expect(fileName).toBe(`${'a'.repeat(100)}.json`)
+    expect(fileName).toBe(`${'a'.repeat(245)}.json`)
   })
 
   it('does not cut a character in half when capping', () => {
     const fileName = exportFileName('\u{1F600}'.repeat(150))
 
-    expect(fileName).toBe(`${'\u{1F600}'.repeat(100)}.json`)
+    expect(fileName).toBe(`${'\u{1F600}'.repeat(61)}.json`)
+  })
+
+  it('removes the right-to-left override from evil-RLO-nosj', () => {
+    expect(exportFileName('evil\u202Enosj')).toBe('evilnosj.json')
+  })
+
+  it('leaves an ASCII name under the byte cap unchanged', () => {
+    const name = 'a'.repeat(245)
+
+    expect(exportFileName(name)).toBe(`${name}.json`)
+  })
+
+  it.each([
+    ['CJK characters', '中'.repeat(100)],
+    ['astral emoji', '\u{1F600}'.repeat(100)],
+  ])('keeps 100 %s within 255 bytes with the extension', (_, name) => {
+    const fileName = exportFileName(name)
+
+    expect(new TextEncoder().encode(fileName).length).toBeLessThanOrEqual(255)
+    expect(fileName.endsWith('.json')).toBe(true)
+    expect(fileName).not.toContain('\uFFFD')
   })
 
   it('drops the dots a cap leaves at the end', () => {
-    expect(exportFileName(`${'a'.repeat(99)}...b`)).toBe(
-      `${'a'.repeat(99)}.json`
+    expect(exportFileName(`${'a'.repeat(243)}...b`)).toBe(
+      `${'a'.repeat(243)}.json`
     )
   })
 })
