@@ -3223,6 +3223,7 @@ See each step's **Complexity** line. The `complex` steps are 3.1 (migration), 4.
 #### Wave 7
 
 - [x] Slice 10: Time ladder, map pane, summary strip (slice review done, findings fixed; 1854 unit tests, 238 guided e2e)
+  - [x] Slice 10 follow-up: MapPane, LadderStep and SummaryFigure extracted; ladder naming settled; labels measured by class; viewMode is the one view source; LadderMap takes pixelsPerMinute, mode and showModeToggle with per-instance ids (2065 unit tests, 248 guided e2e after trimming 11)
   - [x] Step 10.1: Pure ladder layout
   - [x] Step 10.2: LadderMap and the map pane in the shell
   - [x] Step 10.3: SummaryStrip
