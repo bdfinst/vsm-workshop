@@ -21,7 +21,9 @@ jobs:
   # Installs dependencies once. The other jobs restore the result from the cache
   # instead of running `npm ci` themselves. The key covers the Node version
   # (.nvmrc), the manifest and the lockfile, so a change to any of them installs
-  # again and `npm ci` checks that the manifest and the lockfile agree.
+  # again and `npm ci` checks that the manifest and the lockfile agree. A job that
+  # still finds no cache (a failed save, or two runs saving the same key at once)
+  # installs for itself, so a lost cache costs time and never fails a run.
   install:
     runs-on: ubuntu-latest
     steps:
@@ -61,11 +63,15 @@ jobs:
           node-version-file: '.nvmrc'
 
       - name: Restore node_modules
+        id: node-modules
         uses: actions/cache/restore@v4
         with:
           path: node_modules
           key: node-modules-${{ runner.os }}-${{ hashFiles('.nvmrc', 'package.json', 'package-lock.json') }}
-          fail-on-cache-miss: true
+
+      - name: Install dependencies when the cache is missing
+        if: steps.node-modules.outputs.cache-hit != 'true'
+        run: npm ci
 
       - name: Build app and standalone file
         run: npm run build && npm run build:standalone
@@ -102,11 +108,15 @@ jobs:
           node-version-file: '.nvmrc'
 
       - name: Restore node_modules
+        id: node-modules
         uses: actions/cache/restore@v4
         with:
           path: node_modules
           key: node-modules-${{ runner.os }}-${{ hashFiles('.nvmrc', 'package.json', 'package-lock.json') }}
-          fail-on-cache-miss: true
+
+      - name: Install dependencies when the cache is missing
+        if: steps.node-modules.outputs.cache-hit != 'true'
+        run: npm ci
 
       - name: Lint
         run: npm run lint
@@ -145,11 +155,15 @@ jobs:
         run: apt-get update -qq && apt-get install -y -qq zstd
 
       - name: Restore node_modules
+        id: node-modules
         uses: actions/cache/restore@v4
         with:
           path: node_modules
           key: node-modules-${{ runner.os }}-${{ hashFiles('.nvmrc', 'package.json', 'package-lock.json') }}
-          fail-on-cache-miss: true
+
+      - name: Install dependencies when the cache is missing
+        if: steps.node-modules.outputs.cache-hit != 'true'
+        run: npm ci
 
       - name: Download build output
         uses: actions/download-artifact@v4
