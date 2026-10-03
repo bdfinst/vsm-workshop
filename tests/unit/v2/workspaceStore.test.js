@@ -243,6 +243,7 @@ describe.each([
 ])('workspaceStore: %s', (_state, build) => {
   it.each([
     ['create', (s) => s.create()],
+    ['startNew', (s) => s.startNew()],
     ['open', (s) => s.open('x')],
     ['rename', (s) => s.rename('x', 'Name')],
     ['duplicate', (s) => s.duplicate('x')],
@@ -797,7 +798,11 @@ describe('workspaceStore: create and rename', () => {
 
     const result = store.create({ name: 'Onboarding' })
 
-    expect(result.ok).toBe(true)
+    expect(result).toEqual({
+      ok: true,
+      streamId: expect.any(String),
+      name: 'Onboarding',
+    })
     expect(store.streams.map((s) => s.name)).toEqual([
       'Checkout delivery',
       'Onboarding',
@@ -929,6 +934,9 @@ describe('workspaceStore: create and rename', () => {
   })
 })
 
+// startNew is one edit that saves twice: once for the new stream, once for opening it.
+const SAVES_PER_START_NEW = 2
+
 describe('workspaceStore: start a new value stream', () => {
   it('adds an unnamed stream and opens it, on the stream screen', async () => {
     const [a] = [referenceStream()]
@@ -937,7 +945,11 @@ describe('workspaceStore: start a new value stream', () => {
 
     const result = store.startNew()
 
-    expect(result).toEqual({ ok: true, streamId: expect.any(String) })
+    expect(result).toEqual({
+      ok: true,
+      streamId: expect.any(String),
+      name: 'Untitled value stream',
+    })
     expect(store.streams.map((s) => s.name)).toEqual(['Checkout delivery', ''])
     expect(store.streams[1].id).toBe(result.streamId)
     expect(store.activeStreamId).toBe(result.streamId)
@@ -953,11 +965,16 @@ describe('workspaceStore: start a new value stream', () => {
     })
     const store = await makeStore({ repository })
     const before = store.revision
+    const listener = vi.fn()
+    store.subscribeCommit(listener)
+    const save = vi.spyOn(repository, 'save')
 
     const result = store.startNew()
     await store.flushSaves()
 
     expect(store.revision).toBe(before + 1)
+    expect(listener).toHaveBeenCalledTimes(1)
+    expect(save).toHaveBeenCalledTimes(SAVES_PER_START_NEW)
     const saved = await savedIn(repository)
     expect(saved.streams).toHaveLength(2)
     expect(saved.activeStreamId).toBe(result.streamId)
@@ -1073,7 +1090,7 @@ describe('workspaceStore: duplicate', () => {
   it('refuses to duplicate a stream that is not in the workspace', async () => {
     const store = await makeStore({ streams: [referenceStream()] })
 
-    expect(store.duplicate('nope').ok).toBe(false)
+    expect(store.duplicate('nope')).toEqual(refused)
   })
 })
 
@@ -1147,7 +1164,7 @@ describe('workspaceStore: remove and restore', () => {
   it('refuses to remove a stream that is not in the workspace', async () => {
     const store = await makeStore({ streams: [referenceStream()] })
 
-    expect(store.remove('nope').ok).toBe(false)
+    expect(store.remove('nope')).toEqual(refused)
   })
 
   it('counts a remove and a restore as edits', async () => {
@@ -1204,7 +1221,7 @@ describe('workspaceStore: the last removal', () => {
 
     const result = store.restoreLast()
 
-    expect(result).toEqual({ ok: true, streamId: b.id })
+    expect(result).toEqual({ ok: true, streamId: b.id, name: 'B' })
     expect(store.streams.map((s) => s.name)).toEqual(['A', 'B', 'C'])
     expect(store.lastRemoval).toBeNull()
   })
@@ -1388,10 +1405,15 @@ describe('workspaceStore: import and export', () => {
     const stream = referenceReworkStream()
     const store = await makeStore({ streams: [stream] })
 
-    const { ok, text } = store.exportStream(stream.id)
+    const result = store.exportStream(stream.id)
 
-    expect(ok).toBe(true)
-    expect(JSON.parse(text)).toEqual(stream)
+    expect(result).toEqual({
+      ok: true,
+      streamId: stream.id,
+      name: 'Checkout delivery',
+      text: expect.any(String),
+    })
+    expect(JSON.parse(result.text)).toEqual(stream)
   })
 
   it('names the exported stream in the result, as it is listed', async () => {

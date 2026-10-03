@@ -48,7 +48,6 @@
   // The workspace keeps the last removal, so Undo works from the toast and, once
   // the home screen is left and reached again, from the shortcut alone.
   function undoLastDelete() {
-    const removal = workspaceStore.lastRemoval
     const result = workspaceStore.restoreLast()
     // Restoring cannot work any more (the id is in use again), so Undo is over:
     // the toast goes and a later Ctrl+Z is the browser's again.
@@ -58,7 +57,7 @@
       return result
     }
     tick().then(() => focusCardLink(result.streamId))
-    return { ok: true, announcement: `${removal.name} restored` }
+    return { ok: true, announcement: `${result.name} restored` }
   }
 
   const deleteUndo = createDeleteUndo({

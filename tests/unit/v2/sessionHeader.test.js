@@ -3,7 +3,6 @@ import { mount, unmount, flushSync } from 'svelte'
 import { createValueStream } from '../../../src/models/v2/valueStream.js'
 import { createValueStreamStore } from '../../../src/stores/v2/valueStreamStore.svelte.js'
 import SessionHeader from '../../../src/components/session/SessionHeader.svelte'
-import { refused } from './fixtures.js'
 
 const workspaceStore = vi.hoisted(() => ({
   startNew: vi.fn(),
@@ -39,7 +38,7 @@ afterEach(() => {
 
 describe('SessionHeader File menu', () => {
   it('returns focus to File when New value stream fails', async () => {
-    workspaceStore.startNew.mockReturnValue(refused)
+    workspaceStore.startNew.mockReturnValue({ ok: false, error: 'Not ready' })
     const { file, item } = render()
     file.click()
     await vi.waitFor(() => expect(item()).toHaveFocus())

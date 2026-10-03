@@ -5,6 +5,13 @@
  * working copy. Value stream stores never write storage; they call back here.
  * The file queue belongs to the save composition (11.1), which hooks in through
  * `snapshot`, `revision`, `savedRevision` and `subscribeCommit`.
+ *
+ * Every action answers with one result shape: `{ ok: false, error }` when it is
+ * refused, else `{ ok: true }` plus what it made or found. An action that
+ * makes, restores, copies, reads or exports a stream (`create`, `startNew`,
+ * `restoreLast`, `duplicate`, `importStream`, `exportStream`) adds
+ * `streamId` and `name`, the name as the stream is listed (`displayName`);
+ * `importStream` adds `changes` and `exportStream` adds `text`.
  * @file This file uses Svelte 5 runes ($state)
  */
 
@@ -252,7 +259,7 @@ export const createWorkspaceStore = ({
     } else {
       commit()
     }
-    return { ok: true, streamId: stream.id }
+    return { ok: true, streamId: stream.id, name: displayName(stream) }
   })
 
   const open = whenReady((id) => {
@@ -341,7 +348,11 @@ export const createWorkspaceStore = ({
       buildActiveStore()
     }
     commit()
-    return { ok: true, streamId: token.stream.id }
+    return {
+      ok: true,
+      streamId: token.stream.id,
+      name: displayName(token.stream),
+    }
   })
 
   const importStream = whenReady((text) => {
