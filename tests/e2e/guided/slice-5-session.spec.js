@@ -63,7 +63,9 @@ test.describe('Session header (step 5.2)', () => {
     axe,
   }) => {
     await seed(workspaceAtStage(2))
-    await expect(page.getByLabel('Map name')).toHaveValue('Checkout delivery')
+    await expect(page.getByTestId('stream-name-input')).toHaveValue(
+      'Checkout delivery'
+    )
 
     await axe({ include: '[data-testid="session-header"]' })
 
@@ -79,7 +81,7 @@ test.describe('Session header (step 5.2)', () => {
     seed,
   }) => {
     await seed(workspaceAtStage(2))
-    const name = page.getByLabel('Map name')
+    const name = page.getByTestId('stream-name-input')
     const undo = page.getByRole('button', { name: 'Undo' })
     const redo = page.getByRole('button', { name: 'Redo' })
     await expect(page.getByText('Editing: Current state')).toBeVisible()
@@ -92,7 +94,9 @@ test.describe('Session header (step 5.2)', () => {
 
     await undo.click()
     await expect(name).toHaveValue('Checkout delivery')
-    await expect(page.getByTestId('live-region')).toContainText('map name')
+    await expect(page.getByTestId('live-region')).toContainText(
+      'value stream name'
+    )
     await expect(redo).toBeEnabled()
 
     await page.keyboard.press('Control+Shift+Z')
@@ -100,12 +104,12 @@ test.describe('Session header (step 5.2)', () => {
     await expect(redo).toBeDisabled()
   })
 
-  test('Ctrl+Z in the map name field is left to the browser', async ({
+  test('Ctrl+Z in the value stream name field is left to the browser', async ({
     page,
     seed,
   }) => {
     await seed(workspaceAtStage(2))
-    const name = page.getByLabel('Map name')
+    const name = page.getByTestId('stream-name-input')
     await name.fill('Checkout v2')
     await name.press('Enter')
 
@@ -127,10 +131,12 @@ const REASON_NAME_AND_TRIGGER = 'Add a name and a trigger'
 const nextButton = (page) => page.getByRole('button', { name: 'Next' })
 
 const field = (page, label) => page.getByLabel(label, { exact: true })
+// The header's name field has the same label, so the Scope one is told apart by id.
+const scopeName = (page) => page.getByTestId('scope-name-input')
 
 /** Fill the Scope fields given; a field left out is left empty. */
 const fillScope = async (page, { name, trigger, endPoint, unit } = {}) => {
-  if (name !== undefined) await field(page, 'Value stream name').fill(name)
+  if (name !== undefined) await scopeName(page).fill(name)
   if (trigger !== undefined) await field(page, 'Trigger').fill(trigger)
   if (endPoint !== undefined) await field(page, 'End point').fill(endPoint)
   if (unit !== undefined) await field(page, 'Unit of work').selectOption(unit)
@@ -285,27 +291,27 @@ test.describe('Stage rail and Scope edits (step 5.3 wiring)', () => {
     await expect(trigger).toHaveValue('A customer asks')
   })
 
-  test('the value stream name on Scope and the map name in the header are one name', async ({
+  test('the value stream name on Scope and in the header are one name', async ({
     page,
   }) => {
     await page.goto(GUIDED_URL)
 
-    await field(page, 'Value stream name').fill('Checkout delivery')
-    await field(page, 'Value stream name').press('Enter')
+    await scopeName(page).fill('Checkout delivery')
+    await scopeName(page).press('Enter')
 
-    await expect(field(page, 'Map name')).toHaveValue('Checkout delivery')
+    await expect(streamName(page)).toHaveValue('Checkout delivery')
   })
 })
 
 const rail = (page) => page.getByRole('navigation', { name: 'Stages' })
 const stageItem = (page, name) => page.getByTestId(`stage-${name}`)
-const mapName = (page) => page.getByLabel('Map name')
+const streamName = (page) => page.getByTestId('stream-name-input')
 const liveRegion = (page) => page.getByTestId('live-region')
 
-/** Change the header's map name the way a user does: type, then Enter. */
-const renameMap = async (page, name) => {
-  await mapName(page).fill(name)
-  await mapName(page).press('Enter')
+/** Change the header's value stream name the way a user does: type, then Enter. */
+const renameStream = async (page, name) => {
+  await streamName(page).fill(name)
+  await streamName(page).press('Enter')
 }
 
 test.describe('Stage rail and header scenarios (step 5.4)', () => {
@@ -423,25 +429,25 @@ test.describe('Stage rail and header scenarios (step 5.4)', () => {
     await expect(undo).toBeDisabled()
     await expect(redo).toBeDisabled()
 
-    await renameMap(page, 'Checkout v2')
+    await renameStream(page, 'Checkout v2')
     await undo.click()
 
-    await expect(mapName(page)).toHaveValue('Checkout delivery')
-    await expect(liveRegion(page)).toHaveText('Undo: map name')
+    await expect(streamName(page)).toHaveValue('Checkout delivery')
+    await expect(liveRegion(page)).toHaveText('Undo: value stream name')
 
     await page.keyboard.press('Control+Shift+Z')
 
-    await expect(mapName(page)).toHaveValue('Checkout v2')
+    await expect(streamName(page)).toHaveValue('Checkout v2')
     await expect(redo).toBeDisabled()
   })
 
   test('A new edit clears redo', async ({ page, seed }) => {
     await seed(workspaceAtStage(2))
 
-    await renameMap(page, 'Checkout v2')
+    await renameStream(page, 'Checkout v2')
     await page.getByRole('button', { name: 'Undo' }).click()
     await expect(page.getByRole('button', { name: 'Redo' })).toBeEnabled()
-    await renameMap(page, 'Checkout v3')
+    await renameStream(page, 'Checkout v3')
 
     await expect(page.getByRole('button', { name: 'Redo' })).toBeDisabled()
   })
@@ -457,7 +463,7 @@ test.describe('Stage rail and header scenarios (step 5.4)', () => {
       'step'
     )
     await expect(page.getByRole('heading', { name: 'Scope' })).toBeVisible()
-    await expect(mapName(page)).toHaveValue('')
+    await expect(streamName(page)).toHaveValue('')
     await expect(page.getByRole('menuitem')).toHaveCount(0)
   })
 
@@ -468,7 +474,7 @@ test.describe('Stage rail and header scenarios (step 5.4)', () => {
       'aria-current',
       'step'
     )
-    await renameMap(page, 'Checkout v2')
+    await renameStream(page, 'Checkout v2')
     // The writes to the working copy are async; reload once they have landed.
     await expect
       .poll(async () => {
@@ -483,7 +489,7 @@ test.describe('Stage rail and header scenarios (step 5.4)', () => {
       'aria-current',
       'step'
     )
-    await expect(mapName(page)).toHaveValue('Checkout v2')
+    await expect(streamName(page)).toHaveValue('Checkout v2')
   })
 })
 
@@ -642,7 +648,7 @@ test.describe('Unreadable workspace (step 5.4)', () => {
       buffer: Buffer.from(exportValueStream(imported)),
     })
 
-    await expect(mapName(page)).toHaveValue('Imported delivery')
+    await expect(streamName(page)).toHaveValue('Imported delivery')
     await expect(unreadableScreen(page)).toHaveCount(0)
     expect(await savedBackup(page)).toBe(UNREADABLE_TEXT)
   })
@@ -688,8 +694,8 @@ test.describe('Focus and keyboard (slice 5 review)', () => {
   }) => {
     await page.goto(GUIDED_URL)
 
-    await field(page, 'Value stream name').fill('Checkout delivery')
-    await field(page, 'Value stream name').press('Tab')
+    await scopeName(page).fill('Checkout delivery')
+    await scopeName(page).press('Tab')
     // The edit has landed once it is saved; focus must not have been pulled away.
     await expect
       .poll(async () => (await savedWorkspace(page))?.streams[0].name)
@@ -704,11 +710,11 @@ test.describe('Focus and keyboard (slice 5 review)', () => {
   }) => {
     await seed(workspaceAtStage(2))
     const undo = page.getByRole('button', { name: 'Undo' })
-    await renameMap(page, 'Checkout v2')
+    await renameStream(page, 'Checkout v2')
 
     await undo.click()
 
-    await expect(mapName(page)).toHaveValue('Checkout delivery')
+    await expect(streamName(page)).toHaveValue('Checkout delivery')
     await expect(undo).toHaveAttribute('aria-disabled', 'true')
     await expect(undo).toBeFocused()
   })
@@ -719,12 +725,12 @@ test.describe('Focus and keyboard (slice 5 review)', () => {
   }) => {
     await seed(workspaceAtStage(2))
     const redo = page.getByRole('button', { name: 'Redo' })
-    await renameMap(page, 'Checkout v2')
+    await renameStream(page, 'Checkout v2')
     await page.getByRole('button', { name: 'Undo' }).click()
 
     await redo.click()
 
-    await expect(mapName(page)).toHaveValue('Checkout v2')
+    await expect(streamName(page)).toHaveValue('Checkout v2')
     await expect(redo).toHaveAttribute('aria-disabled', 'true')
     await expect(redo).toBeFocused()
   })
@@ -810,13 +816,13 @@ test.describe('Form semantics (slice 5 review)', () => {
   test('Scope fields are marked required', async ({ page }) => {
     await page.goto(GUIDED_URL)
 
-    for (const label of [
-      'Value stream name',
-      'Trigger',
-      'End point',
-      'Unit of work',
+    for (const control of [
+      scopeName(page),
+      field(page, 'Trigger'),
+      field(page, 'End point'),
+      field(page, 'Unit of work'),
     ]) {
-      await expect(field(page, label)).toHaveAttribute('aria-required', 'true')
+      await expect(control).toHaveAttribute('aria-required', 'true')
     }
   })
 
@@ -977,7 +983,7 @@ test.describe('Unreadable data that could not be backed up (data safety)', () =>
       buffer: Buffer.from(exportValueStream(imported)),
     })
 
-    await expect(mapName(page)).toHaveValue('Imported delivery')
+    await expect(streamName(page)).toHaveValue('Imported delivery')
   })
 })
 
@@ -1114,6 +1120,85 @@ test.describe('Saved data that could not be read at all (data safety)', () => {
       'aria-current',
       'step'
     )
-    await expect(mapName(page)).toHaveValue('Checkout delivery')
+    await expect(streamName(page)).toHaveValue('Checkout delivery')
+  })
+})
+
+test.describe('Value stream name rule in the header (slice 9 follow-up)', () => {
+  const nameError = (page) => page.getByTestId('name-error')
+
+  test('A blank name is refused in the header', async ({ page, seed }) => {
+    await seed(workspaceAtStage(2))
+    await expect(streamName(page)).toHaveValue('Checkout delivery')
+
+    await renameStream(page, '   ')
+
+    await expect(nameError(page)).toHaveText('Add a name')
+    await expect(nameError(page)).toHaveAttribute('role', 'alert')
+    await expect(streamName(page)).toHaveAttribute('aria-invalid', 'true')
+    await expect(streamName(page)).toHaveAttribute(
+      'aria-describedby',
+      'stream-name-error'
+    )
+    await expect(streamName(page)).toHaveValue('Checkout delivery')
+    await expect(page.getByRole('button', { name: 'Undo' })).toBeDisabled()
+  })
+
+  test('A blank name is refused when the field is left, not only on Enter', async ({
+    page,
+    seed,
+  }) => {
+    await seed(workspaceAtStage(2))
+
+    await streamName(page).fill('')
+    await streamName(page).press('Tab')
+
+    await expect(nameError(page)).toHaveText('Add a name')
+    await expect(streamName(page)).toHaveValue('Checkout delivery')
+  })
+
+  test('The refusal goes away when the name is typed again', async ({
+    page,
+    seed,
+  }) => {
+    await seed(workspaceAtStage(2))
+    await renameStream(page, '   ')
+    await expect(nameError(page)).toBeVisible()
+
+    await streamName(page).fill('Checkout v2')
+
+    await expect(nameError(page)).toHaveCount(0)
+    await expect(streamName(page)).not.toHaveAttribute('aria-invalid', 'true')
+    await streamName(page).press('Enter')
+    await expect(streamName(page)).toHaveValue('Checkout v2')
+    await expect(nameError(page)).toHaveCount(0)
+  })
+
+  test('A name saved from the header is trimmed', async ({ page, seed }) => {
+    await seed(workspaceAtStage(2))
+
+    await renameStream(page, '  Checkout v2  ')
+
+    await expect(streamName(page)).toHaveValue('Checkout v2')
+    await expect
+      .poll(async () => (await savedWorkspace(page))?.streams[0].name)
+      .toBe('Checkout v2')
+  })
+
+  test("Leaving a new value stream's name field alone keeps it unnamed", async ({
+    page,
+  }) => {
+    await page.goto(GUIDED_URL)
+    await expect(streamName(page)).toHaveValue('')
+
+    await streamName(page).focus()
+    await streamName(page).press('Tab')
+
+    await expect(nameError(page)).toHaveCount(0)
+    await expect(streamName(page)).toHaveValue('')
+    await page.getByRole('button', { name: 'All value streams' }).click()
+    await expect(page.getByTestId('stream-card-link')).toHaveText([
+      'Untitled value stream',
+    ])
   })
 })

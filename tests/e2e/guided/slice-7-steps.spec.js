@@ -777,7 +777,7 @@ test.describe('Deleting a step', () => {
 
   const undoButton = (page) => undoToast(page).getByRole('button', TOAST_UNDO)
   const moveMouseAway = (page) => page.mouse.move(0, 0)
-  const focusElsewhere = (page) => page.getByTestId('map-name-input').focus()
+  const focusElsewhere = (page) => page.getByTestId('stream-name-input').focus()
 
   test('The Undo toast waits while the pointer is on it', async ({
     page,
