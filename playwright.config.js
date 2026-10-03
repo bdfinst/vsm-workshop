@@ -12,8 +12,9 @@ export default defineConfig({
   forbidOnly: !!process.env.CI,
   /* Retry once on CI only; a second retry triples the cost of any failing test */
   retries: process.env.CI ? 1 : 0,
-  /* Three workers on CI: GitHub-hosted runners for public repos have 4 vCPUs, and
-     one is left for the web server and browser overhead. */
+  /* Three workers on CI: standard GitHub-hosted runners have 4 vCPUs for a public
+     repository (this one is), and one is left for the web server and browser
+     overhead. A private repository's runner has 2, so lower this if that changes. */
   workers: process.env.CI ? 3 : undefined,
   /* Reporter to use. See https://playwright.dev/docs/test-reporters */
   reporter: 'html',
