@@ -19,7 +19,7 @@ const stepRow = (step, { flags }) => ({
   rejectRate: rejectRate(step),
   notes: step.notes,
   flags: [
-    ...flagIf(flags.topWaits[0]?.stepId === step.id, 'top-wait'),
+    ...flagIf(flags.largestWait?.stepId === step.id, 'top-wait'),
     ...flagIf(flags.lowestCA?.stepId === step.id, 'lowest-ca'),
   ],
 })

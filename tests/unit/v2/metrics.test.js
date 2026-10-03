@@ -309,3 +309,47 @@ describe('Feature: Value stream metrics', () => {
     })
   })
 })
+
+// `flags.largestWait` is the one answer to "which step waits longest", so the
+// ladder, the strip and the table read it and never work it out again.
+describe('metrics.flags.largestWait', () => {
+  const flagsOf = (steps) => calculateMetrics(versionOf(steps)).flags
+
+  it('is the team step with the longest wait', () => {
+    const version = versionOf(referenceSteps())
+    const { largestWait, topWaits } = calculateMetrics(version).flags
+
+    expect(largestWait).toEqual({
+      stepId: version.steps.find((s) => s.name === 'Code review').id,
+      name: 'Code review',
+      wait: 2880,
+    })
+    expect(largestWait).toEqual(topWaits[0])
+  })
+
+  it('goes to the first of the steps that tie, in map order', () => {
+    const steps = [team('First', 60, 500), team('Second', 60, 500)]
+
+    expect(flagsOf(steps).largestWait).toMatchObject({ name: 'First' })
+  })
+
+  it('never goes to an outside step, however long it takes', () => {
+    const steps = insertAfter(
+      referenceSteps(),
+      'Code review',
+      outsideStep('Security review', 100000)
+    )
+
+    expect(flagsOf(steps).largestWait).toMatchObject({
+      name: 'Code review',
+    })
+  })
+
+  it.each([
+    ['no step has a wait entered', [team('A', 60, null), team('B', 60, null)]],
+    ['every wait is 0', [team('A', 60, 0), team('B', 60, 0)]],
+    ['there are no team steps', [outsideStep('Security review', 1440)]],
+  ])('is null when %s', (_, steps) => {
+    expect(flagsOf(steps).largestWait).toBeNull()
+  })
+})

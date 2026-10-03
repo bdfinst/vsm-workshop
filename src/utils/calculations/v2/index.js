@@ -12,7 +12,7 @@ import { topWaits, topPaths, lowestCA } from './flags.js'
  * after an edit. A figure that depends on a missing value is
  * `{ incomplete: true, stepName }`.
  * @param {Object} version - A v2 map version ({ steps, reworkPaths })
- * @returns {Object} totals, flowEfficiency, rolledCA, rework, adjustedLeadTime, adjustedFlowEfficiency, waitShareOfLeadTime, stepCount, handoffCount, flags
+ * @returns {Object} totals, flowEfficiency, rolledCA, rework, adjustedLeadTime, adjustedFlowEfficiency, waitShareOfLeadTime, stepCount, handoffCount, flags (`topWaits`, `largestWait`, `topPaths`, `lowestCA`: what the map, the strip and the table flag, worked out once here)
  */
 export const calculateMetrics = ({ steps, reworkPaths }) => {
   const totals = calculateTotals(steps)
@@ -22,6 +22,8 @@ export const calculateMetrics = ({ steps, reworkPaths }) => {
     totals.leadTime,
     rework.timeOnRework
   )
+
+  const waits = topWaits(steps)
 
   return {
     totals,
@@ -37,7 +39,8 @@ export const calculateMetrics = ({ steps, reworkPaths }) => {
     stepCount: totals.stepCount,
     handoffCount: totals.handoffCount,
     flags: {
-      topWaits: topWaits(steps),
+      topWaits: waits,
+      largestWait: waits[0] ?? null,
       topPaths: topPaths(rework.paths),
       lowestCA: lowestCA(steps),
     },

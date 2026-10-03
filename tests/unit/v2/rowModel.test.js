@@ -90,6 +90,22 @@ describe('rowModel', () => {
     })
   })
 
+  it('flags the step flags.largestWait names, not the first of the top waits', () => {
+    const version = referenceVersion()
+    const metrics = calculateMetrics(version)
+    const named = version.steps[1]
+    const flags = {
+      ...metrics.flags,
+      largestWait: { stepId: named.id, name: named.name, wait: 1 },
+    }
+
+    const { steps } = rowModel(version, { ...metrics, flags })
+
+    expect(
+      steps.filter((row) => row.flags.includes('top-wait')).map((r) => r.id)
+    ).toEqual([named.id])
+  })
+
   it('flags only the first step on a tie for the largest wait', () => {
     const steps = [
       team('Intake', 0, 100),

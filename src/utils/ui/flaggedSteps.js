@@ -38,14 +38,13 @@ const flag = (kind, { stepId, name }) => ({
 /**
  * The steps `metrics.flags` singles out, in the order they are shown. The
  * ladder and the summary strip both read it, so they cannot name different
- * steps. (rowModel.js reads `metrics.flags` for the table on its own; that is
- * debt: it should come through here too.)
+ * steps. (rowModel.js reads the same `metrics.flags` for the table.)
  * @param {Object} flags - `metrics.flags`
  * @returns {{kind: string, label: string, tone: string, stepId: string, name: string}[]} No entry for a flag with no step: no wait entered, or no %C/A below 100
  */
-export const flaggedSteps = ({ topWaits, lowestCA }) =>
+export const flaggedSteps = ({ largestWait, lowestCA }) =>
   [
-    topWaits[0] && flag(FLAG_KIND.LARGEST_WAIT, topWaits[0]),
+    largestWait && flag(FLAG_KIND.LARGEST_WAIT, largestWait),
     lowestCA && flag(FLAG_KIND.LOWEST_CA, lowestCA),
   ].filter(Boolean)
 

@@ -72,6 +72,34 @@ describe('flaggedSteps', () => {
   })
 })
 
+describe('flaggedSteps reads the flags it is given', () => {
+  it('takes the largest wait from flags.largestWait, not from the top waits', () => {
+    const flags = {
+      largestWait: { stepId: 's1', name: 'Development', wait: 5 },
+      topWaits: [],
+      lowestCA: null,
+    }
+
+    expect(flaggedSteps(flags)).toEqual([
+      expect.objectContaining({
+        kind: FLAG_KIND.LARGEST_WAIT,
+        stepId: 's1',
+        name: 'Development',
+      }),
+    ])
+  })
+
+  it('names no largest wait when flags.largestWait is null', () => {
+    const flags = {
+      largestWait: null,
+      topWaits: [{ stepId: 's1', name: 'Development', wait: 5 }],
+      lowestCA: null,
+    }
+
+    expect(flaggedSteps(flags)).toEqual([])
+  })
+})
+
 describe('flaggedSteps with two distinct steps', () => {
   // Code review has the largest wait; Development has the lowest %C/A.
   const twoStepVersion = () =>
