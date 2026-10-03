@@ -41,10 +41,10 @@ export const importStreamFile = async (file, store) => {
 }
 
 /**
- * Hand one value stream to the browser as a "<name>.json" download.
- * @param {{exportStream: function(string): Object}} store - The workspace store
+ * Hand one value stream to the browser as a "<name>.json" download, named as
+ * the stream is listed.
+ * @param {{streams: Object[], exportStream: function(string): Object}} store - The workspace store
  * @param {string} id - The value stream's id
- * @param {string} name - The value stream's name
  * @param {Object} [deps] - Replaceable in tests
  * @param {function(string, string): void} [deps.download] - Saves text under a file name
  * @returns {{ok: boolean, error?: string}}
@@ -52,10 +52,11 @@ export const importStreamFile = async (file, store) => {
 export const exportStreamFile = (
   store,
   id,
-  name,
   { download = browserDownload } = {}
 ) => {
   const result = store.exportStream(id)
-  if (result.ok) download(exportFileName(name), result.text)
+  if (!result.ok) return result
+  const stream = store.streams.find((s) => s.id === id)
+  download(exportFileName(displayName(stream)), result.text)
   return result
 }

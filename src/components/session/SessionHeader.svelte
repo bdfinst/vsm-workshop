@@ -101,7 +101,7 @@
 
   function handleExportValueStream() {
     closeMenu()
-    exportStreamFile(workspaceStore, store.stream.id, store.stream.name)
+    exportStreamFile(workspaceStore, store.stream.id)
   }
 
   // Home keeps the open stream as the active one, so a reload comes back to it.

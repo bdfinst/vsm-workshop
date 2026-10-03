@@ -129,7 +129,7 @@
   }
 
   function handleExport(summary) {
-    exportStreamFile(workspaceStore, summary.id, summary.name)
+    exportStreamFile(workspaceStore, summary.id)
   }
 
   function handleNewValueStream() {

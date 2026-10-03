@@ -63,10 +63,10 @@ describe('valueStreamStore: value stream name', () => {
     expect(persist).not.toHaveBeenCalled()
   })
 
-  it('refuses a name that is not text', () => {
+  it.each([undefined, null, 5])('refuses %j, which is not text', (name) => {
     const { store, persist } = openStream()
 
-    expect(store.setName(undefined)).toEqual(refused)
+    expect(store.setName(name)).toEqual(refused)
 
     expect(store.stream.name).toBe('Checkout delivery')
     expect(persist).not.toHaveBeenCalled()
@@ -93,6 +93,21 @@ describe('valueStreamStore: value stream name', () => {
     expect(store.stream.name).toBe('Checkout v2')
     expect(store.canRedo).toBe(false)
   })
+
+  it.each(['   ', undefined])(
+    'a refused name (%j) after an undo keeps the redo',
+    (refusedName) => {
+      const { store, persist } = openStream()
+      store.setName('Checkout v2')
+      store.undo()
+      persist.mockClear()
+
+      expect(store.setName(refusedName).ok).toBe(false)
+
+      expect(store.canRedo).toBe(true)
+      expect(persist).not.toHaveBeenCalled()
+    }
+  )
 
   it('a new name after an undo clears redo', () => {
     const { store } = openStream()

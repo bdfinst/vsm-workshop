@@ -247,7 +247,6 @@ describe.each([
     ['rename', (s) => s.rename('x', 'Name')],
     ['duplicate', (s) => s.duplicate('x')],
     ['remove', (s) => s.remove('x')],
-    ['restore', (s) => s.restore({ stream: { id: 'x' }, index: 0 })],
     ['restoreLast', (s) => s.restoreLast()],
     ['importStream', (s) => s.importStream('{}')],
     ['exportStream', (s) => s.exportStream('x')],
@@ -823,16 +822,80 @@ describe('workspaceStore: create and rename', () => {
     expect((await savedIn(repository)).streams[0].name).toBe('Payments')
   })
 
-  it('refuses a blank name and keeps the old one', async () => {
-    const stream = referenceStream()
-    const store = await makeStore({ streams: [stream] })
+  describe('an edit the name rule turns away or finds unchanged', () => {
+    // The open stream has an undoable edit, so a rename that wrongly rebuilt
+    // its store would show as a lost undo.
+    const openedWithEdit = async () => {
+      const stream = referenceStream()
+      const repository = createMemoryWorkspaceRepository({
+        raw: rawOf([stream]),
+      })
+      const store = await makeStore({ repository })
+      store.activeStore.addStep({ name: 'One' })
+      await store.flushSaves()
+      const listener = vi.fn()
+      store.subscribeCommit(listener)
+      return { stream, repository, store, listener }
+    }
 
-    expect(store.rename(stream.id, '   ')).toEqual({
-      ok: false,
-      error: 'Add a name',
+    it.each(['', '   ', '\t\n'])(
+      'refuses %j: "Add a name", and nothing else happens',
+      async (blank) => {
+        const { stream, repository, store, listener } = await openedWithEdit()
+        const { revision, activeStore } = store
+        const saved = vi.spyOn(repository, 'save')
+
+        expect(store.rename(stream.id, blank)).toEqual({
+          ok: false,
+          error: 'Add a name',
+        })
+        await store.flushSaves()
+
+        expect(store.streams[0].name).toBe('Checkout delivery')
+        expect(store.revision).toBe(revision)
+        expect(listener).not.toHaveBeenCalled()
+        expect(store.activeStore).toBe(activeStore)
+        expect(store.activeStore.canUndo).toBe(true)
+        expect(saved).not.toHaveBeenCalled()
+        expect((await savedIn(repository)).streams[0].name).toBe(
+          'Checkout delivery'
+        )
+      }
+    )
+
+    it.each(['Checkout delivery', '  Checkout delivery  '])(
+      'finds %j unchanged: ok, and nothing else happens',
+      async (typed) => {
+        const { stream, repository, store, listener } = await openedWithEdit()
+        const { revision, activeStore } = store
+        const { updatedAt } = store.streams[0]
+        const saved = vi.spyOn(repository, 'save')
+
+        expect(store.rename(stream.id, typed)).toEqual({ ok: true })
+        await store.flushSaves()
+
+        expect(store.streams[0].updatedAt).toBe(updatedAt)
+        expect(store.revision).toBe(revision)
+        expect(listener).not.toHaveBeenCalled()
+        expect(store.activeStore).toBe(activeStore)
+        expect(store.activeStore.canUndo).toBe(true)
+        expect(saved).not.toHaveBeenCalled()
+      }
+    )
+
+    it('refuses a blank name for a stream that has none, which stays unnamed', async () => {
+      const unnamed = referenceStream({ name: '' })
+      const store = await makeStore({ streams: [unnamed] })
+      const { revision } = store
+
+      expect(store.rename(unnamed.id, '  ')).toEqual({
+        ok: false,
+        error: 'Add a name',
+      })
+
+      expect(store.streams[0].name).toBe('')
+      expect(store.revision).toBe(revision)
     })
-    expect(store.streams[0].name).toBe('Checkout delivery')
-    expect(store.revision).toBe(3)
   })
 
   it('keeps a later edit from undoing the rename of the open stream', async () => {
@@ -881,6 +944,18 @@ describe('workspaceStore: duplicate', () => {
     ])
   })
 
+  it('names the copy of an unnamed stream "Untitled value stream (copy)"', async () => {
+    const unnamed = referenceStream({ name: '' })
+    const store = await makeStore({ streams: [unnamed] })
+
+    store.duplicate(unnamed.id)
+
+    expect(store.streams.map((s) => s.name)).toEqual([
+      '',
+      'Untitled value stream (copy)',
+    ])
+  })
+
   it('gives the copy new ids all the way down and a valid, equal-looking map', async () => {
     const source = referenceReworkStream()
     const store = await makeStore({ streams: [source] })
@@ -925,15 +1000,14 @@ describe('workspaceStore: duplicate', () => {
 })
 
 describe('workspaceStore: remove and restore', () => {
-  it('removes a stream and hands back a token that restores it in place', async () => {
+  it('removes a stream, which restoreLast puts back in place', async () => {
     const [a, b, c] = ['A', 'B', 'C'].map((name) => referenceStream({ name }))
     const store = await makeStore({ streams: [a, b, c] })
 
-    const { ok, token } = store.remove(b.id)
-    expect(ok).toBe(true)
+    expect(store.remove(b.id)).toEqual({ ok: true })
     expect(store.streams.map((s) => s.name)).toEqual(['A', 'C'])
 
-    expect(store.restore(token).ok).toBe(true)
+    expect(store.restoreLast().ok).toBe(true)
     expect(store.streams.map((s) => s.name)).toEqual(['A', 'B', 'C'])
   })
 
@@ -951,9 +1025,9 @@ describe('workspaceStore: remove and restore', () => {
   it('makes the active stream active again, without leaving home, when its removal is undone', async () => {
     const a = referenceStream()
     const store = await makeStore({ streams: [a] })
-    const { token } = store.remove(a.id)
+    store.remove(a.id)
 
-    store.restore(token)
+    store.restoreLast()
 
     expect(store.activeStreamId).toBe(a.id)
     expect(store.screen).toBe('home')
@@ -964,10 +1038,10 @@ describe('workspaceStore: remove and restore', () => {
   it('does not take the active place back when a stream opened since', async () => {
     const [a, b] = [referenceStream(), referenceReworkStream()]
     const store = await makeStore({ streams: [a, b] })
-    const { token } = store.remove(a.id)
+    store.remove(a.id)
     store.open(b.id)
 
-    store.restore(token)
+    store.restoreLast()
 
     expect(store.activeStreamId).toBe(b.id)
   })
@@ -975,9 +1049,9 @@ describe('workspaceStore: remove and restore', () => {
   it('leaves the active stream alone when a stream that was not active is restored', async () => {
     const [a, b] = [referenceStream(), referenceReworkStream()]
     const store = await makeStore({ streams: [a, b] })
-    const { token } = store.remove(b.id)
+    store.remove(b.id)
 
-    store.restore(token)
+    store.restoreLast()
 
     expect(store.activeStreamId).toBe(a.id)
   })
@@ -992,29 +1066,6 @@ describe('workspaceStore: remove and restore', () => {
     expect(store.screen).toBe('stream')
   })
 
-  it('refuses to restore the same token twice', async () => {
-    const [a, b] = [referenceStream(), referenceReworkStream()]
-    const store = await makeStore({ streams: [a, b] })
-    const { token } = store.remove(b.id)
-
-    store.restore(token)
-
-    expect(store.restore(token)).toEqual(refused)
-    expect(store.streams).toHaveLength(2)
-  })
-
-  it('refuses to restore a stream whose id has been taken since', async () => {
-    const [a, b] = [referenceStream(), referenceReworkStream()]
-    const store = await makeStore({ streams: [a, b] })
-    const { text } = store.exportStream(b.id)
-    const { token } = store.remove(b.id)
-    store.importStream(text)
-    expect(store.streams[1].id).toBe(b.id)
-
-    expect(store.restore(token)).toEqual(refused)
-    expect(store.streams).toHaveLength(2)
-  })
-
   it('refuses to remove a stream that is not in the workspace', async () => {
     const store = await makeStore({ streams: [referenceStream()] })
 
@@ -1027,8 +1078,8 @@ describe('workspaceStore: remove and restore', () => {
     const listener = vi.fn()
     store.subscribeCommit(listener)
 
-    const { token } = store.remove(b.id)
-    store.restore(token)
+    store.remove(b.id)
+    store.restoreLast()
 
     expect(listener).toHaveBeenCalledTimes(2)
     expect(store.revision).toBe(5)
@@ -1103,11 +1154,10 @@ describe('workspaceStore: the last removal', () => {
   it('is replaced by a newer removal, so only the newest can be restored', async () => {
     const [a, b, c] = ['A', 'B', 'C'].map((name) => referenceStream({ name }))
     const store = await makeStore({ streams: [a, b, c] })
-    const first = store.remove(a.id).token
+    store.remove(a.id)
     store.remove(b.id)
 
     expect(store.lastRemoval).toEqual({ streamId: b.id, name: 'B' })
-    expect(store.restore(first)).toEqual(refused)
     expect(store.restoreLast()).toMatchObject({ ok: true, streamId: b.id })
     expect(store.streams.map((s) => s.name)).toEqual(['B', 'C'])
     expect(store.restoreLast()).toEqual(refused)
@@ -1157,6 +1207,40 @@ describe('workspaceStore: the last removal', () => {
     store.remove('nope')
 
     expect(store.lastRemoval).toBeNull()
+  })
+
+  describe('while other things happen', () => {
+    const removedFirst = async () => {
+      const store = await twoStreams()
+      const [a, b] = store.streams
+      store.remove(a.id)
+      return { store, a, b, expected: { streamId: a.id, name: 'A' } }
+    }
+
+    it('survives a refused remove', async () => {
+      const { store, expected } = await removedFirst()
+
+      expect(store.remove('nope').ok).toBe(false)
+
+      expect(store.lastRemoval).toEqual(expected)
+    })
+
+    it.each([
+      ['a new value stream', (store) => store.create({ name: 'New' })],
+      ['a duplicate', (store, { b }) => store.duplicate(b.id)],
+      ['a rename', (store, { b }) => store.rename(b.id, 'Renamed')],
+      ['a refused rename', (store, { b }) => store.rename(b.id, '  ')],
+    ])('survives %s', async (_what, act) => {
+      const removed = await removedFirst()
+
+      act(removed.store, removed)
+
+      expect(removed.store.lastRemoval).toEqual(removed.expected)
+      expect(removed.store.restoreLast()).toMatchObject({
+        ok: true,
+        streamId: removed.a.id,
+      })
+    })
   })
 })
 
@@ -1292,17 +1376,6 @@ describe('workspaceStore: replaceWorkspace', () => {
     const saved = await savedIn(repository)
     expect(saved.id).toBe('other')
     expect(saved.streams[0].id).toBe(incoming.id)
-  })
-
-  it('makes a restore token from before the replacement invalid', async () => {
-    const [a, b] = [referenceStream(), referenceReworkStream()]
-    const store = await makeStore({ streams: [a, b] })
-    const { token } = store.remove(b.id)
-
-    store.replaceWorkspace(workspaceOf([referenceStream()], { id: 'other' }))
-
-    expect(store.restore(token).ok).toBe(false)
-    expect(store.streams).toHaveLength(1)
   })
 
   it('leaves the unreadable state when a workspace is opened', async () => {

@@ -34,11 +34,7 @@ import {
   pathTouchesStep,
 } from '../../models/v2/reworkPath.js'
 import { refuse } from '../../models/v2/result.js'
-import {
-  BLANK_NAME_MESSAGE,
-  isBlankName,
-  normalizeName,
-} from '../../models/v2/valueStream.js'
+import { nameEdit } from '../../models/v2/valueStream.js'
 
 const firstMessage = ({ errors }) => Object.values(errors)[0]
 
@@ -311,16 +307,19 @@ export const createValueStreamStore = ({ stream, persist }) => {
 
   // One edit of the stream's Scope fields. Empty text is allowed: a new stream
   // starts without any, and the Next gate says what is missing. The name is the
-  // exception: it is kept trimmed, and an edit to blank is refused, as at home.
+  // exception: the name rule (`nameEdit`) decides it, as at home. A field that
+  // is unchanged is no edit: nothing is saved and there is nothing to undo.
   const setScope = (given) => {
     const check = validateScope(given)
     if (!check.valid) return refuse(firstMessage(check))
-    if ('name' in given && isBlankName(given.name)) {
-      return refuse(BLANK_NAME_MESSAGE)
-    }
 
-    const patch =
-      'name' in given ? { ...given, name: normalizeName(given.name) } : given
+    const patch = { ...given }
+    if ('name' in patch) {
+      const edit = nameEdit(current.name, patch.name)
+      if (!edit.ok) return edit
+      if (edit.changed) patch.name = edit.name
+      else delete patch.name
+    }
     const fields = Object.keys(patch)
     if (fields.every((field) => patch[field] === current[field])) {
       return { ok: true }

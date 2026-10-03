@@ -17,11 +17,9 @@ import {
   importValueStream,
 } from '../../persistence/v2/valueStreamJson.js'
 import {
-  BLANK_NAME_MESSAGE,
   createValueStream,
   displayName,
-  isBlankName,
-  normalizeName,
+  nameEdit,
 } from '../../models/v2/valueStream.js'
 import { refuse } from '../../models/v2/result.js'
 import { createWorkspace } from '../../models/v2/workspace.js'
@@ -273,10 +271,14 @@ export const createWorkspaceStore = ({
   const rename = whenReady((id, name) => {
     const index = streamAt(id)
     if (index === -1) return refuse(STREAM_MISSING_MESSAGE)
-    if (isBlankName(name)) return refuse(BLANK_NAME_MESSAGE)
+    const edit = nameEdit(streams[index].name, name)
+    if (!edit.ok) return edit
+    // Saving the name as it already is changes nothing: no revision, no new
+    // "updated" time, and the open stream keeps its undo history.
+    if (!edit.changed) return { ok: true }
     streams = replaceById(
       streams,
-      touchValueStream(streams[index], { name: normalizeName(name) })
+      touchValueStream(streams[index], { name: edit.name })
     )
     commit()
     // The open stream store holds its own copy, so it must start over from this
@@ -310,13 +312,14 @@ export const createWorkspaceStore = ({
       showActive()
     }
     commit()
-    return { ok: true, token }
+    return { ok: true }
   })
 
   // Each removal gets one try: a restore that cannot work (the id is in use
   // again) drops its token, so Undo is over rather than offered again.
-  const restore = whenReady((token) => {
-    if (!token || token !== lastToken) return refuse(NOTHING_TO_RESTORE_MESSAGE)
+  const restoreLast = whenReady(() => {
+    const token = lastToken
+    if (!token) return refuse(NOTHING_TO_RESTORE_MESSAGE)
     lastToken = null
     if (streams.some((stream) => stream.id === token.stream.id)) {
       return refuse(NOTHING_TO_RESTORE_MESSAGE)
@@ -332,8 +335,6 @@ export const createWorkspaceStore = ({
     commit()
     return { ok: true, streamId: token.stream.id }
   })
-
-  const restoreLast = whenReady(() => restore(lastToken))
 
   const importStream = whenReady((text) => {
     const result = importValueStream(
@@ -435,7 +436,6 @@ export const createWorkspaceStore = ({
     rename,
     duplicate,
     remove,
-    restore,
     restoreLast,
     importStream,
     showChanges,
