@@ -27,7 +27,7 @@ jobs:
   # "failed to save cache" warning in this job is handled the same way: the
   # restore step in each later job misses and falls back to `npm ci`.
   install:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
         with:
@@ -54,7 +54,7 @@ jobs:
   # result, and the quality gate fails when this job does.
   build:
     needs: install
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
         with:
@@ -93,7 +93,7 @@ jobs:
     # Runs when install or build failed, so that the failure is reported here and
     # not as a skipped job, which a branch rule would count as passing.
     if: ${{ !cancelled() }}
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
       - name: Fail when install or build did not succeed
         if: ${{ needs.install.result != 'success' || needs.build.result != 'success' }}
@@ -129,13 +129,15 @@ jobs:
   e2e:
     needs: [install, build]
     if: ${{ !cancelled() }}
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     # Run inside the pinned Playwright image so browsers are preinstalled and,
     # crucially, font/rendering matches the committed visual baselines. Keep
     # this version in sync with the @playwright/test version in package.json.
     # The digest pins the exact image (the tag alone can be re-pushed). Renovate
     # bumps the tag and the digest together with @playwright/test in one PR, and
     # updates the same reference in scripts/e2e-baseline.sh (see renovate.json).
+    # The image ships Node v24.13.0, which is the version pinned in .nvmrc; keep
+    # them equal when either one moves.
     container:
       image: mcr.microsoft.com/playwright:v1.58.2-noble@sha256:6446946a1d9fd62d9ae501312a2d76a43ee688542b21622056a372959b65d63d
     steps:
