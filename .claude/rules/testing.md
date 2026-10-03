@@ -261,18 +261,32 @@ npm run test:e2e:baseline -- <spec>  # another spec file
 ```
 
 `scripts/e2e-baseline.sh` does the whole job, on a Mac as well as on Linux. It
-copies the files git tracks or shows as untracked and not ignored (so `.env*`,
-`.mcp.json` and other ignored local files never reach the container) to a temp
-directory, without `node_modules`, `dist`, `.git` and the test output, so the
-container installs its own Linux builds with `npm ci`. It regenerates the
-snapshots in the pinned image, then runs the spec again in CI mode (`CI=1`,
-production build served by `vite preview`, no network). Only when that run
-passes does it copy the `*-snapshots/*.png` files (regular files only) back into
-`tests/e2e`, so unconfirmed baselines never reach the working tree. It removes
-the temp directory when it ends.
+copies the files git tracks (minus tracked files deleted in the working tree) and
+the files git shows as untracked and not ignored, except untracked `.env*`
+entries, to a temp directory, without `node_modules`, `dist`, `.git` and the test
+output. Ignored local files such as `.mcp.json` and untracked env files never
+reach the container; a tracked `.env*` file does, so the build matches CI. Any
+rsync error aborts the run. The container installs its own Linux builds with
+`npm ci`. It regenerates the snapshots in the pinned image, then runs the spec
+again in CI mode (`CI=1`, production build served by `vite preview`, no network).
+Only when that run passes does it copy the snapshots back, so unconfirmed
+baselines never reach the working tree. It removes the temp directory when it
+ends.
 
-If regeneration or the confirmation run fails, the script exits non-zero and
-leaves the repo untouched. It copies the Playwright `test-results` and
+The copy-back (`scripts/e2e-baseline-lib.sh`) takes only regular
+`tests/e2e/**/*-snapshots/*.png` files, walked NUL-safely. It first checks every
+candidate: the relative path must match
+`^tests/e2e/[A-Za-z0-9._/-]+-snapshots/[A-Za-z0-9._-]+\.png$` with no `..`
+segment, `tests` and `tests/e2e` in the temp copy must not be symlinks, and the
+destination file and its parent directories in the repo must not be symlinks.
+One refusal fails the whole copy and the repo is untouched. Each file is then
+written to a temp name beside its destination and renamed into place.
+`npm run test:shell` runs `tests/shell/e2e-baseline-copy-back.sh`, which feeds
+that code hostile names and symlinks (no Docker needed); it is not part of
+`npm test`.
+
+If regeneration, the confirmation run or the copy-back checks fail, the script
+exits non-zero and leaves the repo untouched. It copies the Playwright `test-results` and
 `playwright-report` to a new temp directory outside the repo and prints its
 path; that directory is not deleted.
 

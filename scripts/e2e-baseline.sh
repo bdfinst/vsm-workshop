@@ -3,10 +3,13 @@
 # them against the production build the way CI serves it. The baselines reach the
 # working tree only after that check passes.
 #
-# It works from a copy of the repo (only the files git tracks or shows as
-# untracked and not ignored, so .env files and local tooling state never enter
-# the container mount) with its own `npm ci`, so it also runs on a Mac: the host
-# node_modules has no Linux build of esbuild or rollup.
+# It works from a copy of the repo with its own `npm ci`, so it also runs on a
+# Mac: the host node_modules has no Linux build of esbuild or rollup. The copy
+# holds the files git tracks (the ones deleted in the working tree are skipped)
+# and the files git shows as untracked and not ignored, except untracked .env*
+# entries, so local env files and ignored tooling state never enter the container
+# mount. Tracked .env* files stay, so the build matches CI. Any rsync error is
+# fatal.
 #
 # Usage: scripts/e2e-baseline.sh [spec-filter]     (default: visual.spec.js)
 #
@@ -15,8 +18,14 @@
 # DOCKER_DEFAULT_PLATFORM=linux/arm64 to run natively; the baselines then will
 # not match CI, so do not commit them.
 #
-# On failure the repo is left untouched and the Playwright output (test-results,
-# playwright-report) is copied to a new temp directory whose path is printed.
+# Only *-snapshots/*.png files under tests/e2e are copied back, and only after
+# every one passes a path check (see scripts/e2e-baseline-lib.sh): a safe name,
+# and no symlink in the work copy's tests/e2e or on the way to the destination in
+# the repo. Each file is written to a temp name and renamed over the destination.
+#
+# On failure, including a refused copy-back, the repo is left untouched and the
+# Playwright output (test-results, playwright-report) is copied to a new temp
+# directory whose path is printed.
 #
 # Keep IMAGE in sync with .github/workflows/ci.yml and @playwright/test in
 # package.json. Renovate bumps all three together (see renovate.json).
@@ -27,6 +36,9 @@ PLATFORM="${DOCKER_DEFAULT_PLATFORM:-linux/amd64}"
 SPEC="${1:-visual.spec.js}"
 
 REPO=$(cd "$(dirname "$0")/.." && pwd)
+LIB="$REPO/scripts/e2e-baseline-lib.sh"
+# shellcheck source=scripts/e2e-baseline-lib.sh
+. "$LIB"
 WORK=''
 LIST=''
 trap 'rm -rf "$WORK" "$LIST"' EXIT
@@ -49,10 +61,7 @@ LIST=$(mktemp "${TMPDIR:-/tmp}/e2e-baseline-files.XXXXXX")
 # network once node_modules exists.
 
 echo "==> Copying the repo files to $WORK"
-git -C "$REPO" ls-files -z --cached --others --exclude-standard >"$LIST"
-# Exit 23 is a partial transfer: a tracked file that is deleted in the working
-# tree is not there to copy, which is fine.
-rc=0
+bl_file_list "$REPO" "$LIST" || exit 1
 rsync -a --from0 --files-from="$LIST" \
   --exclude '/node_modules' \
   --exclude '/dist' \
@@ -61,10 +70,7 @@ rsync -a --from0 --files-from="$LIST" \
   --exclude '/.claude/worktrees' \
   --exclude '/test-results' \
   --exclude '/playwright-report' \
-  "$REPO"/ "$WORK"/ || rc=$?
-if [ "$rc" -ne 0 ] && [ "$rc" -ne 23 ]; then
-  exit "$rc"
-fi
+  "$REPO"/ "$WORK"/
 
 # Keeps the Playwright output outside the repo and the temp copy, and says where.
 save_evidence() {
@@ -105,15 +111,11 @@ then
   exit 1
 fi
 
-# Only regular PNG files, never symlinks (find does not follow them), and only
-# from snapshot directories that are real directories.
 echo "==> Copying the confirmed snapshots back"
-find "$WORK/tests/e2e" -type d -name '*-snapshots' | while IFS= read -r dir; do
-  find "$dir" -type f ! -type l -name '*.png' | while IFS= read -r file; do
-    rel=${file#"$WORK"/}
-    mkdir -p "$(dirname "$REPO/$rel")"
-    cp -P "$file" "$REPO/$rel"
-  done
-done
+if ! bl_copy_back "$WORK" "$REPO" "$LIB"; then
+  echo 'The snapshots were not copied back. The repo is untouched.' >&2
+  save_evidence
+  exit 1
+fi
 
 echo '==> Done. Review the changed snapshots and commit them.'
