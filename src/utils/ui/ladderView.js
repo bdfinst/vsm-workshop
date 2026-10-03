@@ -147,11 +147,12 @@ const EMOJI_GLYPH = /\p{Extended_Pictographic}|\p{Regional_Indicator}/gu
 
 // Widths of the classes, in ems of LABEL_FONT_SIZE, probed in the label font
 // (IBM Plex Sans semibold) and rounded up so the estimate stays on the wide
-// side: the widest capitals (H, N, O, G, Q) are 0.72 em, & 0.71, m is 0.89, w
-// 0.82, the wide punctuation (%, @, the ellipsis, the em dash) up to 0.96 and
-// an emoji 1.25 in the system emoji fonts. Everything else is the ordinary
-// LABEL_CHAR_WIDTH.
-const CAPITAL_EMS = 0.72
+// side: the widest capitals (H and N) are 0.719 em, drawn at 8.640625 px at
+// 12 px, because the browser rounds an advance up to a 64th of a pixel, so a
+// capital is 0.73; & is 0.71, m 0.89, w 0.82, the wide punctuation (%, @, the
+// ellipsis, the em dash) up to 0.96 and an emoji 1.25 in the system emoji
+// fonts. Everything else is the ordinary LABEL_CHAR_WIDTH.
+const CAPITAL_EMS = 0.73
 const WIDE_LOWERCASE_EMS = 0.9
 const FULL_EM = 1
 const EMOJI_EMS = 1.3
@@ -202,7 +203,7 @@ const widthOfGrapheme = (grapheme) => {
  * once) by class: an emoji at 1.3 em for each glyph it can be drawn as (a flag
  * is two, a family one per person), East Asian wide and fullwidth characters,
  * the capitals W and M, and the em dash, percent sign, at sign and ellipsis at
- * a full em, the other capitals and the ampersand at 0.72 em, the lower-case m
+ * a full em, the other capitals and the ampersand at 0.73 em, the lower-case m
  * and w at 0.9 em, and every other character at LABEL_CHAR_WIDTH. An accent
  * does not change the class: Ŵ is a W. It is pure, so it cannot read font
  * metrics: it measures by class, from widths probed in the label font, and

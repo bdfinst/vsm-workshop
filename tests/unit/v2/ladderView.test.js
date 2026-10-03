@@ -37,7 +37,7 @@ import {
 
 const CJK_NAME = '価値流れ図の作成と改善のための手順書一覧' // 20 characters, each a full em
 
-const CAPITAL_WIDTH = 0.72 * LABEL_FONT_SIZE
+const CAPITAL_WIDTH = 0.73 * LABEL_FONT_SIZE
 
 const REFERENCE_MINUTES = 9030 // every wait and process minute of the reference map
 
@@ -289,8 +289,8 @@ describe('textWidthOf', () => {
   // Scenario Outline: A label character is measured by its class
   it.each([
     { kind: 'an ordinary character', text: 'e', ems: 2 / 3 },
-    { kind: 'a capital', text: 'H', ems: 0.72 },
-    { kind: 'a capital with an accent', text: 'É', ems: 0.72 },
+    { kind: 'a capital', text: 'H', ems: 0.73 },
+    { kind: 'a capital with an accent', text: 'É', ems: 0.73 },
     { kind: 'a lower-case m', text: 'm', ems: 0.9 },
     { kind: 'a lower-case w', text: 'w', ems: 0.9 },
     { kind: 'a wide capital W', text: 'W', ems: 1 },
@@ -302,7 +302,7 @@ describe('textWidthOf', () => {
     { kind: 'wide punctuation: a percent sign', text: '%', ems: 1 },
     { kind: 'wide punctuation: an at sign', text: '@', ems: 1 },
     { kind: 'wide punctuation: an ellipsis', text: '…', ems: 1 },
-    { kind: 'an ampersand, as broad as a capital', text: '&', ems: 0.72 },
+    { kind: 'an ampersand, as broad as a capital', text: '&', ems: 0.73 },
     { kind: 'an East Asian wide character', text: '価', ems: 1 },
     { kind: 'an emoji', text: '🚀', ems: 1.3 },
     { kind: 'an emoji with a skin tone, one glyph', text: '👍🏽', ems: 1.3 },
