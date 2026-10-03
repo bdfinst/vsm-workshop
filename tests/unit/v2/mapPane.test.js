@@ -34,7 +34,7 @@ afterEach(() => {
 })
 
 describe('MapPane', () => {
-  it('The session opens on the Map view: the Map tab is selected and the ladder is shown', () => {
+  it('The Map tab is selected and the ladder is shown when the view is map', () => {
     render()
 
     expect(mapTab().getAttribute('aria-selected')).toBe('true')

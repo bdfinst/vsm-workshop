@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest'
 import { OUTLINE, ladderModel } from '../../../src/utils/ui/ladderModel.js'
 import { calculateMetrics } from '../../../src/utils/calculations/v2/index.js'
-import { reworkSteps, team, versionOf } from './fixtures.js'
+import { reworkSteps, team, versionOf, withStep } from './fixtures.js'
 
 const modelOf = (steps, flags) => {
   const version = versionOf(steps)
@@ -44,22 +44,41 @@ describe('ladderModel', () => {
   })
 
   // Scenario: Each version's ladder model carries its own flags
-  it("Each version's ladder model carries its own flags", () => {
-    const current = versionOf([
+  describe('with two versions of the same steps', () => {
+    // "Code review" has the largest wait in Current, "Deploy" in Draft: the
+    // steps and their ids are shared, so a model that read the wrong version's
+    // flags would flag a step of its own.
+    const steps = [
       team('Intake', 10, 20),
       team('Code review', 10, 2880),
       team('Deploy', 10, 60),
-    ])
-    const draft = versionOf([
-      team('Intake', 10, 20),
-      team('Code review', 10, 60),
-      team('Deploy', 10, 2880),
-    ])
-    const [currentModel, draftModel] = [current, draft].map((version) =>
-      ladderModel(version, calculateMetrics(version).flags)
+    ]
+    const current = versionOf(steps)
+    const draft = versionOf(
+      withStep(
+        withStep(steps, 'Code review', { waitTime: { typ: 60 } }),
+        'Deploy',
+        { waitTime: { typ: 2880 } }
+      )
     )
+    const flagsOf = (version) => calculateMetrics(version).flags
 
-    expect(flaggedNames(currentModel, 'largest wait')).toEqual(['Code review'])
-    expect(flaggedNames(draftModel, 'largest wait')).toEqual(['Deploy'])
+    it("Each version's ladder model carries its own flags", () => {
+      expect(
+        flaggedNames(ladderModel(current, flagsOf(current)), 'largest wait')
+      ).toEqual(['Code review'])
+      expect(
+        flaggedNames(ladderModel(draft, flagsOf(draft)), 'largest wait')
+      ).toEqual(['Deploy'])
+    })
+
+    it('flags the steps the flags it is given name, not those of its own version', () => {
+      expect(
+        flaggedNames(ladderModel(current, flagsOf(draft)), 'largest wait')
+      ).toEqual(['Deploy'])
+      expect(
+        flaggedNames(ladderModel(draft, flagsOf(current)), 'largest wait')
+      ).toEqual(['Code review'])
+    })
   })
 })

@@ -50,9 +50,10 @@ describe('sessionUIStore', () => {
 
   it('refuses a view mode it does not know', () => {
     const store = createSessionUIStore({ search: '', defaultUi: undefined })
+    store.setViewMode(VIEW_MODE.TABLE)
 
     store.setViewMode('sideways')
 
-    expect(store.viewMode).toBe(VIEW_MODE.MAP)
+    expect(store.viewMode).toBe(VIEW_MODE.TABLE)
   })
 })

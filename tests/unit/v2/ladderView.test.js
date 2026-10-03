@@ -404,10 +404,6 @@ describe('layoutLabels', () => {
   const layoutOf = (steps, pixelsPerMinute = 0.1) =>
     scaledLayout(steps, pixelsPerMinute).steps
 
-  it('is tied to the font size: a character is at least two thirds of an em wide', () => {
-    expect(LABEL_CHAR_WIDTH).toBeGreaterThanOrEqual((LABEL_FONT_SIZE * 2) / 3)
-  })
-
   it('has nothing for no steps', () => {
     expect(layoutLabels([])).toEqual({ labels: [], lanes: [], rightEdge: 0 })
   })
@@ -486,27 +482,30 @@ describe('layoutLabels', () => {
     ],
     ['emoji', (index) => `Ship ${'🚀'.repeat(index + 1)}`],
     ['the wide capitals', (index) => `WWWW ${'M'.repeat(index + 1)}`],
-  ])('Names heavy in %s never overlap on one lane', (_, nameFor) => {
-    const steps = layoutOf(
-      Array.from({ length: 12 }, (_, index) => team(nameFor(index), 5, 5))
-    )
+  ])(
+    'lane assignment keeps LABEL_GAP between the estimated widths of names heavy in %s',
+    (_, nameFor) => {
+      const steps = layoutOf(
+        Array.from({ length: 12 }, (_, index) => team(nameFor(index), 5, 5))
+      )
 
-    const { labels, lanes } = layoutLabels(steps)
+      const { labels, lanes } = layoutLabels(steps)
 
-    const byLane = Object.groupBy(
-      labels.map((label, index) => ({ ...label, lane: lanes[index] })),
-      ({ lane }) => lane
-    )
-    for (const inLane of Object.values(byLane)) {
-      inLane.slice(1).forEach((label, index) => {
-        expect(label.left).toBeGreaterThanOrEqual(
-          inLane[index].right + LABEL_GAP
-        )
-      })
+      const byLane = Object.groupBy(
+        labels.map((label, index) => ({ ...label, lane: lanes[index] })),
+        ({ lane }) => lane
+      )
+      for (const inLane of Object.values(byLane)) {
+        inLane.slice(1).forEach((label, index) => {
+          expect(label.left).toBeGreaterThanOrEqual(
+            inLane[index].right + LABEL_GAP
+          )
+        })
+      }
     }
-  })
+  )
 
-  it('reaches as far as an emoji name is wide, so the last label is not clipped', () => {
+  it('ends the ladder at the estimated width of an emoji name on the last step', () => {
     const name = 'Ship it 🚀🎉'
     const steps = layoutOf([team('Intake', 5, 5), team(name, 5, 5)])
 

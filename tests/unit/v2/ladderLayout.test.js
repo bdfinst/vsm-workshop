@@ -20,9 +20,9 @@ const stepBox = (layout, name) => layout.steps.find((s) => s.name === name)
 const PX_PER_MINUTE = 0.5
 const EQUAL_BOX_WIDTH = 120
 
-const modelOf = (steps, flags) => {
+const modelOf = (steps) => {
   const version = versionOf(steps)
-  return ladderModel(version, flags ?? calculateMetrics(version).flags)
+  return ladderModel(version, calculateMetrics(version).flags)
 }
 
 const scaled = (steps, pixelsPerMinute = PX_PER_MINUTE) =>
@@ -254,28 +254,6 @@ describe('sizeLadder', () => {
         'largest wait',
         'lowest %C/A',
       ])
-    })
-
-    it('uses the flags it is given instead of working them out', () => {
-      const steps = reworkSteps()
-      const deploy = steps.find((s) => s.name === 'Deploy')
-      const flags = {
-        ...calculateMetrics(versionOf(steps)).flags,
-        largestWait: {
-          stepId: deploy.id,
-          name: deploy.name,
-          wait: deploy.waitTime.typ,
-        },
-        lowestCA: null,
-      }
-
-      const layout = sizeLadder(modelOf(steps, flags), {
-        mode: LADDER_MODE.EQUAL,
-        boxWidth: EQUAL_BOX_WIDTH,
-      })
-
-      expect(flagLabels(layout, 'Deploy')).toEqual(['largest wait'])
-      expect(flagLabels(layout, 'Code review')).toEqual([])
     })
   })
 
