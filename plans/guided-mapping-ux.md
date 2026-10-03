@@ -2658,8 +2658,8 @@ Feature: Review the current state and draw a future state
 
 **Notes carried from the Slice 10 review:**
 
-- `VersionCompare` needs `LadderMap` to take optional `pixelsPerMinute` and `mode` props (so two maps share one scale), a per-instance radio `name` and per-instance SVG pattern, title and description ids (they are fixed today, so two maps on a page collide), and a way to turn the mode toggle off.
-- It also needs a per-version ladder model without recomputing flags: the store derives `ladder` for the active version only, so a comparison builds the other version's model with `ladderModel(version, flags)` from that version's own metrics.
+- Done in the Slice 10 follow-up (`LadderMap` props `pixelsPerMinute`, `mode`, `showModeToggle`, per-instance ids). `VersionCompare` needed `LadderMap` to take optional `pixelsPerMinute` and `mode` props (so two maps share one scale), a per-instance radio `name` and per-instance SVG pattern, title and description ids (they are fixed today, so two maps on a page collide), and a way to turn the mode toggle off.
+- It also needs a per-version ladder model without recomputing flags: the store derives `ladderModel` for the active version only, so a comparison builds the other version's model with `ladderModel(version, flags)` from that version's own metrics.
 
 **Steps:**
 
