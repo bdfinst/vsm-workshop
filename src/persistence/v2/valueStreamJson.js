@@ -1,4 +1,5 @@
 import { isRecord } from '../../utils/validation/v2/result.js'
+import { STAGE_NAMES } from '../../models/v2/constants.js'
 import { refuse } from '../../models/v2/result.js'
 import { migrateV1Safely } from '../../utils/migration/migrateV1Safely.js'
 import {
@@ -51,10 +52,38 @@ const readV1 = (file) => {
   return migrated.ok ? migrated : refuse(NOT_A_VALUE_STREAM_MESSAGE)
 }
 
+// A stage number from a file, which can hold anything: kept when it is a whole
+// number in range, pulled to the nearest end when it is a number past one, and
+// the first stage when it is not a whole number at all.
+const inRangeStage = (stage) =>
+  Number.isInteger(stage) ? Math.min(Math.max(stage, 1), STAGE_NAMES.length) : 1
+
+const readableTime = (time, fallback) =>
+  typeof time === 'string' && !Number.isNaN(Date.parse(time)) ? time : fallback
+
+// The fields the home screen reads, which the structural check leaves open, so
+// a card never shows a stage that does not exist or a time that is not one.
+// Time that cannot be read becomes the time of the import.
+const withReadableFields = (stream) => {
+  const activeStage = inRangeStage(stream.session.activeStage)
+  const furthestStage = Math.max(
+    inRangeStage(stream.session.furthestStage),
+    activeStage
+  )
+  const now = new Date().toISOString()
+  return {
+    ...stream,
+    session: { ...stream.session, activeStage, furthestStage },
+    createdAt: readableTime(stream.createdAt, now),
+    updatedAt: readableTime(stream.updatedAt, now),
+  }
+}
+
 /**
  * Read a value stream file, v1 or v2. A v1 map is migrated. When the stream's
  * id is already in the workspace it gets a new one, so importing never
- * replaces a stream.
+ * replaces a stream. A stage outside 1-7 is brought into range and a time that
+ * cannot be read is replaced with the time of the import.
  * @param {string} text - The file content
  * @param {Iterable<string>} existingIds - Ids of the streams already in the workspace
  * @returns {{ok: true, stream: Object, changes: string[]} | {ok: false, error: string}}
@@ -76,9 +105,10 @@ export const importValueStream = (text, existingIds) => {
   if (!result.ok) return result
 
   const taken = new Set(existingIds)
-  const stream = taken.has(result.stream.id)
-    ? { ...result.stream, id: crypto.randomUUID() }
-    : result.stream
+  const readable = withReadableFields(result.stream)
+  const stream = taken.has(readable.id)
+    ? { ...readable, id: crypto.randomUUID() }
+    : readable
   return { ...result, stream }
 }
 

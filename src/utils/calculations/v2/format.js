@@ -272,6 +272,7 @@ const MILLISECONDS_PER_MINUTE = 60 * 1000
 const MINUTES_PER_DAY = 24 * MINUTES_PER_HOUR
 const DAYS_PER_MONTH = 30
 const DAYS_PER_YEAR = 365
+const MONTHS_PER_YEAR = 12
 const MONTH_NAMES = Object.freeze([
   'Jan',
   'Feb',
@@ -316,7 +317,12 @@ export const formatRelativeTime = (timestamp, now) => {
   if (days < 1) return `${countOf(hours, 'hour')} ago`
   if (days < DAYS_PER_MONTH) return `${countOf(days, 'day')} ago`
   if (days < DAYS_PER_YEAR) {
-    return `${countOf(Math.floor(days / DAYS_PER_MONTH), 'month')} ago`
+    // 12 x 30 days is 360, short of a year: the last days stay at 11 months.
+    const months = Math.min(
+      Math.floor(days / DAYS_PER_MONTH),
+      MONTHS_PER_YEAR - 1
+    )
+    return `${countOf(months, 'month')} ago`
   }
   return `${countOf(Math.floor(days / DAYS_PER_YEAR), 'year')} ago`
 }
@@ -328,8 +334,7 @@ export const formatRelativeTime = (timestamp, now) => {
  * @returns {?string} For example "3 Mar", or null when the time cannot be read
  */
 export const formatDayMonth = (timestamp) => {
-  const milliseconds = toMilliseconds(timestamp)
-  if (!Number.isFinite(milliseconds)) return null
-  const date = new Date(milliseconds)
+  const date = new Date(toMilliseconds(timestamp))
+  if (Number.isNaN(date.getTime())) return null
   return `${date.getUTCDate()} ${MONTH_NAMES[date.getUTCMonth()]}`
 }

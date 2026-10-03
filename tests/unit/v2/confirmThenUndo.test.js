@@ -49,15 +49,17 @@ describe('createConfirmThenUndo', () => {
 
   it('asks by default', () => {
     const ask = vi.fn()
+    const run = vi.fn()
     const flow = createConfirmThenUndo({
       ask,
       close: vi.fn(),
-      run: vi.fn(),
+      run,
       restoreFocus: vi.fn(),
     })
 
-    flow.request(true)
+    flow.request()
 
     expect(ask).toHaveBeenCalledTimes(1)
+    expect(run).not.toHaveBeenCalled()
   })
 })

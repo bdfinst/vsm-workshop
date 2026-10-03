@@ -97,6 +97,9 @@ const expectCurrentStage = (page, name) =>
   expect(stageButton(page, name)).toHaveAttribute('aria-current', 'step')
 
 test.describe('Several value streams in one workspace (slice 9.1)', () => {
+  // "Created 3 Mar" is the day in UTC, so run in a zone a whole day ahead of it.
+  test.use({ timezoneId: 'Pacific/Kiritimati' })
+
   test('Home screen lists every value stream in workspace order', async ({
     page,
     seed,
@@ -138,13 +141,19 @@ test.describe('Several value streams in one workspace (slice 9.1)', () => {
     page,
     seed,
   }) => {
-    await openBackground(page, seed)
+    const { second } = await openBackground(page, seed)
+    // Onboarding becomes the active stream, so the save below is a real change.
     await openAllValueStreams(page)
+    await page.getByRole('link', { name: 'Onboarding', exact: true }).click()
+    await openAllValueStreams(page)
+    await expect
+      .poll(async () => (await savedWorkspace(page))?.activeStreamId)
+      .toBe(second.id)
 
     await page.reload()
 
-    await expect(mapName(page)).toHaveValue('Checkout delivery')
-    await expectCurrentStage(page, 'Review')
+    await expect(mapName(page)).toHaveValue('Onboarding')
+    await expectCurrentStage(page, 'Steps')
   })
 
   test('Launch with no active value stream shows the home screen', async ({
@@ -241,13 +250,23 @@ test.describe('Several value streams in one workspace (slice 9.1)', () => {
     page,
     seed,
   }) => {
-    const { checkout } = await openBackground(page, seed)
-
-    await openAllValueStreams(page)
-
+    const { checkout, second } = await openBackground(page, seed)
     await expect
       .poll(async () => (await savedWorkspace(page))?.activeStreamId)
       .toBe(checkout.id)
+
+    await openAllValueStreams(page)
+    await page.getByRole('link', { name: 'Onboarding', exact: true }).click()
+    await expect
+      .poll(async () => (await savedWorkspace(page))?.activeStreamId)
+      .toBe(second.id)
+    await openAllValueStreams(page)
+
+    // Home is only a screen: the active stream stays the one that was open.
+    await expect(homeHeading(page)).toBeVisible()
+    await expect
+      .poll(async () => (await savedWorkspace(page))?.activeStreamId)
+      .toBe(second.id)
   })
 
   test('The home screen has no accessibility violations', async ({
@@ -364,7 +383,9 @@ test.describe('Manage value streams from the home screen (slice 9.2)', () => {
     await confirmDialog(page)
       .getByRole('button', { name: 'Delete', exact: true })
       .click()
-    await expect.poll(() => stepNames(page)).not.toContain('Deploy')
+    await expect
+      .poll(() => stepNames(page))
+      .toEqual(REFERENCE_STEPS.filter((step) => step !== 'Deploy'))
     await openAllValueStreams(page)
     await openStream(page, 'Checkout delivery')
     await stageButton(page, 'Steps').click()
@@ -414,6 +435,7 @@ test.describe('Manage value streams from the home screen (slice 9.2)', () => {
         toast(page).getByRole('button', { name: 'Undo', exact: true }).click(),
     ],
     ['Ctrl+Z', (page) => page.keyboard.press('Control+z')],
+    ['Cmd+Z', (page) => page.keyboard.press('Meta+z')],
   ]
 
   for (const [method, undo] of UNDO_METHODS) {
@@ -482,6 +504,134 @@ test.describe('Manage value streams from the home screen (slice 9.2)', () => {
     await expect(mapName(page)).toHaveValue('')
   })
 
+  test('Renaming an unnamed value stream without typing keeps it unnamed', async ({
+    page,
+    seed,
+  }) => {
+    const checkout = checkoutDelivery()
+    const unnamed = streamNamed('', ONBOARDING_STEPS, STAGE_NUMBER.SCOPE, {
+      createdAt: '2026-03-03T10:00:00.000Z',
+    })
+    await openBackground(page, seed, {
+      streams: [checkout, unnamed],
+      active: checkout,
+    })
+    await openAllValueStreams(page)
+
+    await chooseFromMenu(page, 'Untitled value stream', 'Rename')
+    const nameField = page.getByLabel('Value stream name')
+    await expect(nameField).toHaveValue('')
+    await expect(nameField).toHaveAttribute(
+      'placeholder',
+      'Untitled value stream'
+    )
+    await page.keyboard.press('Enter')
+
+    await expect(nameField).toHaveCount(0)
+    await expectValueStreams(page, [
+      'Checkout delivery',
+      'Untitled value stream',
+    ])
+    await expect(cardOf(page, 'Untitled value stream')).toContainText(
+      'Created 3 Mar'
+    )
+    await expect(menuButton(page, 'Untitled value stream')).toBeFocused()
+  })
+
+  test('Saving a name that has not changed changes nothing', async ({
+    page,
+    seed,
+  }) => {
+    await startOnHome(page, seed)
+
+    await chooseFromMenu(page, 'Checkout delivery', 'Rename')
+    await page.getByLabel('Value stream name').fill('  Checkout delivery ')
+    await page.keyboard.press('Enter')
+
+    await expect(page.getByTestId('rename-form')).toHaveCount(0)
+    await expect(menuButton(page, 'Checkout delivery')).toBeFocused()
+    await expect(cardOf(page, 'Checkout delivery')).toContainText(
+      'Updated 2 days ago'
+    )
+    // Saves are written in order, so once this later one is there an earlier
+    // save of the rename would be too.
+    await duplicateStream(page, 'Onboarding')
+    await expect.poll(async () => (await savedStreams(page)).length).toBe(3)
+    const saved = (await savedStreams(page)).find(
+      (stream) => stream.name === 'Checkout delivery'
+    )
+    expect(saved.updatedAt).toBe(CHECKOUT_UPDATED_AT)
+  })
+
+  test('Escape cancels a rename and leaves the name', async ({
+    page,
+    seed,
+  }) => {
+    await startOnHome(page, seed)
+
+    await chooseFromMenu(page, 'Onboarding', 'Rename')
+    await page.getByLabel('Value stream name').fill('Something else')
+    await page.keyboard.press('Escape')
+
+    await expect(page.getByTestId('rename-form')).toHaveCount(0)
+    await expectValueStreams(page, ['Checkout delivery', 'Onboarding'])
+    await expect(menuButton(page, 'Onboarding')).toBeFocused()
+  })
+
+  test('Ctrl+Z in a text field is left to the field', async ({
+    page,
+    seed,
+  }) => {
+    await startOnHome(page, seed)
+    await deleteStream(page, 'Checkout delivery')
+    await chooseFromMenu(page, 'Onboarding', 'Rename')
+    await expect(page.getByLabel('Value stream name')).toBeFocused()
+
+    await page.keyboard.press('Control+z')
+
+    await expectValueStreams(page, ['Onboarding'])
+    await expect(toast(page)).toContainText('Checkout delivery deleted')
+
+    await page.keyboard.press('Escape')
+    await page.keyboard.press('Control+z')
+
+    await expectValueStreams(page, ['Checkout delivery', 'Onboarding'])
+  })
+
+  test('The Undo toast closes when leaving the home screen', async ({
+    page,
+    seed,
+  }) => {
+    await startOnHome(page, seed)
+    await deleteStream(page, 'Checkout delivery')
+    await expect(toast(page)).toContainText('Checkout delivery deleted')
+
+    await openStream(page, 'Onboarding')
+
+    await expect(mapName(page)).toHaveValue('Onboarding')
+    await expect(toast(page)).toHaveCount(0)
+    await openAllValueStreams(page)
+    await expect(toast(page)).toHaveCount(0)
+  })
+
+  test('Delete and Undo are announced to screen readers', async ({
+    page,
+    seed,
+  }) => {
+    await startOnHome(page, seed)
+    const liveRegion = page.getByTestId('home-live-region')
+    await expect(liveRegion).toHaveAttribute('role', 'status')
+
+    await deleteStream(page, 'Checkout delivery')
+
+    await expect(toast(page)).toHaveAttribute('aria-live', 'polite')
+    await expect(toast(page)).toContainText('Checkout delivery deleted')
+
+    await page.keyboard.press('Control+z')
+
+    await expect(liveRegion).toHaveText('Checkout delivery restored')
+  })
+
   test('The card menu and delete confirmation have no accessibility violations', async ({
     page,
     seed,
@@ -538,15 +688,31 @@ const v1FileWithDev = () =>
     updatedAt: '2024-01-16T10:00:00.000Z',
   })
 
-const importInput = (page) => page.getByTestId('import-value-stream-input')
 const importError = (page) => page.getByTestId('import-error')
 
-const importFile = (page, name, text) =>
-  importInput(page).setInputFiles({
+// Opens the file chooser the way the user does, then picks the file in it.
+const importVia = async (page, openChooser, name, text) => {
+  const chooser = page.waitForEvent('filechooser')
+  await openChooser()
+  await (
+    await chooser
+  ).setFiles({
     name,
     mimeType: 'application/json',
     buffer: Buffer.from(text),
   })
+}
+
+const importFromHome = (page, name, text) =>
+  importVia(
+    page,
+    () =>
+      page
+        .getByRole('button', { name: 'Import value stream', exact: true })
+        .click(),
+    name,
+    text
+  )
 
 // Waits for a download; returns its file name and the text it holds.
 const downloadedFile = async (page, trigger) => {
@@ -563,6 +729,14 @@ const fileMenuItem = async (page, name) => {
   await page.getByRole('button', { name: 'File', exact: true }).click()
   return menuItem(page, name)
 }
+
+const importFromFileMenu = (page, name, text) =>
+  importVia(
+    page,
+    async () => (await fileMenuItem(page, 'Import value stream')).click(),
+    name,
+    text
+  )
 
 const openLastStream = (page) => cardLinks(page).last().click()
 
@@ -617,7 +791,7 @@ test.describe('Import and export one value stream (slice 9.3)', () => {
   test('Import a value stream', async ({ page, seed }) => {
     await startOnHome(page, seed)
 
-    await importFile(page, 'old-map.json', v1FileWithDev())
+    await importFromHome(page, 'old-map.json', v1FileWithDev())
 
     await expect(cardLinks(page)).toHaveCount(3)
     // The upgraded map has not reached Steps yet, so its steps are read from
@@ -641,7 +815,7 @@ test.describe('Import and export one value stream (slice 9.3)', () => {
       chooseFromMenu(page, 'Onboarding', 'Export value stream')
     )
 
-    await importFile(page, 'Onboarding.json', text)
+    await importFromHome(page, 'Onboarding.json', text)
 
     await expectValueStreams(page, [
       'Checkout delivery',
@@ -654,7 +828,9 @@ test.describe('Import and export one value stream (slice 9.3)', () => {
     await confirmDialog(page)
       .getByRole('button', { name: 'Delete', exact: true })
       .click()
-    await expect.poll(() => stepNames(page)).not.toContain('Training')
+    await expect
+      .poll(() => stepNames(page))
+      .toEqual(ONBOARDING_STEPS.filter((step) => step !== 'Training'))
     await openAllValueStreams(page)
     await cardLinks(page).nth(1).click()
     await stageButton(page, 'Steps').click()
@@ -668,11 +844,11 @@ test.describe('Import and export one value stream (slice 9.3)', () => {
     await startOnHome(page, seed)
     const before = await savedStreams(page)
 
-    await importFile(page, 'broken.json', 'this is { not json')
+    await importFromHome(page, 'broken.json', 'this is { not json')
 
     await expect(importError(page)).toHaveText("This file isn't valid JSON")
     await expect(cardLinks(page)).toHaveCount(2)
-    expect(await savedStreams(page)).toEqual(before)
+    await expect.poll(() => savedStreams(page)).toEqual(before)
   })
 
   test('Export one value stream', async ({ page, seed }) => {
@@ -687,9 +863,10 @@ test.describe('Import and export one value stream (slice 9.3)', () => {
       chooseFromMenu(page, 'Checkout delivery', 'Export value stream')
     )
     expect(file.name).toBe('Checkout delivery.json')
-    await importFile(page, file.name, file.text)
+    await importFromHome(page, file.name, file.text)
 
     await expect(cardLinks(page)).toHaveCount(3)
+    await expect.poll(async () => (await savedStreams(page)).length).toBe(3)
     const streams = await savedStreams(page)
     expect(streams[2].id).not.toBe(streams[0].id)
     expect(streams[2].name).toBe('Checkout delivery')
@@ -733,9 +910,12 @@ test.describe('Import and export one value stream (slice 9.3)', () => {
     seed,
   }) => {
     await openBackground(page, seed)
-    await (await fileMenuItem(page, 'Import value stream')).click()
 
-    await importFile(page, 'onboarding.json', exportValueStream(onboarding()))
+    await importFromFileMenu(
+      page,
+      'onboarding.json',
+      exportValueStream(onboarding())
+    )
 
     await expect(toast(page)).toContainText('Onboarding imported')
     await expect(mapName(page)).toHaveValue('Checkout delivery')
@@ -752,14 +932,46 @@ test.describe('Import and export one value stream (slice 9.3)', () => {
     seed,
   }) => {
     await openBackground(page, seed)
-    await (await fileMenuItem(page, 'Import value stream')).click()
 
-    await importFile(page, 'broken.json', 'this is { not json')
+    await importFromFileMenu(page, 'broken.json', 'this is { not json')
 
     await expect(importError(page)).toHaveText("This file isn't valid JSON")
     await expect(mapName(page)).toHaveValue('Checkout delivery')
     await openAllValueStreams(page)
     await expectValueStreams(page, ['Checkout delivery', 'Onboarding'])
+  })
+
+  test('An Undo that cannot restore says why and leaves Ctrl+Z alone', async ({
+    page,
+    seed,
+  }) => {
+    await startOnHome(page, seed)
+    const { text } = await downloadedFile(page, () =>
+      chooseFromMenu(page, 'Onboarding', 'Export value stream')
+    )
+    await deleteStream(page, 'Onboarding')
+    // The file brings the deleted stream back under its own id, so Undo has
+    // nothing left to restore.
+    await importFromHome(page, 'Onboarding.json', text)
+    await expectValueStreams(page, ['Checkout delivery', 'Onboarding'])
+    const deleteToast = toast(page).filter({ hasText: 'Onboarding deleted' })
+
+    await deleteToast.getByRole('button', { name: 'Undo', exact: true }).click()
+
+    await expect(page.getByTestId('home-live-region')).toHaveText(
+      'Nothing to restore'
+    )
+    await expect(deleteToast).toHaveCount(0)
+    await expectValueStreams(page, ['Checkout delivery', 'Onboarding'])
+
+    // A later Ctrl+Z is the browser's: the home screen does not swallow it.
+    await page.evaluate(() => {
+      window.addEventListener('keydown', (event) => {
+        window.ctrlZPrevented = event.defaultPrevented
+      })
+    })
+    await page.keyboard.press('Control+z')
+    expect(await page.evaluate(() => window.ctrlZPrevented)).toBe(false)
   })
 
   test('The File menu items have no accessibility violations', async ({
@@ -779,7 +991,7 @@ test.describe('Import and export one value stream (slice 9.3)', () => {
     await axe()
 
     await page.keyboard.press('Escape')
-    await importFile(page, 'broken.json', 'this is { not json')
+    await importFromFileMenu(page, 'broken.json', 'this is { not json')
     await expect(importError(page)).toBeVisible()
     await axe()
   })
@@ -792,7 +1004,7 @@ test.describe('Import and export one value stream (slice 9.3)', () => {
     await startOnHome(page, seed)
     await page.clock.resume()
 
-    await importFile(page, 'broken.json', 'this is { not json')
+    await importFromHome(page, 'broken.json', 'this is { not json')
     await expect(importError(page)).toBeVisible()
     await expect(
       page.getByRole('button', { name: 'Import value stream', exact: true })

@@ -3,10 +3,11 @@
   import { workspaceStore } from '../../stores/v2/workspaceStore.svelte.js'
   import { toastStore, TOAST_TYPE } from '../../stores/toastStore.svelte.js'
   import { createDeleteUndo } from '../../utils/session/deleteUndo.js'
+  import { controlSelector } from '../../utils/session/focus.js'
   import { indexAfterDelete } from '../../utils/ui/focusAfterDelete.js'
   import { isTextEntry, shortcutFor } from '../../utils/ui/keymap.js'
   import { streamSummary } from '../../utils/ui/streamSummary.js'
-import {
+  import {
     exportStreamFile,
     importStreamFile,
   } from '../../utils/ui/streamFiles.js'
@@ -40,16 +41,21 @@ import {
   const focusCardLink = (id) =>
     listElement
       ?.querySelector(`[data-stream-id="${CSS.escape(id)}"]`)
-      ?.querySelector('[data-testid="stream-card-link"]')
+      ?.querySelector(controlSelector('open-stream'))
       ?.focus()
 
   function undoLastDelete() {
     if (!lastDelete) return { ok: false, error: 'Nothing to restore' }
     const { token, name } = lastDelete
     const result = workspaceStore.restore(token)
-    if (!result.ok) return result
+    // Restoring cannot work any more (the id is in use again), so Undo is over:
+    // the toast goes and a later Ctrl+Z is the browser's again.
     lastDelete = null
     deleteUndo.close()
+    if (!result.ok) {
+      announce(result.error)
+      return result
+    }
     tick().then(() => focusCardLink(result.streamId))
     return { ok: true, announcement: `${name} restored` }
   }

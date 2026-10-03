@@ -94,6 +94,7 @@
     aria-label="Actions for {name}"
     aria-haspopup="menu"
     aria-expanded={open}
+    data-control="menu-button"
     data-testid="stream-menu-button"
     bind:this={button}
     onclick={handleToggle}

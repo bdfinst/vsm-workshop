@@ -1,4 +1,4 @@
-import { describe, it, expect } from 'vitest'
+import { describe, it, expect, beforeAll, afterAll } from 'vitest'
 import { streamSummary } from '../../../src/utils/ui/streamSummary.js'
 import { createMapVersion } from '../../../src/models/v2/mapVersion.js'
 import { createStep } from '../../../src/models/v2/step.js'
@@ -16,10 +16,21 @@ const reviewStream = (overrides) =>
   })
 
 describe('streamSummary', () => {
+  // `created` is the day in UTC; a machine zone far from UTC must not move it.
+  const originalZone = process.env.TZ
+  beforeAll(() => {
+    process.env.TZ = 'Pacific/Kiritimati'
+  })
+  afterAll(() => {
+    if (originalZone === undefined) delete process.env.TZ
+    else process.env.TZ = originalZone
+  })
+
   it('summarises a named stream by name, steps, furthest stage and last update', () => {
     expect(streamSummary(reviewStream(), NOW)).toEqual({
       id: expect.any(String),
       name: 'Checkout delivery',
+      rawName: 'Checkout delivery',
       steps: '5 steps',
       furthestStage: 'Review',
       updated: 'Updated 2 days ago',
@@ -90,6 +101,36 @@ describe('streamSummary', () => {
     ])
   })
 
+  it('keeps the stored name as it is, apart from the name shown', () => {
+    expect(streamSummary(reviewStream({ name: '' }), NOW)).toMatchObject({
+      name: 'Untitled value stream',
+      rawName: '',
+    })
+    expect(streamSummary(reviewStream({ name: '  Plan ' }), NOW)).toMatchObject(
+      { name: 'Plan', rawName: '  Plan ' }
+    )
+  })
+
+  it.each([
+    { furthestStage: 7, expected: 'Future' },
+    { furthestStage: 8, expected: 'Future' },
+    { furthestStage: 99, expected: 'Future' },
+    { furthestStage: 0, expected: 'Scope' },
+    { furthestStage: -2, expected: 'Scope' },
+    { furthestStage: 2.5, expected: 'Scope' },
+    { furthestStage: '3', expected: 'Scope' },
+    { furthestStage: undefined, expected: 'Scope' },
+    { furthestStage: null, expected: 'Scope' },
+  ])(
+    'names a stage for a furthest stage of $furthestStage: $expected',
+    ({ furthestStage, expected }) => {
+      const stream = reviewStream({
+        session: { activeStage: 1, furthestStage },
+      })
+      expect(streamSummary(stream, NOW).furthestStage).toBe(expected)
+    }
+  )
+
   it('leaves out a timestamp it cannot read instead of failing', () => {
     const summary = streamSummary(
       reviewStream({ name: '', createdAt: 'x', updatedAt: undefined }),
@@ -97,11 +138,6 @@ describe('streamSummary', () => {
     )
     expect(summary.created).toBeNull()
     expect(summary.updated).toBeNull()
-  })
-
-  it('does not change with the machine: the same now gives the same text', () => {
-    const stream = reviewStream()
-    expect(streamSummary(stream, NOW)).toEqual(streamSummary(stream, NOW))
   })
 
   it('accepts now as a number of milliseconds or an ISO string', () => {

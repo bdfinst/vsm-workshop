@@ -17,17 +17,25 @@ const press = (key, modifiers = {}) => ({
 
 describe('shortcutFor', () => {
   it.each([
-    ['Ctrl+Z', press('z', { ctrlKey: true }), 'undo'],
-    ['Cmd+Z', press('z', { metaKey: true }), 'undo'],
-    ['Ctrl+Shift+Z', press('z', { ctrlKey: true, shiftKey: true }), 'redo'],
-    ['Cmd+Shift+Z', press('z', { metaKey: true, shiftKey: true }), 'redo'],
+    { name: 'Ctrl+Z', event: press('z', { ctrlKey: true }), action: 'undo' },
+    { name: 'Cmd+Z', event: press('z', { metaKey: true }), action: 'undo' },
+    {
+      name: 'Ctrl+Shift+Z',
+      event: press('z', { ctrlKey: true, shiftKey: true }),
+      action: 'redo',
+    },
+    {
+      name: 'Cmd+Shift+Z',
+      event: press('z', { metaKey: true, shiftKey: true }),
+      action: 'redo',
+    },
     // Shift makes browsers report the capital letter.
-    [
-      'Ctrl+Shift+Z as a capital',
-      press('Z', { ctrlKey: true, shiftKey: true }),
-      'redo',
-    ],
-  ])('%s is %s', (_name, event, action) => {
+    {
+      name: 'Ctrl+Shift+Z as a capital',
+      event: press('Z', { ctrlKey: true, shiftKey: true }),
+      action: 'redo',
+    },
+  ])('$name is $action', ({ event, action }) => {
     expect(shortcutFor(event)).toBe(action)
   })
 

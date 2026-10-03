@@ -1,4 +1,4 @@
-import { describe, it, expect } from 'vitest'
+import { describe, it, expect, beforeAll, afterAll } from 'vitest'
 import {
   formatDuration,
   formatDurationRange,
@@ -517,22 +517,28 @@ describe('formatRelativeTime', () => {
   const ago = (ms) => new Date(NOW.getTime() - ms).toISOString()
 
   it.each([
-    ['now', 0, 'just now'],
-    ['59 seconds', 59 * 1000, 'just now'],
-    ['1 minute', MINUTE, '1 minute ago'],
-    ['5 minutes', 5 * MINUTE, '5 minutes ago'],
-    ['59 minutes', 59 * MINUTE, '59 minutes ago'],
-    ['1 hour', HOUR, '1 hour ago'],
-    ['23 hours 59 minutes', 24 * HOUR - MINUTE, '23 hours ago'],
-    ['24 hours', DAY, '1 day ago'],
-    ['2 days', 2 * DAY, '2 days ago'],
-    ['29 days', 29 * DAY, '29 days ago'],
-    ['30 days', 30 * DAY, '1 month ago'],
-    ['100 days', 100 * DAY, '3 months ago'],
-    ['364 days', 364 * DAY, '12 months ago'],
-    ['365 days', 365 * DAY, '1 year ago'],
-    ['800 days', 800 * DAY, '2 years ago'],
-  ])('reads %s ago as "%s"', (_, elapsed, expected) => {
+    { label: 'now', elapsed: 0, expected: 'just now' },
+    { label: '59 seconds', elapsed: 59 * 1000, expected: 'just now' },
+    { label: '1 minute', elapsed: MINUTE, expected: '1 minute ago' },
+    { label: '5 minutes', elapsed: 5 * MINUTE, expected: '5 minutes ago' },
+    { label: '59 minutes', elapsed: 59 * MINUTE, expected: '59 minutes ago' },
+    { label: '1 hour', elapsed: HOUR, expected: '1 hour ago' },
+    {
+      label: '23 hours 59 minutes',
+      elapsed: 24 * HOUR - MINUTE,
+      expected: '23 hours ago',
+    },
+    { label: '24 hours', elapsed: DAY, expected: '1 day ago' },
+    { label: '2 days', elapsed: 2 * DAY, expected: '2 days ago' },
+    { label: '29 days', elapsed: 29 * DAY, expected: '29 days ago' },
+    { label: '30 days', elapsed: 30 * DAY, expected: '1 month ago' },
+    { label: '100 days', elapsed: 100 * DAY, expected: '3 months ago' },
+    { label: '359 days', elapsed: 359 * DAY, expected: '11 months ago' },
+    { label: '360 days', elapsed: 360 * DAY, expected: '11 months ago' },
+    { label: '364 days', elapsed: 364 * DAY, expected: '11 months ago' },
+    { label: '365 days', elapsed: 365 * DAY, expected: '1 year ago' },
+    { label: '800 days', elapsed: 800 * DAY, expected: '2 years ago' },
+  ])('reads $label ago as "$expected"', ({ elapsed, expected }) => {
     expect(formatRelativeTime(ago(elapsed), NOW)).toBe(expected)
   })
 
@@ -558,6 +564,16 @@ describe('formatRelativeTime', () => {
 })
 
 describe('formatDayMonth', () => {
+  // The day is read in UTC, so a machine zone far from UTC must not move it.
+  const originalZone = process.env.TZ
+  beforeAll(() => {
+    process.env.TZ = 'Pacific/Kiritimati'
+  })
+  afterAll(() => {
+    if (originalZone === undefined) delete process.env.TZ
+    else process.env.TZ = originalZone
+  })
+
   it.each([
     ['2026-03-03T10:00:00.000Z', '3 Mar'],
     ['2026-03-05T00:00:00.000Z', '5 Mar'],
@@ -578,4 +594,12 @@ describe('formatDayMonth', () => {
       expect(formatDayMonth(value)).toBeNull()
     }
   )
+
+  it.each([
+    ['milliseconds past the largest Date', 1e16],
+    ['milliseconds before the smallest Date', -1e16],
+    ['Infinity', Infinity],
+  ])('gives null for %s', (_, value) => {
+    expect(formatDayMonth(value)).toBeNull()
+  })
 })

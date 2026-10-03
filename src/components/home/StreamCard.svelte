@@ -1,11 +1,11 @@
 <script>
   import { tick } from 'svelte'
-  import { focusControl } from '../../utils/session/focus.js'
+  import { controlSelector, focusControl } from '../../utils/session/focus.js'
   import StreamMenu from './StreamMenu.svelte'
 
   // StreamCard props: summary (from streamSummary), onopen(), onrename(name)
   // returning { ok, error }, onduplicate(), ondelete() (already confirmed) and
-  // onexport() (optional).
+  // onexport(), all required.
   let { summary, onopen, onrename, onduplicate, ondelete, onexport } = $props()
 
   let detailsId = $derived(`stream-${summary.id}-details`)
@@ -26,7 +26,7 @@
   }
 
   async function startRename() {
-    draft = summary.name
+    draft = summary.rawName
     renameError = null
     renaming = true
     await tick()
@@ -38,11 +38,17 @@
     renaming = false
     renameError = null
     await tick()
-    focusControl(item, '[data-testid="stream-menu-button"]')
+    focusControl(item, controlSelector('menu-button'))
   }
 
+  // Saving the name as it already is changes nothing: no new "updated" time and
+  // no lost undo history, and an unnamed stream stays unnamed.
   function handleRenameSubmit(event) {
     event.preventDefault()
+    if (draft.trim() === summary.rawName.trim()) {
+      endRename()
+      return
+    }
     const result = onrename(draft)
     if (result.ok) endRename()
     else renameError = result.error
@@ -67,6 +73,7 @@
       href="#{summary.id}"
       class="text-blue-700 underline after:absolute after:inset-0 focus:outline-none focus:after:ring-2 focus:after:ring-blue-500 focus:after:rounded-lg"
       aria-describedby={detailsId}
+      data-control="open-stream"
       data-testid="stream-card-link"
       onclick={handleClick}
     >
@@ -104,6 +111,7 @@
           class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
           bind:value={draft}
           bind:this={nameInput}
+          placeholder={summary.rawName.trim() === '' ? summary.name : undefined}
           aria-invalid={renameError ? 'true' : undefined}
           aria-describedby={renameError ? errorId : undefined}
           data-testid="rename-input"
