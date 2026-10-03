@@ -1,19 +1,20 @@
 <svelte:options namespace="svg" />
 
 <script>
+  import { TONE } from '../../utils/ui/flaggedSteps.js'
   import { OUTLINE } from '../../utils/ui/ladderModel.js'
   import {
-    LABEL_FONT_SIZE,
-    LABEL_INSET,
-    TONE,
-  } from '../../utils/ui/ladderView.js'
-  import {
     BLOCK_HEIGHT,
+    BLOCK_STROKE_WIDTH,
     COLUMN_BOTTOM,
     DASHED_STROKE_WIDTH,
     DASH_PATTERN,
     HANDOFF_STROKE_WIDTH,
     LABEL_BASELINE,
+    LABEL_FONT_SIZE,
+    LABEL_INSET,
+    LEADER_INSET,
+    LEADER_STROKE_WIDTH,
     LINE_HEIGHT,
     OUTLINE_HEIGHT,
     OUTLINE_TOP,
@@ -60,7 +61,7 @@
       y={WAIT_TOP}
       width={step.waitBlock.width}
       height={BLOCK_HEIGHT}
-      stroke-width="1.5"
+      stroke-width={BLOCK_STROKE_WIDTH}
       class="fill-map-wait-fill stroke-map-wait-outline"
       data-testid="ladder-wait-block"
     />
@@ -71,7 +72,7 @@
       y={PROCESS_TOP}
       width={step.processBlock.width}
       height={BLOCK_HEIGHT}
-      stroke-width="1.5"
+      stroke-width={BLOCK_STROKE_WIDTH}
       class="fill-map-process-fill stroke-map-process-outline"
       data-testid="ladder-process-block"
     />
@@ -96,11 +97,11 @@
     data-testid="ladder-box"
   />
   <line
-    x1={step.x + 2}
+    x1={step.x + LEADER_INSET}
     y1={OUTLINE_TOP + OUTLINE_HEIGHT}
-    x2={step.x + 2}
+    x2={step.x + LEADER_INSET}
     y2={laneTop}
-    stroke-width="1"
+    stroke-width={LEADER_STROKE_WIDTH}
     class="stroke-map-track"
   />
   <text

@@ -1,15 +1,18 @@
 import { TONE } from './flaggedSteps.js'
-import { MIN_SCALED_BOX_WIDTH } from './ladderLayout.js'
-
-export { TONE }
+import {
+  LABEL_CHAR_WIDTH,
+  LABEL_FONT_SIZE,
+  LABEL_GAP,
+  LABEL_INSET,
+  MAX_EQUAL_BOX_WIDTH,
+  MIN_EQUAL_BOX_WIDTH,
+  MIN_SCALED_BOX_WIDTH,
+} from './ladderGeometry.js'
 
 /** Pixels per minute: 480 minutes are at least a minimum-width box. */
 export const MIN_PIXELS_PER_MINUTE = 0.05
 /** Pixels per minute: an hour is 30 pixels at most, so a short map is not blown up. */
 export const MAX_PIXELS_PER_MINUTE = 0.5
-/** The narrowest and widest a box is drawn in equal mode, in pixels. */
-export const MIN_EQUAL_BOX_WIDTH = 96
-export const MAX_EQUAL_BOX_WIDTH = 160
 
 const clamp = (value, min, max) => Math.min(Math.max(value, min), max)
 
@@ -109,15 +112,6 @@ export const labelLanes = (blocks, gap = 0) => {
   })
 }
 
-/** Pixels. The size labels are drawn at; the width estimate below follows from it. */
-export const LABEL_FONT_SIZE = 12
-/**
- * Pixels one ordinary character of a label is assumed to take: two thirds of
- * an em, a little wider than the average Latin glyph in the semibold label
- * font, so the estimate leans wide rather than letting labels overlap.
- */
-export const LABEL_CHAR_WIDTH = (LABEL_FONT_SIZE * 2) / 3
-
 // Code points drawn about one em wide: East Asian wide and fullwidth forms
 // (Hangul, CJK punctuation, kana, ideographs, compatibility and fullwidth
 // forms), and the characters outside the Basic Multilingual Plane that
@@ -187,11 +181,6 @@ const widthOfGrapheme = (grapheme) => {
  * @returns {number} Pixels
  */
 export const textWidthOf = (text) => sum(graphemesOf(text).map(widthOfGrapheme))
-
-/** Pixels from a step's left edge to where its label text starts. */
-export const LABEL_INSET = 4
-/** Pixels kept between two labels on one lane. */
-export const LABEL_GAP = 8
 
 const nameLine = ({ name }) => ({ text: name, tone: null })
 

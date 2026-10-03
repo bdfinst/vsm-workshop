@@ -1,19 +1,19 @@
 <script>
+  import { LADDER_MODE, sizeLadder } from '../../utils/ui/ladderLayout.js'
   import {
-    LADDER_MODE,
-    MIN_SCALED_BOX_WIDTH,
-    sizeLadder,
-  } from '../../utils/ui/ladderLayout.js'
-  import {
+    HATCH_ANGLE,
+    HATCH_STROKE_WIDTH,
+    HATCH_TILE_SIZE,
     LABEL_TOP,
     LANE_PADDING,
     LINE_HEIGHT,
+    MIN_EQUAL_BOX_WIDTH,
+    MIN_SCALED_BOX_WIDTH,
     PAD_X,
     TRACK_HEIGHT,
     TRACK_Y,
   } from '../../utils/ui/ladderGeometry.js'
   import {
-    MIN_EQUAL_BOX_WIDTH,
     equalBoxWidthFor,
     layoutLabels,
     labelOverhangFor,
@@ -153,16 +153,16 @@
         <pattern
           id={HATCH_ID}
           patternUnits="userSpaceOnUse"
-          width="8"
-          height="8"
-          patternTransform="rotate(45)"
+          width={HATCH_TILE_SIZE}
+          height={HATCH_TILE_SIZE}
+          patternTransform="rotate({HATCH_ANGLE})"
         >
           <line
             x1="0"
             y1="0"
             x2="0"
-            y2="8"
-            stroke-width="2"
+            y2={HATCH_TILE_SIZE}
+            stroke-width={HATCH_STROKE_WIDTH}
             class="stroke-hatch-outside"
           />
         </pattern>

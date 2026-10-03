@@ -1,9 +1,6 @@
 import { describe, it, expect } from 'vitest'
-import {
-  LADDER_MODE,
-  MIN_SCALED_BOX_WIDTH,
-  sizeLadder,
-} from '../../../src/utils/ui/ladderLayout.js'
+import { MIN_SCALED_BOX_WIDTH } from '../../../src/utils/ui/ladderGeometry.js'
+import { LADDER_MODE, sizeLadder } from '../../../src/utils/ui/ladderLayout.js'
 import { OUTLINE, ladderModel } from '../../../src/utils/ui/ladderModel.js'
 import { calculateMetrics } from '../../../src/utils/calculations/v2/index.js'
 import { createStep } from '../../../src/models/v2/step.js'

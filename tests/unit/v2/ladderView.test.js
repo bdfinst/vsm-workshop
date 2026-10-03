@@ -1,14 +1,17 @@
 import { describe, it, expect } from 'vitest'
+import { TONE } from '../../../src/utils/ui/flaggedSteps.js'
 import {
-  MAX_EQUAL_BOX_WIDTH,
-  MAX_PIXELS_PER_MINUTE,
-  MIN_EQUAL_BOX_WIDTH,
-  MIN_PIXELS_PER_MINUTE,
   LABEL_CHAR_WIDTH,
   LABEL_FONT_SIZE,
   LABEL_GAP,
   LABEL_INSET,
-  TONE,
+  MAX_EQUAL_BOX_WIDTH,
+  MIN_EQUAL_BOX_WIDTH,
+  MIN_SCALED_BOX_WIDTH,
+} from '../../../src/utils/ui/ladderGeometry.js'
+import {
+  MAX_PIXELS_PER_MINUTE,
+  MIN_PIXELS_PER_MINUTE,
   annotationsOf,
   equalBoxWidthFor,
   labelLanes,
@@ -17,11 +20,7 @@ import {
   pixelsPerMinuteToFit,
   textWidthOf,
 } from '../../../src/utils/ui/ladderView.js'
-import {
-  LADDER_MODE,
-  MIN_SCALED_BOX_WIDTH,
-  sizeLadder,
-} from '../../../src/utils/ui/ladderLayout.js'
+import { LADDER_MODE, sizeLadder } from '../../../src/utils/ui/ladderLayout.js'
 import { ladderModel } from '../../../src/utils/ui/ladderModel.js'
 import { createStep } from '../../../src/models/v2/step.js'
 import { calculateMetrics } from '../../../src/utils/calculations/v2/index.js'

@@ -1,11 +1,10 @@
+import { MIN_SCALED_BOX_WIDTH } from './ladderGeometry.js'
+
 /** How a ladder is sized: `SCALED` by minutes, `EQUAL` one width for every box. */
 export const LADDER_MODE = Object.freeze({
   SCALED: 'scaled',
   EQUAL: 'equal',
 })
-
-/** The narrowest a scaled box is drawn, in pixels, so a step with no time (or 0) stays visible. */
-export const MIN_SCALED_BOX_WIDTH = 24
 
 // How each mode turns a step's minutes (null when not entered) into widths. A
 // scaled box is its wait, process or elapsed time side by side; an equal box
