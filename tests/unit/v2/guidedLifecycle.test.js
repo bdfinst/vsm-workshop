@@ -105,6 +105,43 @@ describe('guidedLifecycle', () => {
     expect(store.activeStore.stream.session.activeStage).toBe(2)
   })
 
+  it('shows the home screen, creating nothing, when streams are saved but none is active', async () => {
+    const saved = [referenceStream(), referenceStream({ name: 'Onboarding' })]
+    const raw = serializeWorkspace(workspaceOf(saved, { activeStreamId: null }))
+    const { store, lifecycle } = launchOver(
+      createMemoryWorkspaceRepository({ raw })
+    )
+
+    await lifecycle.start()
+
+    expect(store.screen).toBe('home')
+    expect(store.streams.map((stream) => stream.id)).toEqual(
+      saved.map((stream) => stream.id)
+    )
+  })
+
+  it('starts a stream at Scope when every stream was deleted before the reload', async () => {
+    const stream = referenceStream({
+      session: { activeStage: 4, furthestStage: 4 },
+    })
+    const repository = createMemoryWorkspaceRepository({
+      raw: serializeWorkspace(workspaceOf([stream])),
+    })
+    const first = launchOver(repository)
+    await first.lifecycle.start()
+    first.store.remove(stream.id)
+    await first.store.flushSaves()
+
+    const { store, lifecycle } = launchOver(repository)
+    await lifecycle.start()
+
+    expect(store.streams).toHaveLength(1)
+    expect(store.streams[0].id).not.toBe(stream.id)
+    expect(store.screen).toBe('stream')
+    expect(store.activeStore.stream.session.activeStage).toBe(1)
+    expect(store.activeStore.stream.name).toBe('')
+  })
+
   describe('leaving an unreadable workspace', () => {
     const UNREADABLE = '{not json'
     const unreadableLaunch = async () => {

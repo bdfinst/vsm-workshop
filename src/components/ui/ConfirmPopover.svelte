@@ -10,10 +10,12 @@
    * - Focus is trapped between the popover's buttons
    * - Optional children render below the message, for an extra action
    * - placement 'below' opens under the trigger instead of above it
+   * - align 'right' lines the popover's right edge with the trigger parent's
+   *   (for a trigger at the right of its container), instead of the left
    * - confirmBlockedReason, when set, keeps the confirm button focusable but
    *   inert (aria-disabled), and shows the reason beside it
    */
-  let { message = 'Are you sure?', confirmLabel = 'Delete', onconfirm, oncancel, children, placement = 'above', confirmBlockedReason = null } = $props()
+  let { message = 'Are you sure?', confirmLabel = 'Delete', onconfirm, oncancel, children, placement = 'above', align = 'left', confirmBlockedReason = null } = $props()
 
   let cancelButtonRef = $state(null)
   let dialogRef = $state(null)
@@ -49,7 +51,7 @@
 </script>
 
 <div
-  class="absolute left-0 z-[60] {placement === 'below' ? 'top-full mt-2' : 'bottom-full mb-2'} w-56 bg-white border border-gray-200 rounded-lg shadow-lg p-3"
+  class="absolute {align === 'right' ? 'right-0' : 'left-0'} z-[60] {placement === 'below' ? 'top-full mt-2' : 'bottom-full mb-2'} w-56 bg-white border border-gray-200 rounded-lg shadow-lg p-3"
   data-testid="confirm-popover"
   bind:this={dialogRef}
   role="alertdialog"

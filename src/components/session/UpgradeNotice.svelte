@@ -1,6 +1,7 @@
 <script>
   import { tick } from 'svelte'
-  import { focusStageHeading } from '../../utils/session/focus.js'
+  import { focusScreenHeading } from '../../utils/session/focus.js'
+  import { UPGRADE_NOTICE_DISMISSED_KEY } from '../../utils/session/upgradeNotice.js'
   import {
     getPersistedValue,
     persistValue,
@@ -9,18 +10,14 @@
   // UpgradeNotice props: changes (what migrating the v1 map changed).
   let { changes } = $props()
 
-  // The upgraded map is not saved until its first edit, so it would be found
-  // and announced again on every launch. The dismissal is kept on its own.
-  const DISMISSED_KEY = 'vsm-v2-upgrade-notice-dismissed'
+  let dismissed = $state(getPersistedValue(UPGRADE_NOTICE_DISMISSED_KEY, false))
 
-  let dismissed = $state(getPersistedValue(DISMISSED_KEY, false))
-
-  // The button that had focus is removed, so focus goes to the stage heading.
+  // The button that had focus is removed, so focus goes to the screen's heading.
   async function handleDismiss() {
     dismissed = true
-    persistValue(DISMISSED_KEY, true)
+    persistValue(UPGRADE_NOTICE_DISMISSED_KEY, true)
     await tick()
-    focusStageHeading()
+    focusScreenHeading()
   }
 </script>
 

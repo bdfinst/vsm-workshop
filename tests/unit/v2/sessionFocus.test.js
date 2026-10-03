@@ -4,7 +4,9 @@ import {
   fieldSelector,
   focusControl,
   focusOpeningTarget,
+  focusScreenHeading,
   focusStageHeading,
+  focusUpgradeNotice,
 } from '../../../src/utils/session/focus.js'
 
 const heading = (testid) =>
@@ -38,6 +40,40 @@ describe('session focus', () => {
     focusOpeningTarget()
 
     expect(document.activeElement.dataset.testid).toBe('stage-heading')
+  })
+
+  it('focuses the stage heading as the screen heading when there is one', () => {
+    document.body.innerHTML = heading('home-heading') + heading('stage-heading')
+
+    focusScreenHeading()
+
+    expect(document.activeElement.dataset.testid).toBe('stage-heading')
+  })
+
+  it('focuses the home heading as the screen heading when there is no stage heading', () => {
+    document.body.innerHTML = heading('home-heading')
+
+    focusScreenHeading()
+
+    expect(document.activeElement.dataset.testid).toBe('home-heading')
+  })
+
+  it('focuses the upgrade notice heading wherever it is showing', () => {
+    document.body.innerHTML =
+      heading('home-heading') + heading('upgrade-notice-title')
+
+    focusUpgradeNotice()
+
+    expect(document.activeElement.dataset.testid).toBe('upgrade-notice-title')
+  })
+
+  it('leaves focus alone when no upgrade notice is showing', () => {
+    document.body.innerHTML = heading('stage-heading')
+    const before = document.activeElement
+
+    focusUpgradeNotice()
+
+    expect(document.activeElement).toBe(before)
   })
 })
 

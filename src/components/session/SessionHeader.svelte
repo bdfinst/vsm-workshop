@@ -1,6 +1,13 @@
 <script>
   import { tick } from 'svelte'
   import { workspaceStore } from '../../stores/v2/workspaceStore.svelte.js'
+  import { toastStore, TOAST_TYPE } from '../../stores/toastStore.svelte.js'
+  import { focusUpgradeNotice } from '../../utils/session/focus.js'
+  import { showUpgradeNotice } from '../../utils/session/upgradeNotice.js'
+  import {
+    exportStreamFile,
+    importStreamFile,
+  } from '../../utils/ui/streamFiles.js'
 
   // SessionHeader props: store (the open value stream store), onundo, onredo.
   let { store, onundo, onredo } = $props()
@@ -16,6 +23,11 @@
   let menuOpen = $state(false)
   let fileButton = $state()
   let firstMenuItem = $state()
+  let importInput = $state()
+  let importError = $state('')
+
+  const itemClass =
+    'w-full text-left px-3 py-1 rounded-md hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500'
 
   function handleNameInput(event) {
     draft = event.currentTarget.value
@@ -59,6 +71,40 @@
     else fileButton?.focus()
   }
 
+  // The file picker takes focus, so the menu closes first and "File" gets it back.
+  function handleImportValueStream() {
+    closeMenu()
+    importInput?.click()
+  }
+
+  // The user stays on the open value stream; the import is added to the workspace.
+  async function handleImportChosen(event) {
+    const input = event.currentTarget
+    const file = input.files[0]
+    input.value = ''
+    if (!file) return
+    const result = await importStreamFile(file, workspaceStore)
+    importError = result.ok ? '' : result.error
+    if (!result.ok) return
+    showUpgradeNotice(workspaceStore, result.changes)
+    toastStore.add(`${result.name} imported`, TOAST_TYPE.INFO)
+    // So a screen reader announces the notice; no changes, no notice, no move.
+    if (result.changes.length > 0) {
+      await tick()
+      focusUpgradeNotice()
+    }
+  }
+
+  function handleExportValueStream() {
+    closeMenu()
+    exportStreamFile(workspaceStore, store.stream.id, store.stream.name)
+  }
+
+  // Home keeps the open stream as the active one, so a reload comes back to it.
+  function handleAllValueStreams() {
+    workspaceStore.goHome()
+  }
+
   // Undo and Redo stay focusable when there is nothing to do, so focus is not
   // lost when the last step is used; the click is ignored instead.
   function handleUndo() {
@@ -71,6 +117,15 @@
 </script>
 
 <div class="flex flex-wrap items-center gap-4">
+  <button
+    type="button"
+    class={buttonClass}
+    data-testid="all-value-streams-button"
+    onclick={handleAllValueStreams}
+  >
+    All value streams
+  </button>
+
   <div class="relative" onfocusout={handleMenuFocusout}>
     <button
       type="button"
@@ -97,7 +152,7 @@
           <button
             type="button"
             role="menuitem"
-            class="w-full text-left px-3 py-1 rounded-md hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
+            class={itemClass}
             data-testid="new-value-stream-item"
             bind:this={firstMenuItem}
             onclick={handleNewValueStream}
@@ -105,8 +160,46 @@
             New value stream
           </button>
         </li>
+        <li role="none">
+          <button
+            type="button"
+            role="menuitem"
+            class={itemClass}
+            aria-describedby="import-value-stream-help"
+            data-testid="import-value-stream-item"
+            onclick={handleImportValueStream}
+          >
+            Import value stream
+          </button>
+          <p id="import-value-stream-help" class="px-3 pb-1 text-sm text-gray-600">
+            Add a value stream from a file to this workspace.
+          </p>
+        </li>
+        <li role="none">
+          <button
+            type="button"
+            role="menuitem"
+            class={itemClass}
+            aria-describedby="export-value-stream-help"
+            data-testid="export-value-stream-item"
+            onclick={handleExportValueStream}
+          >
+            Export value stream
+          </button>
+          <p id="export-value-stream-help" class="px-3 pb-1 text-sm text-gray-600">
+            Save this value stream as a file.
+          </p>
+        </li>
       </ul>
     {/if}
+    <input
+      type="file"
+      accept=".json,application/json"
+      hidden
+      bind:this={importInput}
+      onchange={handleImportChosen}
+      data-testid="import-value-stream-input"
+    />
   </div>
 
   <label class="flex items-center gap-2">
@@ -151,4 +244,10 @@
       Redo
     </button>
   </div>
+
+  {#if importError}
+    <p class="w-full text-red-700" role="alert" data-testid="import-error">
+      {importError}
+    </p>
+  {/if}
 </div>

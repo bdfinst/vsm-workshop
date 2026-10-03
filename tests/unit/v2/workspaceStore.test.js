@@ -944,6 +944,40 @@ describe('workspaceStore: remove and restore', () => {
     expect(store.screen).toBe('home')
   })
 
+  it('makes the active stream active again, without leaving home, when its removal is undone', async () => {
+    const a = referenceStream()
+    const store = await makeStore({ streams: [a] })
+    const { token } = store.remove(a.id)
+
+    store.restore(token)
+
+    expect(store.activeStreamId).toBe(a.id)
+    expect(store.screen).toBe('home')
+    expect(store.activeStore).not.toBeNull()
+    expect(store.snapshot().activeStreamId).toBe(a.id)
+  })
+
+  it('does not take the active place back when a stream opened since', async () => {
+    const [a, b] = [referenceStream(), referenceReworkStream()]
+    const store = await makeStore({ streams: [a, b] })
+    const { token } = store.remove(a.id)
+    store.open(b.id)
+
+    store.restore(token)
+
+    expect(store.activeStreamId).toBe(b.id)
+  })
+
+  it('leaves the active stream alone when a stream that was not active is restored', async () => {
+    const [a, b] = [referenceStream(), referenceReworkStream()]
+    const store = await makeStore({ streams: [a, b] })
+    const { token } = store.remove(b.id)
+
+    store.restore(token)
+
+    expect(store.activeStreamId).toBe(a.id)
+  })
+
   it('keeps the active stream when another one is removed', async () => {
     const [a, b] = [referenceStream(), referenceReworkStream()]
     const store = await makeStore({ streams: [a, b] })
@@ -1047,6 +1081,16 @@ describe('workspaceStore: import and export', () => {
     const store = await makeStore({ streams: [referenceStream()] })
 
     expect(store.exportStream('nope')).toEqual(refused)
+  })
+})
+
+describe('workspaceStore: showChanges', () => {
+  it('shows the changes an import applied, in place of the ones shown before', async () => {
+    const store = await makeStore({ streams: [referenceStream()] })
+
+    store.showChanges(['Wait time clamped for "Dev"'])
+
+    expect(store.changes).toEqual(['Wait time clamped for "Dev"'])
   })
 })
 

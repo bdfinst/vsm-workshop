@@ -94,6 +94,102 @@ describe('importValueStream', () => {
     })
   })
 
+  describe('a v2 file with stage or time fields out of range', () => {
+    const importWith = (overrides) => {
+      const result = importValueStream(
+        JSON.stringify({ ...referenceStream(), ...overrides }),
+        []
+      )
+      expect(result.ok).toBe(true)
+      return result.stream
+    }
+
+    it.each([
+      { name: 'past the last stage', stage: 99, expected: 7 },
+      { name: 'before the first stage', stage: 0, expected: 1 },
+      { name: 'negative', stage: -4, expected: 1 },
+      { name: 'not a whole number', stage: 2.5, expected: 1 },
+      { name: 'text', stage: '3', expected: 1 },
+      { name: 'null', stage: null, expected: 1 },
+    ])(
+      'brings a furthest stage that is $name into range',
+      ({ stage, expected }) => {
+        const { session } = importWith({
+          session: { activeStage: 1, furthestStage: stage },
+        })
+
+        expect(session.furthestStage).toBe(expected)
+      }
+    )
+
+    it('brings a missing stage into range', () => {
+      const { session } = importWith({ session: {} })
+
+      expect(session).toEqual({ activeStage: 1, furthestStage: 1 })
+    })
+
+    it('brings the active stage into range', () => {
+      const { session } = importWith({
+        session: { activeStage: 12, furthestStage: 7 },
+      })
+
+      expect(session).toEqual({ activeStage: 7, furthestStage: 7 })
+    })
+
+    it('never puts the furthest stage before the active one', () => {
+      const { session } = importWith({
+        session: { activeStage: 4, furthestStage: 2 },
+      })
+
+      expect(session).toEqual({ activeStage: 4, furthestStage: 4 })
+    })
+
+    it('keeps stages that are already in range', () => {
+      const { session } = importWith({
+        session: { activeStage: 3, furthestStage: 6 },
+      })
+
+      expect(session).toEqual({ activeStage: 3, furthestStage: 6 })
+    })
+
+    it.each(['createdAt', 'updatedAt'])(
+      'replaces an unreadable %s with the time of the import',
+      (field) => {
+        const before = Date.now()
+
+        const stream = importWith({ [field]: 'last Tuesday' })
+
+        const stamped = Date.parse(stream[field])
+        expect(stamped).toBeGreaterThanOrEqual(before)
+        expect(stamped).toBeLessThanOrEqual(Date.now())
+      }
+    )
+
+    it.each([undefined, null, 20260310, ''])(
+      'replaces a createdAt of %j that is not a time',
+      (value) => {
+        const before = Date.now()
+
+        const stream = importWith({ createdAt: value })
+
+        expect(typeof stream.createdAt).toBe('string')
+        const stamped = Date.parse(stream.createdAt)
+        expect(stamped).toBeGreaterThanOrEqual(before)
+        expect(stamped).toBeLessThanOrEqual(Date.now())
+      }
+    )
+
+    it('keeps timestamps that can be read', () => {
+      const stream = importWith({
+        createdAt: '2026-03-01T10:00:00.000Z',
+        updatedAt: '2026-03-10T09:00:00.000Z',
+      })
+
+      expect(stream.createdAt).toBe('2026-03-01T10:00:00.000Z')
+      expect(stream.updatedAt).toBe('2026-03-10T09:00:00.000Z')
+    })
+  })
+
   describe('a v1 file', () => {
     it('migrates it and reports what changed', () => {
       const result = importValueStream(v1File(), [])

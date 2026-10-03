@@ -15,6 +15,7 @@
     focusControl,
   } from '../../utils/session/focus.js'
   import { MOVE_DOWN, MOVE_UP } from '../../utils/session/stepMoves.js'
+  import { createConfirmThenUndo } from '../../utils/ui/confirmThenUndo.js'
   import ConfirmPopover from '../ui/ConfirmPopover.svelte'
 
   // StepListRow props: row (a step row from rowModel, with any unsaved text
@@ -130,14 +131,19 @@
     closeConfirm('outside')
   }
 
-  function handleDeleteClick() {
-    if (needsDeleteConfirm(row, reworkPathCount)) confirming = CONFIRM_DELETE
-    else ondelete(row.id, stepLabel)
-  }
+  // A step with data or rework paths asks first; cancelling returns focus to Delete.
+  const deleteFlow = createConfirmThenUndo({
+    ask: () => (confirming = CONFIRM_DELETE),
+    close: () => (confirming = null),
+    run: () => ondelete(row.id, stepLabel),
+    restoreFocus: async () => {
+      await tick()
+      focusControl(itemElement, controlSelector('delete'))
+    },
+  })
 
-  function handleDeleteConfirm() {
-    confirming = null
-    ondelete(row.id, stepLabel)
+  function handleDeleteClick() {
+    deleteFlow.request(needsDeleteConfirm(row, reworkPathCount))
   }
 </script>
 
@@ -306,8 +312,8 @@
         {#if confirming === CONFIRM_DELETE}
           <ConfirmPopover
             message={deleteConfirmMessage(stepLabel, reworkPathCount)}
-            onconfirm={handleDeleteConfirm}
-            oncancel={() => closeConfirm('delete')}
+            onconfirm={deleteFlow.confirm}
+            oncancel={deleteFlow.cancel}
           />
         {/if}
       </div>

@@ -1367,6 +1367,15 @@ Feature: Several value streams in one workspace
     Then a file "Q3- build-test-.json" is downloaded
 ```
 
+**Decisions** (settled at the build gate):
+
+- "Created 3 Mar" is formatted in UTC with a fixed English locale, so it is the same on every machine. "Updated 2 days ago" is computed from the `now` passed to `streamSummary(stream, now)`, which e2e freezes with the page clock.
+- After a delete, focus goes to the card now in the deleted card's position, else the previous card, else "New value stream".
+- The home screen has no stream undo history: Ctrl/Cmd+Z there restores the most recent stream delete. Opening a stream starts its own edit history.
+- Deleting every stream shows "No value streams yet". A reload with an empty workspace then creates a stream at Scope.
+- `exportFileName` replaces each of `\ / : * ? " < > |` with "-", with no collapsing or trimming.
+- An imported stream is appended at the end. Duplicate names are allowed and a clashing id is replaced. Tests tell identical names apart by position.
+
 **Steps:**
 
 #### Step 9.1: HomeScreen, launch and screen
@@ -2894,10 +2903,10 @@ See each step's **Complexity** line. The `complex` steps are 3.1 (migration), 4.
 - [x] Slice 8: Time stage (slice review done, findings fixed; 1477 unit tests, 142 guided e2e)
   - [x] Step 8.1: DurationInput
   - [x] Step 8.2: Time stage
-- [ ] Slice 9: Workspace home screen
-  - [ ] Step 9.1: HomeScreen, launch and screen
-  - [ ] Step 9.2: Card menu, rename, duplicate and delete with undo
-  - [ ] Step 9.3: Import and export one value stream
+- [x] Slice 9: Workspace home screen (slice review done, findings fixed; 1647 unit tests, 183 guided e2e)
+  - [x] Step 9.1: HomeScreen, launch and screen
+  - [x] Step 9.2: Card menu, rename, duplicate and delete with undo
+  - [x] Step 9.3: Import and export one value stream
 
 #### Wave 7
 

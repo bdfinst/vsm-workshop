@@ -56,7 +56,12 @@
         <span class="flex-shrink-0" aria-hidden="true">
           {iconMap[toast.type] || iconMap.info}
         </span>
-        <p class="flex-1 text-sm">{toast.text}</p>
+        <p class="flex-1 text-sm">
+          {toast.text}
+          {#if toast.hint}
+            <span class="block text-xs" data-testid="toast-hint">{toast.hint}</span>
+          {/if}
+        </p>
         {#if toast.action}
           <button
             onclick={() => handleAction(toast)}

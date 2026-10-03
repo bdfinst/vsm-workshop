@@ -8,6 +8,8 @@ import {
   fromMinutes,
   parseDurationRange,
   durationUnitOf,
+  formatRelativeTime,
+  formatDayMonth,
 } from '../../../src/utils/calculations/v2/format.js'
 
 describe('formatDuration', () => {
@@ -78,12 +80,15 @@ describe('formatDuration of a missing figure', () => {
 describe('formatPercent of a missing figure', () => {
   const incomplete = { incomplete: true, stepName: 'Deploy' }
 
-  it.each([null, undefined, NaN, Infinity, incomplete])(
-    'throws a TypeError for %j',
-    (value) => {
-      expect(() => formatPercent(value)).toThrow(TypeError)
-    }
-  )
+  it.each([
+    ['null', null],
+    ['undefined', undefined],
+    ['NaN', NaN],
+    ['Infinity', Infinity],
+    ['an incomplete result', incomplete],
+  ])('throws a TypeError for %s', (_, value) => {
+    expect(() => formatPercent(value)).toThrow(TypeError)
+  })
 
   it.each([
     ['a null end', { low: null, high: 0.2 }],
@@ -504,5 +509,96 @@ describe('durationUnitOf', () => {
 
   it('throws when the working day is not a positive number', () => {
     expect(() => durationUnitOf(480, 0)).toThrow(RangeError)
+  })
+})
+
+describe('formatRelativeTime', () => {
+  const NOW = new Date('2026-03-12T09:00:00.000Z')
+  const MINUTE = 60 * 1000
+  const HOUR = 60 * MINUTE
+  const DAY = 24 * HOUR
+  const ago = (ms) => new Date(NOW.getTime() - ms).toISOString()
+
+  it.each([
+    { label: 'now', elapsed: 0, expected: 'just now' },
+    { label: '59 seconds', elapsed: 59 * 1000, expected: 'just now' },
+    { label: '1 minute', elapsed: MINUTE, expected: '1 minute ago' },
+    { label: '5 minutes', elapsed: 5 * MINUTE, expected: '5 minutes ago' },
+    { label: '59 minutes', elapsed: 59 * MINUTE, expected: '59 minutes ago' },
+    { label: '1 hour', elapsed: HOUR, expected: '1 hour ago' },
+    {
+      label: '23 hours 59 minutes',
+      elapsed: 24 * HOUR - MINUTE,
+      expected: '23 hours ago',
+    },
+    { label: '24 hours', elapsed: DAY, expected: '1 day ago' },
+    { label: '2 days', elapsed: 2 * DAY, expected: '2 days ago' },
+    { label: '29 days', elapsed: 29 * DAY, expected: '29 days ago' },
+    { label: '30 days', elapsed: 30 * DAY, expected: '1 month ago' },
+    { label: '100 days', elapsed: 100 * DAY, expected: '3 months ago' },
+    { label: '359 days', elapsed: 359 * DAY, expected: '11 months ago' },
+    { label: '360 days', elapsed: 360 * DAY, expected: '11 months ago' },
+    { label: '364 days', elapsed: 364 * DAY, expected: '11 months ago' },
+    { label: '365 days', elapsed: 365 * DAY, expected: '1 year ago' },
+    { label: '800 days', elapsed: 800 * DAY, expected: '2 years ago' },
+  ])('reads $label ago as "$expected"', ({ elapsed, expected }) => {
+    expect(formatRelativeTime(ago(elapsed), NOW)).toBe(expected)
+  })
+
+  it('reads a time after now as just now, since a clock can be off', () => {
+    expect(formatRelativeTime(ago(-DAY), NOW)).toBe('just now')
+  })
+
+  it('accepts a Date, milliseconds or an ISO string for either time', () => {
+    const then = ago(2 * DAY)
+    expect(formatRelativeTime(new Date(then), NOW.getTime())).toBe('2 days ago')
+    expect(formatRelativeTime(Date.parse(then), NOW.toISOString())).toBe(
+      '2 days ago'
+    )
+  })
+
+  it.each([undefined, null, 'not a date', '', NaN])(
+    'gives null for a time it cannot read (%s)',
+    (value) => {
+      expect(formatRelativeTime(value, NOW)).toBeNull()
+      expect(formatRelativeTime(ago(DAY), value)).toBeNull()
+    }
+  )
+})
+
+describe('formatDayMonth', () => {
+  // The day is read in UTC, so a machine zone far from UTC must not move it.
+  // vite.config.js pins TZ for the unit run; this proves the zone is live.
+  it('runs in a zone where local time is a day ahead of UTC', () => {
+    expect(new Date('2026-03-03T10:00:00.000Z').getDate()).toBe(4)
+  })
+
+  it.each([
+    ['2026-03-03T10:00:00.000Z', '3 Mar'],
+    ['2026-03-05T00:00:00.000Z', '5 Mar'],
+    ['2026-12-31T23:59:59.999Z', '31 Dec'],
+    ['2026-01-01T00:00:00.000Z', '1 Jan'],
+  ])('shows %s as "%s"', (timestamp, expected) => {
+    expect(formatDayMonth(timestamp)).toBe(expected)
+  })
+
+  it('reads the day in UTC, whatever the machine zone', () => {
+    expect(formatDayMonth('2026-03-04T00:30:00.000+02:00')).toBe('3 Mar')
+    expect(formatDayMonth('2026-03-03T23:30:00.000-05:00')).toBe('4 Mar')
+  })
+
+  it.each([undefined, null, 'not a date', '', NaN])(
+    'gives null for a time it cannot read (%s)',
+    (value) => {
+      expect(formatDayMonth(value)).toBeNull()
+    }
+  )
+
+  it.each([
+    ['milliseconds past the largest Date', 1e16],
+    ['milliseconds before the smallest Date', -1e16],
+    ['Infinity', Infinity],
+  ])('gives null for %s', (_, value) => {
+    expect(formatDayMonth(value)).toBeNull()
   })
 })

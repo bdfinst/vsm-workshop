@@ -1,5 +1,10 @@
 import { describe, it, expect } from 'vitest'
-import { isTextEntry, shortcutFor } from '../../../src/utils/ui/keymap.js'
+import {
+  isTextEntry,
+  menuActionFor,
+  menuIndexFor,
+  shortcutFor,
+} from '../../../src/utils/ui/keymap.js'
 
 const press = (key, modifiers = {}) => ({
   key,
@@ -12,17 +17,31 @@ const press = (key, modifiers = {}) => ({
 
 describe('shortcutFor', () => {
   it.each([
-    ['Ctrl+Z', press('z', { ctrlKey: true }), 'undo'],
-    ['Cmd+Z', press('z', { metaKey: true }), 'undo'],
-    ['Ctrl+Shift+Z', press('z', { ctrlKey: true, shiftKey: true }), 'redo'],
-    ['Cmd+Shift+Z', press('z', { metaKey: true, shiftKey: true }), 'redo'],
+    { name: 'Ctrl+Z', event: press('z', { ctrlKey: true }), action: 'undo' },
+    { name: 'Cmd+Z', event: press('z', { metaKey: true }), action: 'undo' },
+    {
+      name: 'Ctrl+Shift+Z',
+      event: press('z', { ctrlKey: true, shiftKey: true }),
+      action: 'redo',
+    },
+    {
+      name: 'Cmd+Shift+Z',
+      event: press('z', { metaKey: true, shiftKey: true }),
+      action: 'redo',
+    },
+    // Caps Lock makes browsers report the capital letter without Shift.
+    {
+      name: 'Ctrl+Z as a capital',
+      event: press('Z', { ctrlKey: true }),
+      action: 'undo',
+    },
     // Shift makes browsers report the capital letter.
-    [
-      'Ctrl+Shift+Z as a capital',
-      press('Z', { ctrlKey: true, shiftKey: true }),
-      'redo',
-    ],
-  ])('%s is %s', (_name, event, action) => {
+    {
+      name: 'Ctrl+Shift+Z as a capital',
+      event: press('Z', { ctrlKey: true, shiftKey: true }),
+      action: 'redo',
+    },
+  ])('$name is $action', ({ event, action }) => {
     expect(shortcutFor(event)).toBe(action)
   })
 
@@ -69,5 +88,51 @@ describe('isTextEntry', () => {
     ['nothing focused', null],
   ])('%s does not take text', (_name, element) => {
     expect(isTextEntry(element)).toBe(false)
+  })
+})
+
+describe('menuActionFor', () => {
+  it.each([
+    ['ArrowDown', press('ArrowDown'), 'next'],
+    ['ArrowUp', press('ArrowUp'), 'previous'],
+    ['Home', press('Home'), 'first'],
+    ['End', press('End'), 'last'],
+    ['Escape', press('Escape'), 'close'],
+    ['Tab', press('Tab'), 'leave'],
+    ['Shift+Tab', press('Tab', { shiftKey: true }), 'leave'],
+  ])('%s is %s', (_name, event, action) => {
+    expect(menuActionFor(event)).toBe(action)
+  })
+
+  it.each([
+    ['a letter', press('a')],
+    ['Enter, which activates the item itself', press('Enter')],
+    ['Ctrl+ArrowDown', press('ArrowDown', { ctrlKey: true })],
+    ['Alt+ArrowUp', press('ArrowUp', { altKey: true })],
+  ])('%s is not for the menu', (_name, event) => {
+    expect(menuActionFor(event)).toBeNull()
+  })
+})
+
+describe('menuIndexFor', () => {
+  it('moves down and up, wrapping at the ends', () => {
+    expect(menuIndexFor('next', 0, 4)).toBe(1)
+    expect(menuIndexFor('next', 3, 4)).toBe(0)
+    expect(menuIndexFor('previous', 2, 4)).toBe(1)
+    expect(menuIndexFor('previous', 0, 4)).toBe(3)
+  })
+
+  it('jumps to the first and last items', () => {
+    expect(menuIndexFor('first', 2, 4)).toBe(0)
+    expect(menuIndexFor('last', 1, 4)).toBe(3)
+  })
+
+  it('starts from the first item when none has focus', () => {
+    expect(menuIndexFor('next', -1, 4)).toBe(0)
+    expect(menuIndexFor('previous', -1, 4)).toBe(3)
+  })
+
+  it('stays put for actions that do not move', () => {
+    expect(menuIndexFor('close', 2, 4)).toBe(2)
   })
 })
