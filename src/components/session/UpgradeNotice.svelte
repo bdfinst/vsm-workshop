@@ -1,6 +1,6 @@
 <script>
   import { tick } from 'svelte'
-  import { focusStageHeading } from '../../utils/session/focus.js'
+  import { focusScreenHeading } from '../../utils/session/focus.js'
   import { UPGRADE_NOTICE_DISMISSED_KEY } from '../../utils/session/upgradeNotice.js'
   import {
     getPersistedValue,
@@ -12,12 +12,12 @@
 
   let dismissed = $state(getPersistedValue(UPGRADE_NOTICE_DISMISSED_KEY, false))
 
-  // The button that had focus is removed, so focus goes to the stage heading.
+  // The button that had focus is removed, so focus goes to the screen's heading.
   async function handleDismiss() {
     dismissed = true
     persistValue(UPGRADE_NOTICE_DISMISSED_KEY, true)
     await tick()
-    focusStageHeading()
+    focusScreenHeading()
   }
 </script>
 

@@ -872,6 +872,75 @@ test.describe('Import and export one value stream (slice 9.3)', () => {
     ])
   })
 
+  test('Dismissing the upgrade notice on the home screen keeps focus on the home heading', async ({
+    page,
+    seed,
+  }) => {
+    await startOnHome(page, seed)
+    await importFromHome(page, 'old-map.json', v1FileWithClampedWait())
+
+    await upgradeNotice(page).getByRole('button', { name: 'Dismiss' }).click()
+
+    await expect(upgradeNotice(page)).toHaveCount(0)
+    await expect(homeHeading(page)).toBeFocused()
+  })
+
+  test('A v1 import on the home screen moves focus to the upgrade notice', async ({
+    page,
+    seed,
+  }) => {
+    await startOnHome(page, seed)
+
+    await importFromHome(page, 'old-map.json', v1FileWithClampedWait())
+
+    await expect(page.getByTestId('upgrade-notice-title')).toBeFocused()
+  })
+
+  test('A v1 import from the File menu moves focus to the upgrade notice', async ({
+    page,
+    seed,
+  }) => {
+    await startOnHome(page, seed)
+    await openStream(page, 'Checkout delivery')
+
+    await importFromFileMenu(page, 'old-map.json', v1FileWithClampedWait())
+
+    await expect(page.getByTestId('upgrade-notice-title')).toBeFocused()
+  })
+
+  test('A v2 import on the home screen still focuses the new card', async ({
+    page,
+    seed,
+  }) => {
+    await startOnHome(page, seed)
+    const { text } = await downloadedFile(page, () =>
+      chooseFromMenu(page, 'Onboarding', 'Export value stream')
+    )
+
+    await importFromHome(page, 'Onboarding.json', text)
+
+    await expect(cardLinks(page)).toHaveCount(3)
+    await expect(cardLinks(page).last()).toBeFocused()
+  })
+
+  test('A v2 import from the File menu leaves focus on File', async ({
+    page,
+    seed,
+  }) => {
+    await openBackground(page, seed)
+
+    await importFromFileMenu(
+      page,
+      'onboarding.json',
+      exportValueStream(onboarding())
+    )
+
+    await expect(toast(page)).toContainText('Onboarding imported')
+    await expect(
+      page.getByRole('button', { name: 'File', exact: true })
+    ).toBeFocused()
+  })
+
   test('Importing a v2 file shows no upgrade notice', async ({
     page,
     seed,

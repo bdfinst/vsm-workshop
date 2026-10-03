@@ -17,6 +17,27 @@ export const focusOpeningTarget = (root = globalThis.document) => {
   else focusStageHeading(root)
 }
 
+/**
+ * Move focus to the open screen's heading: the stage heading in a value stream,
+ * the home heading on the home screen.
+ * @param {ParentNode} [root] - Where to look; the whole document by default
+ */
+export const focusScreenHeading = (root = globalThis.document) => {
+  const heading =
+    root?.querySelector('[data-testid="stage-heading"]') ??
+    root?.querySelector('[data-testid="home-heading"]')
+  heading?.focus()
+}
+
+/**
+ * Move focus to the upgrade notice's heading, if one is showing, so a screen
+ * reader announces it.
+ * @param {ParentNode} [root] - Where to look; the whole document by default
+ */
+export const focusUpgradeNotice = (root = globalThis.document) => {
+  root?.querySelector('[data-testid="upgrade-notice-title"]')?.focus()
+}
+
 /** The attributes that name a row's controls: buttons and checkboxes, then text fields. */
 export const CONTROL_ATTRIBUTE = 'data-control'
 export const FIELD_ATTRIBUTE = 'data-field'

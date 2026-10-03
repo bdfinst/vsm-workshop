@@ -2,6 +2,7 @@
   import { tick } from 'svelte'
   import { workspaceStore } from '../../stores/v2/workspaceStore.svelte.js'
   import { toastStore, TOAST_TYPE } from '../../stores/toastStore.svelte.js'
+  import { focusUpgradeNotice } from '../../utils/session/focus.js'
   import { showUpgradeNotice } from '../../utils/session/upgradeNotice.js'
   import {
     exportStreamFile,
@@ -87,6 +88,11 @@
     if (!result.ok) return
     showUpgradeNotice(workspaceStore, result.changes)
     toastStore.add(`${result.name} imported`, TOAST_TYPE.INFO)
+    // So a screen reader announces the notice; no changes, no notice, no move.
+    if (result.changes.length > 0) {
+      await tick()
+      focusUpgradeNotice()
+    }
   }
 
   function handleExportValueStream() {

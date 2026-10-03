@@ -3,7 +3,10 @@
   import { workspaceStore } from '../../stores/v2/workspaceStore.svelte.js'
   import { toastStore, TOAST_TYPE } from '../../stores/toastStore.svelte.js'
   import { createDeleteUndo } from '../../utils/session/deleteUndo.js'
-  import { controlSelector } from '../../utils/session/focus.js'
+  import {
+    controlSelector,
+    focusUpgradeNotice,
+  } from '../../utils/session/focus.js'
   import { indexAfterDelete } from '../../utils/ui/focusAfterDelete.js'
   import { isTextEntry, shortcutFor } from '../../utils/ui/keymap.js'
   import { showUpgradeNotice } from '../../utils/session/upgradeNotice.js'
@@ -123,7 +126,9 @@
       showUpgradeNotice(workspaceStore, result.changes)
       toastStore.add(`${result.name} imported`, TOAST_TYPE.INFO)
       await tick()
-      focusCardLink(result.streamId)
+      // A notice is announced before the card; no changes, no notice.
+      if (result.changes.length > 0) focusUpgradeNotice()
+      else focusCardLink(result.streamId)
     }
   }
 
