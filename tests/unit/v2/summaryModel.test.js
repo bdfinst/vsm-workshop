@@ -97,12 +97,12 @@ describe('summaryModel', () => {
     expect(leadTime).toMatchObject({
       text: 'incomplete',
       incomplete: true,
-      note: 'waiting on Deploy',
+      note: 'needs Deploy',
     })
     expect(summary.hero).toMatchObject({
       text: 'incomplete',
       incomplete: true,
-      note: 'waiting on Deploy',
+      note: 'needs Deploy',
     })
   })
 
@@ -120,7 +120,7 @@ describe('summaryModel', () => {
 
     expect(rolled).toMatchObject({
       text: 'incomplete',
-      note: 'waiting on Refinement',
+      note: 'needs Refinement',
     })
   })
 
@@ -129,7 +129,7 @@ describe('summaryModel', () => {
 
     expect(summary.hero).toMatchObject({
       text: 'incomplete',
-      note: 'waiting on Intake',
+      note: 'needs Intake',
     })
     expect(summary.rows.map((row) => row.text)).toEqual([
       'incomplete',
@@ -137,6 +137,17 @@ describe('summaryModel', () => {
       'incomplete',
       '0',
     ])
+  })
+
+  it('names an unnamed step in the note when the missing time is on a blank name', () => {
+    const steps = [team('', 60, null), team('Deploy', 30, 60)]
+
+    const { hero } = summaryOf(steps)
+
+    expect(hero).toMatchObject({
+      incomplete: true,
+      note: 'needs an unnamed step',
+    })
   })
 
   it('says flow efficiency is not available when the lead time is 0', () => {
@@ -180,5 +191,29 @@ describe('summaryModel', () => {
         name: 'Code review',
       },
     ])
+  })
+
+  it('names the right step for each flag when they sit on different steps', () => {
+    const steps = withStep(
+      withStep(referenceSteps(), 'Development', { pctCA: 70 }),
+      'Code review',
+      { pctCA: 80 }
+    )
+
+    expect(
+      summaryOf(steps).flagged.map(({ kind, name }) => [kind, name])
+    ).toEqual([
+      ['largest-wait', 'Code review'],
+      ['lowest-ca', 'Development'],
+    ])
+  })
+
+  it('names a flagged step with no name as "an unnamed step"', () => {
+    const steps = [team('', 60, 5000), team('Deploy', 30, 60)]
+
+    expect(summaryOf(steps).flagged[0]).toMatchObject({
+      kind: 'largest-wait',
+      name: 'an unnamed step',
+    })
   })
 })

@@ -50,6 +50,15 @@
     opened = true
   })
 
+  // The pinned summary strip covers the bottom of the window, so the page keeps
+  // that much clear when it scrolls a focused element into view (WCAG 2.4.11).
+  let stripHeight = $state(0)
+  $effect(() => {
+    const page = document.documentElement
+    page.style.scrollPaddingBottom = `${stripHeight}px`
+    return () => page.style.removeProperty('scroll-padding-bottom')
+  })
+
   // The id makes a repeated message a new node, so screen readers say it again.
   let announcement = $state({ id: 0, text: '' })
 
@@ -137,7 +146,11 @@
   {/if}
   <!-- Pinned to the bottom of the viewport, so it stays in view however far
        the page or the ladder is scrolled. -->
-  <div class="sticky bottom-0 z-10" data-testid="strip-region">
+  <div
+    class="sticky bottom-0 z-10"
+    data-testid="strip-region"
+    bind:clientHeight={stripHeight}
+  >
     {#if showMap}
       <SummaryStrip
         metrics={store.metrics}

@@ -108,3 +108,74 @@ export const labelLanes = (blocks, gap = 0) => {
     return lane
   })
 }
+
+/** Pixels. The size labels are drawn at; the width estimate below follows from it. */
+export const LABEL_FONT_SIZE = 12
+/**
+ * Pixels one character of a label is assumed to take. Deliberately wide: a
+ * bold capital is about two thirds of an em, wider than the average glyph, so
+ * the estimate overshoots rather than letting labels overlap or be clipped.
+ */
+export const LABEL_CHAR_WIDTH = (LABEL_FONT_SIZE * 2) / 3
+/** Pixels from a step's left edge to where its label text starts. */
+export const LABEL_INSET = 4
+/** Pixels kept between two labels on one lane. */
+export const LABEL_GAP = 8
+
+const nameLine = ({ name }) => ({ text: name, tone: null })
+
+const linesOf = (step) => [nameLine(step), ...annotationsOf(step)]
+
+const labelWidthOf = (lines) =>
+  Math.max(...lines.map(({ text }) => text.length)) * LABEL_CHAR_WIDTH
+
+/**
+ * Where each step's label goes and how far right the labels reach: the label
+ * lines (the name, then its annotations), the left edge and estimated width,
+ * the lane each takes so none overlaps, and the right-most pixel of the
+ * ladder, boxes and labels together. A label can run past the last box (a
+ * narrow box with a long name), so an SVG must be at least `rightEdge` wide.
+ * Widths are estimated at LABEL_CHAR_WIDTH, which errs wide.
+ * @param {Object[]} steps - Laid-out steps, from sizeLadder
+ * @param {number} [gap] - Pixels to keep between labels on one lane
+ * @returns {{labels: {step: Object, lines: {text: string, tone: ?string}[], left: number, width: number, right: number}[], lanes: number[], rightEdge: number}}
+ */
+export const labelLayout = (steps, gap = LABEL_GAP) => {
+  const labels = steps.map((step) => {
+    const lines = linesOf(step)
+    const left = step.x + LABEL_INSET
+    const width = labelWidthOf(lines)
+    return { step, lines, left, width, right: left + width }
+  })
+  const lanes = labelLanes(
+    labels.map(({ left, width }) => ({ x: left, width })),
+    gap
+  )
+  const rightEdge = Math.max(
+    0,
+    ...labels.map(({ right }) => right),
+    ...steps.map(({ x, width }) => x + width)
+  )
+  return { labels, lanes, rightEdge }
+}
+
+/**
+ * An upper bound, in pixels, on how far a label can reach past the end of the
+ * ladder, whatever the pane: it only assumes every box is at least
+ * `minBoxWidth`, so the boxes from a step to the end cover at least that much
+ * of its label. Used to leave room before fitting, so labels do not push a
+ * fitted ladder into a scrollbar.
+ * @param {Object[]} steps - Steps from ladderModel (or sizeLadder)
+ * @param {number} minBoxWidth - The narrowest any box can be drawn
+ * @returns {number} Pixels, never below 0
+ */
+export const labelOverhangFor = (steps, minBoxWidth) =>
+  Math.max(
+    0,
+    ...steps.map(
+      (step, index) =>
+        LABEL_INSET +
+        labelWidthOf(linesOf(step)) -
+        minBoxWidth * (steps.length - index)
+    )
+  )

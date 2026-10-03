@@ -146,7 +146,7 @@ describe('sizeLadder', () => {
         width: 1440 * PX_PER_MINUTE,
         outline: OUTLINE.DASHED,
         outsideText: { label: 'elapsed · split unknown', text: 'outside' },
-        handoffText: null,
+        handoffText: 'handoff',
         missingTimeLabels: [],
         wait: null,
         process: null,
@@ -168,6 +168,20 @@ describe('sizeLadder', () => {
       })
     })
 
+    it('says "handoff" on an outside step too, keeping its dashed outline', () => {
+      const steps = insertAfter(
+        referenceSteps(),
+        'Code review',
+        outsideStep('Security review', 1440)
+      )
+
+      expect(stepBox(scaled(steps), 'Security review')).toMatchObject({
+        outline: OUTLINE.DASHED,
+        handoffText: 'handoff',
+        outsideText: { text: 'outside' },
+      })
+    })
+
     it('names the elapsed time when an outside step has none', () => {
       const layout = scaled([outsideStep('Security review', null)])
 
@@ -180,6 +194,38 @@ describe('sizeLadder', () => {
 
     it('leaves non-outside steps without the outside encoding', () => {
       expect(stepBox(scaled(referenceSteps()), 'Deploy').outsideText).toBeNull()
+    })
+  })
+
+  describe('names', () => {
+    it('shows "an unnamed step" for a blank name', () => {
+      const layout = scaled([createStep({ name: '' }), team('  ', 1, 1)])
+
+      expect(layout.steps.map((step) => step.name)).toEqual([
+        'an unnamed step',
+        'an unnamed step',
+      ])
+    })
+  })
+
+  describe('outside steps at the ends', () => {
+    it('sizes an outside step in first position by its elapsed time', () => {
+      const layout = scaled([outsideStep('Vendor', 600), ...referenceSteps()])
+
+      expect(layout.steps[0]).toMatchObject({
+        x: 0,
+        width: 600 * PX_PER_MINUTE,
+        outline: OUTLINE.DASHED,
+      })
+      expect(layout.steps[1].x).toBe(600 * PX_PER_MINUTE)
+    })
+
+    it('sizes an outside step in last position by its elapsed time', () => {
+      const layout = scaled([...referenceSteps(), outsideStep('Vendor', 600)])
+
+      const vendor = stepBox(layout, 'Vendor')
+      expect(vendor.width).toBe(600 * PX_PER_MINUTE)
+      expect(layout.totalWidth).toBe(vendor.x + vendor.width)
     })
   })
 
@@ -253,6 +299,18 @@ describe('sizeLadder', () => {
       ],
       ['equal with no width', { mode: LADDER_MODE.EQUAL }],
       ['equal with a negative width', { mode: LADDER_MODE.EQUAL, width: -5 }],
+      [
+        'scaled with an infinite pixelsPerMinute',
+        { mode: LADDER_MODE.SCALED, pixelsPerMinute: Infinity },
+      ],
+      [
+        'scaled with a NaN pixelsPerMinute',
+        { mode: LADDER_MODE.SCALED, pixelsPerMinute: NaN },
+      ],
+      [
+        'equal with an infinite width',
+        { mode: LADDER_MODE.EQUAL, width: Infinity },
+      ],
     ])('refuses %s', (_, options) => {
       expect(() => sizeLadder(modelOf(referenceSteps()), options)).toThrow(
         RangeError

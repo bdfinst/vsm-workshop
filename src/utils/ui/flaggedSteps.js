@@ -18,11 +18,21 @@ const FLAG_DISPLAY = Object.freeze({
   [FLAG_KIND.LOWEST_CA]: { label: 'lowest %C/A', tone: TONE.CRIT },
 })
 
+/** What a step is called when its name is blank. */
+export const UNNAMED_STEP = 'an unnamed step'
+
+/**
+ * A step's name as it is shown: the name, or "an unnamed step" when blank.
+ * @param {?string} name
+ * @returns {string}
+ */
+export const displayNameOf = (name) => name?.trim() || UNNAMED_STEP
+
 const flag = (kind, { stepId, name }) => ({
   kind,
   ...FLAG_DISPLAY[kind],
   stepId,
-  name,
+  name: displayNameOf(name),
 })
 
 /**

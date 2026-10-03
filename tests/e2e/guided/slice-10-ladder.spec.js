@@ -1,4 +1,5 @@
 import { createMapVersion } from '../../../src/models/v2/mapVersion.js'
+import { createStep } from '../../../src/models/v2/step.js'
 import { STAGE_NAMES, STAGE_NUMBER } from '../../../src/models/v2/constants.js'
 import {
   insertAfter,
@@ -70,6 +71,18 @@ const strokeOf = (locator) =>
       dash: style.strokeDasharray,
     }
   })
+
+// The text sits wholly inside the drawn SVG, and the scroll area is as wide as the SVG.
+const expectInsideTheMap = async (page, text) => {
+  const ladder = await box(page.getByTestId('ladder-map'))
+  const bounds = await box(text)
+  expect(bounds.x).toBeGreaterThanOrEqual(ladder.x)
+  expect(bounds.x + bounds.width).toBeLessThanOrEqual(ladder.x + ladder.width)
+  const scrollWidth = await page
+    .getByTestId('ladder-scroll')
+    .evaluate((el) => el.scrollWidth)
+  expect(scrollWidth).toBeGreaterThanOrEqual(Math.floor(ladder.width))
+}
 
 const pageScrollsHorizontally = (page) =>
   page.evaluate(
@@ -184,9 +197,55 @@ test.describe('Live time-ladder map', () => {
     )
     await expect(security.getByText('elapsed · split unknown')).toBeVisible()
     await expect(security.getByText('outside', { exact: true })).toBeVisible()
+    await expect(security.getByText('handoff', { exact: true })).toBeVisible()
     await expect(
       stepOf(page, 'Development').getByTestId('ladder-hatched')
     ).toHaveCount(0)
+  })
+
+  test('the last label is fully inside the map when no times are entered', async ({
+    page,
+    seed,
+  }) => {
+    await seed(
+      workspaceWith(
+        ['Intake', 'Review', 'Deploy'].map((name) => createStep({ name }))
+      )
+    )
+    await expect(page.getByTestId('ladder-map')).toBeVisible()
+
+    const label = stepOf(page, 'Deploy').getByText('needs process time')
+    await expect(label).toBeVisible()
+    await expectInsideTheMap(page, label)
+  })
+
+  test('an outside step in last position shows its full label inside the map', async ({
+    page,
+    seed,
+  }) => {
+    await seed(
+      workspaceWith([...referenceSteps(), outsideStep('Security review', 60)])
+    )
+    await expect(page.getByTestId('ladder-map')).toBeVisible()
+
+    const label = stepOf(page, 'Security review').getByText(
+      'elapsed · split unknown'
+    )
+    await expect(label).toBeVisible()
+    await expectInsideTheMap(page, label)
+  })
+
+  test('the ladder says what its encodings mean', async ({ page, seed }) => {
+    await seed(workspaceWith(referenceSteps()))
+
+    const ladder = page.getByTestId('ladder-map')
+    await expect(ladder).toHaveAttribute('aria-describedby', 'ladder-desc')
+    await expect(ladder.locator('title')).toHaveText('Time ladder, to scale')
+    await expect(page.getByTestId('ladder-desc')).toContainText(
+      'wait time is drawn above the track'
+    )
+    await expect(page.getByTestId('ladder-desc')).toContainText('below it')
+    await expect(page.getByTestId('ladder-desc')).toContainText('hatched')
   })
 
   test('Flags agree across map and summary: Code review at %C/A 80', async ({
@@ -270,20 +329,6 @@ test.describe('Live time-ladder map', () => {
     const shell = await box(page.getByTestId('session-shell'))
     expect(pane.y).toBeGreaterThanOrEqual(work.y + work.height)
     expect(pane.width).toBeGreaterThan(shell.width * 0.9)
-  })
-
-  test('a long stream scrolls inside the pane and the page does not', async ({
-    page,
-    seed,
-  }) => {
-    await seed(workspaceWith(longStream()))
-    await page.getByRole('radio', { name: 'Equal width' }).check()
-
-    const scroller = page.getByTestId('ladder-scroll')
-    expect(
-      await scroller.evaluate((el) => el.scrollWidth > el.clientWidth)
-    ).toBe(true)
-    expect(await pageScrollsHorizontally(page)).toBe(false)
   })
 
   test('the reference map fits the pane with no scrolling', async ({
@@ -506,6 +551,35 @@ test.describe('Live time-ladder map', () => {
     expect(bounds.y + bounds.height).toBeCloseTo(NORMAL_VIEWPORT_HEIGHT, 0)
   })
 
+  test('the pinned strip does not cover the element that takes focus', async ({
+    page,
+    seed,
+  }) => {
+    await seed(workspaceWith(referenceSteps(), STAGE_NUMBER.TIME))
+    await expect(page.getByTestId('ladder-map')).toBeVisible()
+    const scroller = page.getByTestId('ladder-scroll')
+    // Scroll until only the top of the ladder pane shows at the bottom edge of
+    // the window, so focusing it scrolls it into view the shortest way.
+    const edgeOfWindow = page.viewportSize().height
+    await scroller.evaluate((el, visible) => {
+      window.scrollTo(
+        0,
+        window.scrollY + el.getBoundingClientRect().top - visible
+      )
+    }, edgeOfWindow - 20)
+
+    await scroller.focus()
+
+    await expect(scroller).toBeFocused()
+    await expect
+      .poll(async () => {
+        const focused = await box(scroller)
+        const pinned = await box(strip(page))
+        return pinned.y - (focused.y + focused.height)
+      })
+      .toBeGreaterThanOrEqual(0)
+  })
+
   test('Narrow screen', async ({ page, seed }) => {
     await page.setViewportSize(NARROW_VIEWPORT)
     await seed(workspaceWith(referenceSteps()))
@@ -547,6 +621,9 @@ test.describe('Live time-ladder map', () => {
       'data-outline',
       'dashed'
     )
+    const label = stepOf(page, 'Intake').getByText('needs process time')
+    await expect(label).toBeVisible()
+    await expectInsideTheMap(page, label)
     await expect(figureValue(page, 'flow-efficiency')).toHaveText('incomplete')
   })
 

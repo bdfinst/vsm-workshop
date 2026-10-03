@@ -4,10 +4,16 @@ import {
   MAX_PIXELS_PER_MINUTE,
   MIN_EQUAL_WIDTH,
   MIN_PIXELS_PER_MINUTE,
+  LABEL_CHAR_WIDTH,
+  LABEL_FONT_SIZE,
+  LABEL_GAP,
+  LABEL_INSET,
   TONE,
   annotationsOf,
   equalWidthFor,
   labelLanes,
+  labelLayout,
+  labelOverhangFor,
   pixelsPerMinuteToFit,
 } from '../../../src/utils/ui/ladderView.js'
 import {
@@ -15,6 +21,7 @@ import {
   ladderModel,
   sizeLadder,
 } from '../../../src/utils/ui/ladderLayout.js'
+import { createStep } from '../../../src/models/v2/step.js'
 import { calculateMetrics } from '../../../src/utils/calculations/v2/index.js'
 import {
   insertAfter,
@@ -178,7 +185,7 @@ describe('annotationsOf', () => {
     ])
   })
 
-  it('says an outside step is outside, with its split unknown', () => {
+  it('says an outside step is a handoff and outside, with its split unknown', () => {
     const steps = insertAfter(
       referenceSteps(),
       'Code review',
@@ -186,9 +193,183 @@ describe('annotationsOf', () => {
     )
 
     expect(annotations(steps, 'Security review')).toEqual([
+      { text: 'handoff', tone: TONE.HANDOFF },
       { text: 'outside', tone: TONE.MUTED },
       { text: 'elapsed · split unknown', tone: TONE.MUTED },
     ])
+  })
+})
+
+describe('annotationsOf with two distinct flagged steps', () => {
+  // Code review has the largest wait; Development has the lowest %C/A.
+  const steps = () =>
+    withStep(
+      withStep(referenceSteps(), 'Development', { pctCA: 70 }),
+      'Code review',
+      {
+        pctCA: 80,
+      }
+    )
+  const annotations = (name) =>
+    annotationsOf(scaledLayout(steps(), 0.1).steps.find((s) => s.name === name))
+
+  it('writes each flag on the step that earns it', () => {
+    expect(annotations('Code review')).toEqual([
+      { text: 'largest wait', tone: TONE.WARN },
+    ])
+    expect(annotations('Development')).toEqual([
+      { text: 'lowest %C/A', tone: TONE.CRIT },
+    ])
+  })
+})
+
+describe('annotationsOf for an outside step', () => {
+  it('also says "handoff", before "outside"', () => {
+    const steps = [outsideStep('Security review', 1440)]
+
+    expect(
+      annotationsOf(scaledLayout(steps, 0.1).steps[0]).map(({ text }) => text)
+    ).toEqual(['handoff', 'outside', 'elapsed · split unknown'])
+  })
+})
+
+describe('labelLayout', () => {
+  const layoutOf = (steps, pixelsPerMinute = 0.1) =>
+    scaledLayout(steps, pixelsPerMinute).steps
+
+  it('is tied to the font size: a character is at least two thirds of an em wide', () => {
+    expect(LABEL_CHAR_WIDTH).toBeGreaterThanOrEqual((LABEL_FONT_SIZE * 2) / 3)
+  })
+
+  it('has nothing for no steps', () => {
+    expect(labelLayout([])).toEqual({ labels: [], lanes: [], rightEdge: 0 })
+  })
+
+  it('measures a label by its widest line, from the inset, at the conservative width', () => {
+    const name = 'Customer intake and triage'
+    const [step] = layoutOf([team(name, 60, 60)])
+
+    const { labels } = labelLayout([step])
+
+    expect(labels[0]).toMatchObject({
+      step,
+      left: step.x + LABEL_INSET,
+      width: name.length * LABEL_CHAR_WIDTH,
+    })
+    expect(labels[0].lines[0]).toEqual({ text: name, tone: null })
+  })
+
+  it('lists the name first and then the annotations', () => {
+    const steps = layoutOf(reworkSteps())
+    const codeReview = steps.find((s) => s.name === 'Code review')
+
+    const { labels } = labelLayout([codeReview])
+
+    expect(labels[0].lines.map(({ text }) => text)).toEqual([
+      'Code review',
+      'largest wait',
+      'lowest %C/A',
+    ])
+  })
+
+  it('reaches past the last box when its label is wider than the box', () => {
+    const steps = layoutOf([createStep({ name: 'Intake' })])
+    const [intake] = steps
+
+    const { rightEdge } = labelLayout(steps)
+
+    const label = 'needs process time'.length * LABEL_CHAR_WIDTH
+    expect(intake.width).toBeLessThan(label)
+    expect(rightEdge).toBe(intake.x + LABEL_INSET + label)
+  })
+
+  it('reaches the last box edge when every label is narrower', () => {
+    const steps = layoutOf(referenceSteps())
+    const last = steps.at(-1)
+
+    expect(labelLayout(steps).rightEdge).toBe(last.x + last.width)
+  })
+
+  it('gives a long name on an earlier step the right edge', () => {
+    const steps = layoutOf([
+      team('A very long step name indeed', 1, 1),
+      team('Deploy', 600, 600),
+    ])
+
+    const { rightEdge, labels } = labelLayout(steps)
+
+    expect(rightEdge).toBe(
+      Math.max(labels[0].right, steps[1].x + steps[1].width)
+    )
+  })
+
+  it('never lets two labels on one lane overlap, even for bold capitals', () => {
+    const steps = layoutOf(
+      Array.from({ length: 12 }, (_, index) =>
+        team(`WWWW ${'M'.repeat(index + 1)}`, 5, 5)
+      )
+    )
+
+    const { labels, lanes } = labelLayout(steps)
+
+    const byLane = Object.groupBy(
+      labels.map((label, index) => ({ ...label, lane: lanes[index] })),
+      ({ lane }) => lane
+    )
+    for (const inLane of Object.values(byLane)) {
+      inLane.slice(1).forEach((label, index) => {
+        expect(label.left).toBeGreaterThanOrEqual(
+          inLane[index].right + LABEL_GAP
+        )
+      })
+    }
+  })
+
+  it('draws no more lanes than it needs', () => {
+    const steps = layoutOf(referenceSteps(), 0.1)
+
+    expect(Math.max(...labelLayout(steps).lanes)).toBeLessThanOrEqual(1)
+  })
+})
+
+describe('labelOverhangFor', () => {
+  const MIN_BOX = 24
+
+  it('is 0 when every label fits its box and the boxes after it', () => {
+    const model = modelOf([team('A', 60, 60), team('B', 60, 60)])
+
+    expect(labelOverhangFor(model.steps, 200)).toBe(0)
+  })
+
+  it('bounds how far the last label can run past the ladder at the minimum box width', () => {
+    const model = modelOf([createStep({ name: 'Intake' })])
+
+    expect(labelOverhangFor(model.steps, MIN_BOX)).toBe(
+      LABEL_INSET + 'needs process time'.length * LABEL_CHAR_WIDTH - MIN_BOX
+    )
+  })
+
+  it('counts the boxes that follow a label, which cover part of its width', () => {
+    const model = modelOf([createStep({ name: 'Intake' }), team('Next', 1, 1)])
+
+    expect(labelOverhangFor(model.steps, MIN_BOX)).toBeLessThan(
+      LABEL_INSET + 'needs process time'.length * LABEL_CHAR_WIDTH - MIN_BOX
+    )
+  })
+
+  it('is never less than the real overhang when every box is at least the minimum', () => {
+    const steps = [
+      createStep({ name: 'Intake' }),
+      team('Tiny', 1, 1),
+      team('Tinier', 1, 1),
+    ]
+    const layout = scaledLayout(steps, 0.5)
+
+    const { rightEdge } = labelLayout(layout.steps)
+
+    expect(rightEdge - layout.totalWidth).toBeLessThanOrEqual(
+      labelOverhangFor(modelOf(steps).steps, MIN_BOX)
+    )
   })
 })
 

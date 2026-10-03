@@ -3,6 +3,7 @@ import { calculateMetrics } from '../../../src/utils/calculations/v2/index.js'
 import {
   FLAG_KIND,
   TONE,
+  displayNameOf,
   flaggedSteps,
   flagsOf,
 } from '../../../src/utils/ui/flaggedSteps.js'
@@ -10,6 +11,7 @@ import {
   referenceSteps,
   reworkSteps,
   versionOf,
+  withStep,
   withoutWait,
 } from './fixtures.js'
 
@@ -64,6 +66,51 @@ describe('flaggedSteps', () => {
     expect(
       flaggedSteps(calculateMetrics(version).flags).map(({ stepId }) => stepId)
     ).toEqual([codeReview.id, codeReview.id])
+  })
+})
+
+describe('flaggedSteps with two distinct steps', () => {
+  // Code review has the largest wait; Development has the lowest %C/A.
+  const twoStepVersion = () =>
+    versionOf(
+      withStep(
+        withStep(referenceSteps(), 'Development', { pctCA: 70 }),
+        'Code review',
+        { pctCA: 80 }
+      )
+    )
+
+  it('puts each flag on the step that earns it', () => {
+    const { flags } = calculateMetrics(twoStepVersion())
+
+    expect(flaggedSteps(flags).map(({ kind, name }) => [kind, name])).toEqual([
+      [FLAG_KIND.LARGEST_WAIT, 'Code review'],
+      [FLAG_KIND.LOWEST_CA, 'Development'],
+    ])
+  })
+
+  it('lists on each step only its own flag', () => {
+    const version = twoStepVersion()
+    const { flags } = calculateMetrics(version)
+    const idOf = (name) => version.steps.find((s) => s.name === name).id
+
+    expect(flagsOf(flags, idOf('Code review')).map(({ kind }) => kind)).toEqual(
+      [FLAG_KIND.LARGEST_WAIT]
+    )
+    expect(flagsOf(flags, idOf('Development')).map(({ kind }) => kind)).toEqual(
+      [FLAG_KIND.LOWEST_CA]
+    )
+  })
+})
+
+describe('displayNameOf', () => {
+  it.each([
+    ['a name', 'Deploy', 'Deploy'],
+    ['a blank name', '', 'an unnamed step'],
+    ['a whitespace name', '   ', 'an unnamed step'],
+    ['no name', undefined, 'an unnamed step'],
+  ])('shows %s as it should', (_, name, shown) => {
+    expect(displayNameOf(name)).toBe(shown)
   })
 })
 

@@ -3,7 +3,7 @@ import {
   formatPercent,
   formatPercentRange,
 } from '../calculations/v2/format.js'
-import { flaggedSteps } from './flaggedSteps.js'
+import { displayNameOf, flaggedSteps } from './flaggedSteps.js'
 
 const INCOMPLETE_TEXT = 'incomplete'
 const NOT_AVAILABLE_TEXT = 'not available'
@@ -13,7 +13,7 @@ const RANGE_CONTEXT = `${FLOW_CONTEXT} A range, because some times are a range o
 const ratio = { scale: 'ratio' }
 
 // One figure of the strip. A metric that depends on a missing value reads
-// "incomplete" and names the step it is waiting on; nothing partial is shown.
+// "incomplete" and names the step that needs a value; nothing partial is shown.
 const figure = (id, label, value, format) =>
   value?.incomplete
     ? {
@@ -21,7 +21,7 @@ const figure = (id, label, value, format) =>
         label,
         text: INCOMPLETE_TEXT,
         incomplete: true,
-        note: `waiting on ${value.stepName}`,
+        note: `needs ${displayNameOf(value.stepName)}`,
       }
     : { id, label, text: format(value), incomplete: false, note: null }
 
@@ -52,7 +52,7 @@ const flowEfficiencyFigure = (flowEfficiency) => {
  * }} `hero` is flow efficiency: a range when any time is a range or outside the
  *   team, "not available" when the lead time is 0. `rows` are lead time,
  *   process time, rolled %C/A and handoffs, in that order. `note` names the
- *   step an incomplete figure waits on. `flagged` are the flagged steps (a
+ *   step an incomplete figure needs a value from ("an unnamed step" when blank). `flagged` are the flagged steps (a
  *   `tone` each), with no entry for a flag that has no step.
  */
 export const summaryModel = (metrics, workdayHours) => {

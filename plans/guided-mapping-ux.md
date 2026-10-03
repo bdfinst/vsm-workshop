@@ -1475,7 +1475,7 @@ Feature: Live time-ladder map
   Scenario: Outside encoding
     Given an outside step "Security review" with elapsed time 1440 minutes after "Code review"
     Then "Security review" is a hatched block with a dashed outline labelled "elapsed · split unknown"
-    And "Security review" shows the text "outside"
+    And "Security review" shows the texts "outside" and "handoff"
     And the summary strip shows flow efficiency "8.3%–22.1%"
 
   Scenario: Summary strip leads with flow efficiency
@@ -1483,7 +1483,7 @@ Feature: Live time-ladder map
     And then lead time "18.8 days", process time "1.8 days", rolled %C/A "100.0%" and handoffs "0"
 
   Scenario: Long streams scroll with the strip pinned
-    Given the map has 41 steps
+    Given the map has 41 steps in Equal width
     Then the ladder scrolls horizontally
     And the summary strip stays visible
 
@@ -1505,7 +1505,7 @@ Feature: Live time-ladder map
 - **Rail status deferred to Slice 11.** The Steps and Time rail statuses (`stepsReason` / `STAGE_REASONS`) stay deferred; no Slice 10 scenario needs them.
 - **Flags.** The ladder and the strip both read `metrics.flags` (`topWaits[0]` for the largest wait, `lowestCA` for the lowest %C/A); neither recomputes them.
 - **No flag when nothing is low.** `lowestCA` returns null when the lowest entered %C/A is 100, so a clean map flags no step as "lowest %C/A" (it used to flag the first step on a tie at 100). The first-step-on-a-tie rule stays for ties below 100.
-- **Ladder geometry (Step 10.1).** `scale` is pixels per minute. In scaled mode a box is the wait plus the process time, side by side with no gaps, so the total width is the lead time to scale; equal mode gives every box the same width. Layout never shrinks to fit: fit and zoom belong to `LadderMap`.
+- **Ladder geometry (Step 10.1).** `pixelsPerMinute` (called `scale` when the step was written) is pixels per minute. In scaled mode a box is the wait plus the process time, side by side with no gaps, so the total width is the lead time to scale; equal mode gives every box the same width. Layout never shrinks to fit: fit and zoom belong to `LadderMap`.
 - **Tokens live in `src/index.css`** (`@theme` and `:root`), not `tailwind.config.js`, which Tailwind v4 ignores.
 
 **Steps:**

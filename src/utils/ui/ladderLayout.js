@@ -1,5 +1,5 @@
 import { isOutside } from '../../models/v2/constants.js'
-import { flagsOf } from './flaggedSteps.js'
+import { displayNameOf, flagsOf } from './flaggedSteps.js'
 
 /** How a ladder is sized: `SCALED` by minutes, `EQUAL` one width for every box. */
 export const LADDER_MODE = Object.freeze({
@@ -80,8 +80,8 @@ const segment = (minutes, x, width) =>
   minutes == null ? null : { x, width, minutes }
 
 const assertPositive = (value, name, mode) => {
-  if (!(value > 0)) {
-    throw new RangeError(`${mode} mode needs a positive ${name}`)
+  if (!(Number.isFinite(value) && value > 0)) {
+    throw new RangeError(`${mode} mode needs a positive, finite ${name}`)
   }
 }
 
@@ -101,11 +101,11 @@ const sizerFor = ({ mode, pixelsPerMinute, width }) => {
 const modelStep = (step, flags) => {
   const missingTimeLabels = missingTimeLabelsOf(step)
   const outsideText = isOutside(step) ? OUTSIDE_TEXT : null
-  const handoffText = step.isHandoff && !outsideText ? HANDOFF_TEXT : null
+  const handoffText = step.isHandoff ? HANDOFF_TEXT : null
 
   return {
     stepId: step.id,
-    name: step.name,
+    name: displayNameOf(step.name),
     minutes: minutesOf(step),
     outline: outlineOf(missingTimeLabels, outsideText, handoffText),
     handoffText,
@@ -128,7 +128,7 @@ const layoutStep = ({ minutes, ...encodings }, x, size) => {
 
 /**
  * The part of a time ladder that does not depend on the pane: per step its
- * `stepId`, `name`, `minutes` (`{wait, process}` or `{elapsed}`, null when not
+ * `stepId`, `name` ("an unnamed step" when blank), `minutes` (`{wait, process}` or `{elapsed}`, null when not
  * entered), `outline` (an OUTLINE), `handoffText` ('handoff' or null, outside
  * steps included), `missingTimeLabels` (the names of the times not entered,
  * e.g. 'wait time'), `outsideText` (`{label, text}` for a hatched outside
