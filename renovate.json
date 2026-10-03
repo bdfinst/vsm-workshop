@@ -19,6 +19,11 @@
       "groupName": "non-major dependencies"
     },
     {
+      "description": "Node in .nvmrc must equal the Node shipped in the Playwright image (scripts/e2e-baseline.sh runs on the image's own Node). A person checks that before .nvmrc moves, so these bumps never automerge.",
+      "matchManagers": ["nvm"],
+      "automerge": false
+    },
+    {
       "description": "The Playwright image in the e2e job and in scripts/e2e-baseline.sh must have the same version as @playwright/test, because the visual baselines depend on the browser build and fonts in that image. Move them in one PR. This rule comes last so it wins over the grouping above.",
       "matchPackageNames": [
         "mcr.microsoft.com/playwright",
