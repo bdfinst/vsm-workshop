@@ -242,6 +242,28 @@ Focus on meaningful coverage:
 
 Acceptance tests cover user-facing behavior and don't need coverage metrics.
 
+## Mutation testing
+
+Stryker checks whether the unit tests catch real faults, not just execute code.
+It covers the domain code Vitest exercises: `src/models`, `src/utils` (minus
+`src/utils/export`, which is DOM/PDF glue), `src/stores/v2` and
+`src/persistence/v2`. Svelte components and the legacy v1 stores are out of scope.
+The `mutate` globs and the reasoning are in `stryker.config.mjs`.
+
+```bash
+npm run test:mutation   # about 20 minutes; the html report lands in reports/mutation/
+```
+
+- Baseline on 2026-10-03: **85.17%** (4565 killed, 31 timed out, 681 survived,
+  119 uncovered of 5396 mutants).
+- Thresholds: `break` 80 (the run exits non-zero below it), `low` 85, `high` 90.
+  Raise `break` as the score improves.
+- The script sets `NODE_OPTIONS=--no-experimental-webstorage` (the Node 26 quirk
+  that breaks `localStorage` in tests) and the config exports the pinned `TZ`
+  from `vite.config.js`, because Stryker's Vitest runner ignores `test.env`.
+- It is **not** part of CI and **not** one of the quality gates. Run it by hand
+  when changing domain logic, or to find weak tests (survived mutants in the report).
+
 ## E2E & Visual Regression (Playwright)
 
 The `tests/e2e/` suite (including `visual.spec.js`) runs in CI on every PR via
