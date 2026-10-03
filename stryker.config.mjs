@@ -1,6 +1,7 @@
 // Mutation testing is scoped to the domain code that Vitest exercises:
-// models, pure utils (calculations, validation, import, migration, session,
-// simulation, ui helpers), the v2 stores, and v2 persistence. Excluded on purpose:
+// models, utils (calculations, validation, import, migration, session,
+// simulation, ui helpers and the shared store factory), the v2 stores, and v2
+// persistence. Excluded on purpose:
 // - *.svelte components: Vitest does not render them (Playwright covers them), so
 //   every mutant there would count as uncovered and drag the score down.
 // - src/utils/export: DOM/canvas/PDF glue (html-to-image, jsPDF) with no unit tests.
@@ -13,7 +14,8 @@ import { createBaseConfig } from './vite.config.js'
 // Stryker's Vitest runner does not apply vite.config.js `test.env`, so the unit
 // tests that rely on the pinned zone fail the dry run. Export the same zone to
 // the runner processes, read from the one place it is defined.
-process.env.TZ = createBaseConfig({ splitVendorChunks: false }).test.env.TZ
+const zone = createBaseConfig({ splitVendorChunks: false }).test?.env?.TZ
+if (zone) process.env.TZ = zone
 
 export default {
   packageManager: 'npm',

@@ -258,9 +258,11 @@ npm run test:mutation   # about 20 minutes; the html report lands in reports/mut
   119 uncovered of 5396 mutants).
 - Thresholds: `break` 80 (the run exits non-zero below it), `low` 85, `high` 90.
   Raise `break` as the score improves.
-- The script sets `NODE_OPTIONS=--no-experimental-webstorage` (the Node 26 quirk
-  that breaks `localStorage` in tests) and the config exports the pinned `TZ`
-  from `vite.config.js`, because Stryker's Vitest runner ignores `test.env`.
+- The script sets `NODE_OPTIONS=--no-experimental-webstorage` (on Node 26, the
+  version seen when the baseline was run, `localStorage` breaks in tests without
+  it; `.nvmrc` pins 24.13.0, which was not checked) and the config exports the
+  pinned `TZ` from `vite.config.js`, because the dry run failed on a day-boundary
+  test without it (a thread-pool timezone cause was not ruled out).
 - It is **not** part of CI and **not** one of the quality gates. Run it by hand
   when changing domain logic, or to find weak tests (survived mutants in the report).
 
