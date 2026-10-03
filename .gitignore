@@ -32,6 +32,9 @@ pnpm-debug.log*
 # Testing
 coverage
 
+# Stryker mutation testing (the html report goes to reports/, ignored below)
+.stryker-tmp
+
 # OS
 .DS_Store
 Thumbs.db

@@ -30,7 +30,7 @@ export const createBaseConfig = ({ splitVendorChunks }) => ({
     // A zone far from UTC, so a day read in local time instead of UTC shows up.
     env: { TZ: 'Pacific/Kiritimati' },
     setupFiles: ['./tests/setup.js'],
-    exclude: ['**/node_modules/**', '**/tests/e2e/**'],
+    exclude: ['**/node_modules/**', '**/tests/e2e/**', '**/.stryker-tmp/**'],
     coverage: {
       provider: 'v8',
       reporter: ['text', 'json-summary'],

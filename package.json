@@ -22,6 +22,7 @@
     "test:e2e:visual:update": "playwright test visual.spec.js --update-snapshots",
     "test:e2e:baseline": "sh scripts/e2e-baseline.sh",
     "test:shell": "sh tests/shell/e2e-baseline-copy-back.sh",
+    "test:mutation": "NODE_OPTIONS=--no-experimental-webstorage stryker run",
     "test:watch": "vitest",
     "test:bdd": "cucumber-js"
   },
