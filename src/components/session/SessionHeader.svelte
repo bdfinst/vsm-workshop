@@ -59,6 +59,11 @@
     else fileButton?.focus()
   }
 
+  // Home keeps the open stream as the active one, so a reload comes back to it.
+  function handleAllValueStreams() {
+    workspaceStore.goHome()
+  }
+
   // Undo and Redo stay focusable when there is nothing to do, so focus is not
   // lost when the last step is used; the click is ignored instead.
   function handleUndo() {
@@ -71,6 +76,15 @@
 </script>
 
 <div class="flex flex-wrap items-center gap-4">
+  <button
+    type="button"
+    class={buttonClass}
+    data-testid="all-value-streams-button"
+    onclick={handleAllValueStreams}
+  >
+    All value streams
+  </button>
+
   <div class="relative" onfocusout={handleMenuFocusout}>
     <button
       type="button"

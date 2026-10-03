@@ -267,3 +267,69 @@ export const durationUnitOf = (minutes, workdayHours) =>
   Number.isFinite(minutes)
     ? durationParts(minutes, workdayHours).unit
     : DURATION_UNIT.HOURS
+
+const MILLISECONDS_PER_MINUTE = 60 * 1000
+const MINUTES_PER_DAY = 24 * MINUTES_PER_HOUR
+const DAYS_PER_MONTH = 30
+const DAYS_PER_YEAR = 365
+const MONTH_NAMES = Object.freeze([
+  'Jan',
+  'Feb',
+  'Mar',
+  'Apr',
+  'May',
+  'Jun',
+  'Jul',
+  'Aug',
+  'Sep',
+  'Oct',
+  'Nov',
+  'Dec',
+])
+
+// A Date, milliseconds or an ISO string as milliseconds, or NaN when it is none
+// of those. `new Date(null)` is the epoch, so only these three kinds are read.
+const toMilliseconds = (time) => {
+  if (time instanceof Date) return time.getTime()
+  if (typeof time === 'number') return time
+  return typeof time === 'string' ? Date.parse(time) : NaN
+}
+
+const countOf = (amount, unit) => `${amount} ${unit}${amount === 1 ? '' : 's'}`
+
+/**
+ * How long ago a time was, in the largest whole unit: minutes, hours, days
+ * (under 30), months (30 days each, under a year) or years (365 days each).
+ * Under a minute, and any time after `now`, read as "just now".
+ * @param {Date|number|string} timestamp - The earlier time
+ * @param {Date|number|string} now - The time to measure to (a Date, milliseconds or an ISO string)
+ * @returns {?string} For example "2 days ago", or null when either time cannot be read
+ */
+export const formatRelativeTime = (timestamp, now) => {
+  const elapsed = toMilliseconds(now) - toMilliseconds(timestamp)
+  if (!Number.isFinite(elapsed)) return null
+  const minutes = Math.floor(elapsed / MILLISECONDS_PER_MINUTE)
+  if (minutes < 1) return 'just now'
+  const hours = Math.floor(minutes / MINUTES_PER_HOUR)
+  if (hours < 1) return `${countOf(minutes, 'minute')} ago`
+  const days = Math.floor(minutes / MINUTES_PER_DAY)
+  if (days < 1) return `${countOf(hours, 'hour')} ago`
+  if (days < DAYS_PER_MONTH) return `${countOf(days, 'day')} ago`
+  if (days < DAYS_PER_YEAR) {
+    return `${countOf(Math.floor(days / DAYS_PER_MONTH), 'month')} ago`
+  }
+  return `${countOf(Math.floor(days / DAYS_PER_YEAR), 'year')} ago`
+}
+
+/**
+ * The day and month of a time, in UTC with English month names, so it reads the
+ * same on every machine.
+ * @param {Date|number|string} timestamp - A Date, milliseconds or an ISO string
+ * @returns {?string} For example "3 Mar", or null when the time cannot be read
+ */
+export const formatDayMonth = (timestamp) => {
+  const milliseconds = toMilliseconds(timestamp)
+  if (!Number.isFinite(milliseconds)) return null
+  const date = new Date(milliseconds)
+  return `${date.getUTCDate()} ${MONTH_NAMES[date.getUTCMonth()]}`
+}

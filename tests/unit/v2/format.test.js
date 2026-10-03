@@ -8,6 +8,8 @@ import {
   fromMinutes,
   parseDurationRange,
   durationUnitOf,
+  formatRelativeTime,
+  formatDayMonth,
 } from '../../../src/utils/calculations/v2/format.js'
 
 describe('formatDuration', () => {
@@ -505,4 +507,75 @@ describe('durationUnitOf', () => {
   it('throws when the working day is not a positive number', () => {
     expect(() => durationUnitOf(480, 0)).toThrow(RangeError)
   })
+})
+
+describe('formatRelativeTime', () => {
+  const NOW = new Date('2026-03-12T09:00:00.000Z')
+  const MINUTE = 60 * 1000
+  const HOUR = 60 * MINUTE
+  const DAY = 24 * HOUR
+  const ago = (ms) => new Date(NOW.getTime() - ms).toISOString()
+
+  it.each([
+    ['now', 0, 'just now'],
+    ['59 seconds', 59 * 1000, 'just now'],
+    ['1 minute', MINUTE, '1 minute ago'],
+    ['5 minutes', 5 * MINUTE, '5 minutes ago'],
+    ['59 minutes', 59 * MINUTE, '59 minutes ago'],
+    ['1 hour', HOUR, '1 hour ago'],
+    ['23 hours 59 minutes', 24 * HOUR - MINUTE, '23 hours ago'],
+    ['24 hours', DAY, '1 day ago'],
+    ['2 days', 2 * DAY, '2 days ago'],
+    ['29 days', 29 * DAY, '29 days ago'],
+    ['30 days', 30 * DAY, '1 month ago'],
+    ['100 days', 100 * DAY, '3 months ago'],
+    ['364 days', 364 * DAY, '12 months ago'],
+    ['365 days', 365 * DAY, '1 year ago'],
+    ['800 days', 800 * DAY, '2 years ago'],
+  ])('reads %s ago as "%s"', (_, elapsed, expected) => {
+    expect(formatRelativeTime(ago(elapsed), NOW)).toBe(expected)
+  })
+
+  it('reads a time after now as just now, since a clock can be off', () => {
+    expect(formatRelativeTime(ago(-DAY), NOW)).toBe('just now')
+  })
+
+  it('accepts a Date, milliseconds or an ISO string for either time', () => {
+    const then = ago(2 * DAY)
+    expect(formatRelativeTime(new Date(then), NOW.getTime())).toBe('2 days ago')
+    expect(formatRelativeTime(Date.parse(then), NOW.toISOString())).toBe(
+      '2 days ago'
+    )
+  })
+
+  it.each([undefined, null, 'not a date', '', NaN])(
+    'gives null for a time it cannot read (%s)',
+    (value) => {
+      expect(formatRelativeTime(value, NOW)).toBeNull()
+      expect(formatRelativeTime(ago(DAY), value)).toBeNull()
+    }
+  )
+})
+
+describe('formatDayMonth', () => {
+  it.each([
+    ['2026-03-03T10:00:00.000Z', '3 Mar'],
+    ['2026-03-05T00:00:00.000Z', '5 Mar'],
+    ['2026-12-31T23:59:59.999Z', '31 Dec'],
+    ['2026-01-01T00:00:00.000Z', '1 Jan'],
+  ])('shows %s as "%s"', (timestamp, expected) => {
+    expect(formatDayMonth(timestamp)).toBe(expected)
+  })
+
+  it('reads the day in UTC, whatever the machine zone', () => {
+    expect(formatDayMonth('2026-03-04T00:30:00.000+02:00')).toBe('3 Mar')
+    expect(formatDayMonth('2026-03-03T23:30:00.000-05:00')).toBe('4 Mar')
+  })
+
+  it.each([undefined, null, 'not a date', '', NaN])(
+    'gives null for a time it cannot read (%s)',
+    (value) => {
+      expect(formatDayMonth(value)).toBeNull()
+    }
+  )
 })
