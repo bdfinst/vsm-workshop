@@ -1,4 +1,5 @@
 import {
+  FULL_PCT_CA,
   STEP_KIND,
   TIME_SOURCE,
   isOutside,
@@ -18,9 +19,13 @@ const validateCommon = (step, { set }) => {
   }
   if (
     step.pctCA != null &&
-    !(typeof step.pctCA === 'number' && step.pctCA >= 0 && step.pctCA <= 100)
+    !(
+      typeof step.pctCA === 'number' &&
+      step.pctCA >= 0 &&
+      step.pctCA <= FULL_PCT_CA
+    )
   ) {
-    set('pctCA', '%C/A must be between 0 and 100')
+    set('pctCA', `%C/A must be between 0 and ${FULL_PCT_CA}`)
   }
 }
 

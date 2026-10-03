@@ -3,6 +3,7 @@ import {
   TIME_FIELDS,
   createStep,
   hasRejects,
+  isFullCA,
   missingTimesOf,
   TIME_FIELD_NOUNS,
   timeFieldsOf,
@@ -87,16 +88,44 @@ describe('hasRejects', () => {
     expect(FULL_PCT_CA).toBe(100)
   })
 
-  it.each([0, 1, 80, 99, 99.5])('is true for a step at %C/A %s', (pctCA) => {
-    expect(hasRejects({ pctCA })).toBe(true)
-  })
+  it.each([0, 1, 80, 99, 99.5, 99.99])(
+    'is true for a step at %C/A %s',
+    (pctCA) => {
+      expect(hasRejects({ pctCA })).toBe(true)
+    }
+  )
 
-  it.each([100, null, undefined, '80'])(
+  it.each([100, null, undefined, '80', NaN])(
     'is false for a step at %C/A %j: nothing is known to be rejected',
     (pctCA) => {
       expect(hasRejects({ pctCA })).toBe(false)
     }
   )
+})
+
+describe('isFullCA', () => {
+  it('is true for a step at exactly 100', () => {
+    expect(isFullCA({ pctCA: FULL_PCT_CA })).toBe(true)
+  })
+
+  it.each([0, 80, 99, 99.99, 100.5, 101, null, undefined, '100', NaN])(
+    'is false for a step at %C/A %j',
+    (pctCA) => {
+      expect(isFullCA({ pctCA })).toBe(false)
+    }
+  )
+
+  it('is false for a missing step', () => {
+    expect(isFullCA(undefined)).toBe(false)
+  })
+
+  it('is not the same as having no rejects: a step with no %C/A has none known and is still not full', () => {
+    const unentered = { pctCA: null }
+
+    expect(hasRejects(unentered)).toBe(false)
+    expect(isFullCA(unentered)).toBe(false)
+    expect(isFullCA({ pctCA: FULL_PCT_CA })).toBe(!hasRejects({ pctCA: 100 }))
+  })
 })
 
 describe('TIME_FIELD_NOUNS', () => {
@@ -146,6 +175,10 @@ describe('missingTimesOf', () => {
         createStep({ kind: 'outside', elapsedTime: { typ: 1440 } })
       )
     ).toEqual([])
+  })
+
+  it('names the elapsed time of a bare outside step', () => {
+    expect(missingTimesOf({ kind: 'outside' })).toEqual(['elapsedTime'])
   })
 
   it('reads a time that is missing its object as not entered', () => {

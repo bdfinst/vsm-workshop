@@ -24,12 +24,16 @@ import {
 } from '../../utils/validation/v2/editRules.js'
 import { copyMapVersion } from '../../models/v2/mapVersion.js'
 import {
-  FULL_PCT_CA,
   STEP_KIND,
   VERSION_KIND,
   stageName,
 } from '../../models/v2/constants.js'
-import { TIME_FIELDS, createStep, timeFieldsOf } from '../../models/v2/step.js'
+import {
+  TIME_FIELDS,
+  createStep,
+  isFullCA,
+  timeFieldsOf,
+} from '../../models/v2/step.js'
 import {
   createReworkPath,
   pathTouchesStep,
@@ -222,7 +226,7 @@ export const createValueStreamStore = ({ stream, persist }) => {
       const index = indexOfStep(version, stepId)
       if (index === -1) return { error: STEP_MISSING_MESSAGE }
       version.steps[index] = { ...version.steps[index], pctCA }
-      if (pctCA !== FULL_PCT_CA) return { removedPaths: 0 }
+      if (!isFullCA(version.steps[index])) return { removedPaths: 0 }
       const startsHere = (path) => path.fromStepId === stepId
       return { removedPaths: removePathsWhere(version, startsHere) }
     })
