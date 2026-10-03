@@ -34,6 +34,7 @@ import {
   pathTouchesStep,
 } from '../../models/v2/reworkPath.js'
 import { refuse } from '../../models/v2/result.js'
+import { nameEdit } from '../../models/v2/valueStream.js'
 
 const firstMessage = ({ errors }) => Object.values(errors)[0]
 
@@ -65,7 +66,7 @@ const viewableVersionId = (versions, wanted) =>
 
 // What each Scope field is called in an undo announcement.
 const SCOPE_LABELS = {
-  name: 'map name',
+  name: 'value stream name',
   trigger: 'trigger',
   endPoint: 'end point',
   unitOfWork: 'unit of work',
@@ -304,12 +305,21 @@ export const createValueStreamStore = ({ stream, persist }) => {
       version.focusItems = items
     })
 
-  // One edit of the stream's Scope fields. Empty text is allowed: a new map
-  // starts without any, and the Next gate says what is missing.
-  const setScope = (patch) => {
-    const check = validateScope(patch)
+  // One edit of the stream's Scope fields. Empty text is allowed: a new stream
+  // starts without any, and the Next gate says what is missing. The name is the
+  // exception: the name rule (`nameEdit`) decides it, as at home. A field that
+  // is unchanged is no edit: nothing is saved and there is nothing to undo.
+  const setScope = (given) => {
+    const check = validateScope(given)
     if (!check.valid) return refuse(firstMessage(check))
 
+    const patch = { ...given }
+    if ('name' in patch) {
+      const edit = nameEdit(current.name, patch.name)
+      if (!edit.ok) return edit
+      if (edit.changed) patch.name = edit.name
+      else delete patch.name
+    }
     const fields = Object.keys(patch)
     if (fields.every((field) => patch[field] === current[field])) {
       return { ok: true }

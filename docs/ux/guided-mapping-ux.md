@@ -33,11 +33,12 @@ Mockup: open [mockups/guided-mapping.html](mockups/guided-mapping.html) in a bro
 - Each card shows the name ("Untitled value stream" when blank, with its created date), last updated, step count and furthest stage. The card itself is a link that opens the stream.
 - Beside the link, a "⋯" menu button named "Actions for <stream>" has Rename, Duplicate, Export value stream and Delete.
   - The menu works with Enter, Space, the arrow keys and Escape, and focus returns to the button when it closes.
+  - Rename is an inline field. For an unnamed stream its placeholder is the listed name, "Untitled value stream", where the header's field shows "Value stream name". A blank name (including saving the field of an unnamed stream empty) is refused with "Add a name" under the field, announced as an alert and cleared on the next keystroke; a name that is unchanged once trimmed closes the field quietly. A copy of an unnamed stream is named "Untitled value stream (copy)".
 - Toolbar: "New value stream", plus the same "File" menu and save status as the session header.
 - Empty workspace: "No value streams yet", with "New value stream" offered. A reload of an empty workspace starts a new stream at Scope instead.
 - **Delete:**
   - It confirms, naming the stream, then shows a "<Stream> deleted" toast whose Undo is announced along with its shortcut, Ctrl/Cmd+Z.
-  - Ctrl/Cmd+Z on the home screen undoes the last delete, for the whole session.
+  - Ctrl/Cmd+Z on the home screen undoes the last delete, for the whole session, even after opening another stream and coming back. The toast does not return; the shortcut does.
   - Focus moves to the next card, or to "New value stream" when none are left.
 - **Reconnect:** on launch in Chrome or Edge with a previously linked file, a banner offers "Reconnect to <file>".
   - The banner is a region and doesn't take focus.
@@ -52,13 +53,15 @@ Mockup: open [mockups/guided-mapping.html](mockups/guided-mapping.html) in a bro
 
 ### 1. Guided session shell
 
-- **Header:** "All value streams", the map name ("Untitled value stream" until named), an "Editing: <label>" indicator with a version switcher, Undo and Redo, Export, Compare, the save status, one "Save" button, and a "File" menu.
+- **Header:** "All value streams", the value stream name field (empty, with the placeholder "Value stream name", until the stream is named; it cannot be edited to blank, and it is the one place the name is edited from a stream), an "Editing: <label>" indicator with a version switcher, Undo and Redo, Export, Compare, the save status, one "Save" button, and a "File" menu.
   - The "File" menu has "New value stream", "Open workspace", "Save as…" (Chrome and Edge), "Import value stream" and "Export value stream", each with a one-line helper.
   - "File" is a menu button: Enter or Space opens it on the first item, arrow keys move, Escape closes it and returns focus to "File".
   - "Open workspace" with changes not in a file asks to save first. Focus starts on Cancel, Escape cancels, and focus returns to the control that opened it.
   - "Open workspace" on a file holding one value stream says "This is a single value stream — use Import value stream."
-  - Under 640 px the header shows the map name, the save status and one menu holding everything else.
+  - Under 640 px the header shows the value stream name, the save status and one menu holding everything else.
   - On the first, auto-created stream, Scope also shows "Have a workspace file? Open it".
+  - The name field is the only place a stream's name is edited from a stream; Scope has no name field. While the stream is unnamed, Scope shows one line, "Name this value stream in the header.", and Next says "Add a name in the header".
+  - A refused (blank) name shows "Add a name" under the field as an alert, keeps focus in the field and clears on the next keystroke or when another stream is opened.
   - In Chrome and Edge, after the first real edit, a one-time dismissible nudge says "Save as… to keep a file copy."
   - Undo and redo also work from Ctrl/Cmd+Z and Ctrl/Cmd+Shift+Z.
   - Each undo or redo is announced to screen readers.

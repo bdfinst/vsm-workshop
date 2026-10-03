@@ -25,8 +25,13 @@ const fakeStore = ({ streams = [], importResult, exportResult } = {}) => ({
 
 describe('importStreamFile', () => {
   it('hands the file text to the store and names the stream it added', async () => {
+    // The imported stream is found by id, whatever is listed before or after it.
     const store = fakeStore({
-      streams: [{ id: 'new-id', name: '  Checkout  ' }],
+      streams: [
+        { id: 'before', name: 'Before' },
+        { id: 'new-id', name: '  Checkout  ' },
+        { id: 'after', name: 'After' },
+      ],
       importResult: { ok: true, streamId: 'new-id', changes: [] },
     })
 
@@ -124,16 +129,37 @@ describe('importStreamFile', () => {
 })
 
 describe('exportStreamFile', () => {
-  it('downloads the stream text under its file name', () => {
-    const store = fakeStore({ exportResult: { ok: true, text: '{"a":1}' } })
+  it('downloads the stream text under the file name of the stream with that id', () => {
+    const store = fakeStore({
+      streams: [
+        { id: 's0', name: 'Other' },
+        { id: 's1', name: 'Q3: plan' },
+      ],
+      exportResult: { ok: true, text: '{"a":1}' },
+    })
     const download = vi.fn()
 
-    const result = exportStreamFile(store, 's1', 'Q3: plan', { download })
+    const result = exportStreamFile(store, 's1', { download })
 
     expect(store.exportStream).toHaveBeenCalledWith('s1')
     expect(download).toHaveBeenCalledWith('Q3- plan.json', '{"a":1}')
     expect(result).toEqual({ ok: true, text: '{"a":1}' })
   })
+
+  it.each(['', '   '])(
+    'files an unnamed stream (%j) as "Untitled value stream"',
+    (name) => {
+      const store = fakeStore({
+        streams: [{ id: 's1', name }],
+        exportResult: { ok: true, text: '{}' },
+      })
+      const download = vi.fn()
+
+      exportStreamFile(store, 's1', { download })
+
+      expect(download).toHaveBeenCalledWith('Untitled value stream.json', '{}')
+    }
+  )
 
   it('downloads nothing when the store refuses', () => {
     const refusal = {
@@ -143,7 +169,7 @@ describe('exportStreamFile', () => {
     const store = fakeStore({ exportResult: refusal })
     const download = vi.fn()
 
-    const result = exportStreamFile(store, 'gone', 'Plan', { download })
+    const result = exportStreamFile(store, 'gone', { download })
 
     expect(result).toEqual(refusal)
     expect(download).not.toHaveBeenCalled()

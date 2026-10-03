@@ -102,9 +102,12 @@ describe('streamSummary', () => {
       name: 'Untitled value stream',
       rawName: '',
     })
-    expect(streamSummary(reviewStream({ name: '  Plan ' }), NOW)).toMatchObject(
-      { name: 'Plan', rawName: '  Plan ' }
-    )
+    // A saved workspace can hold a name the app would now trim.
+    const saved = { ...reviewStream(), name: '  Plan ' }
+    expect(streamSummary(saved, NOW)).toMatchObject({
+      name: 'Plan',
+      rawName: '  Plan ',
+    })
   })
 
   it.each([

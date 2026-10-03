@@ -1,5 +1,6 @@
 <script>
   import { tick } from 'svelte'
+  import { isBlankName } from '../../models/v2/valueStream.js'
   import { controlSelector, focusControl } from '../../utils/session/focus.js'
   import StreamMenu from './StreamMenu.svelte'
 
@@ -41,17 +42,18 @@
     focusControl(item, controlSelector('menu-button'))
   }
 
-  // Saving the name as it already is changes nothing: no new "updated" time and
-  // no lost undo history, and an unnamed stream stays unnamed.
+  // The store decides: a blank name is refused with a message, and the name as
+  // it already is changes nothing, so either way there is nothing to check here.
   function handleRenameSubmit(event) {
     event.preventDefault()
-    if (draft.trim() === summary.rawName.trim()) {
-      endRename()
-      return
-    }
     const result = onrename(draft)
     if (result.ok) endRename()
     else renameError = result.error
+  }
+
+  // A refusal is about what was typed, so it goes on the next edit.
+  function clearRenameError() {
+    renameError = null
   }
 
   function handleRenameKeydown(event) {
@@ -111,10 +113,12 @@
           class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
           bind:value={draft}
           bind:this={nameInput}
-          placeholder={summary.rawName.trim() === '' ? summary.name : undefined}
+          placeholder={isBlankName(summary.rawName) ? summary.name : undefined}
+          aria-required="true"
           aria-invalid={renameError ? 'true' : undefined}
           aria-describedby={renameError ? errorId : undefined}
           data-testid="rename-input"
+          oninput={clearRenameError}
           onkeydown={handleRenameKeydown}
         />
         {#if renameError}

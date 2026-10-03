@@ -17,6 +17,9 @@
 
   // The name is saved on blur or Enter, never per keystroke, so one edit is one undo step.
   let draft = $state(null)
+  // Set when the name was refused (blank); the field then shows the stored name.
+  let nameError = $state('')
+  let nameInput = $state()
   let name = $derived(draft ?? store.stream.name)
   let label = $derived(store.activeVersion.label)
 
@@ -31,12 +34,19 @@
 
   function handleNameInput(event) {
     draft = event.currentTarget.value
+    nameError = ''
   }
 
-  function commitName() {
+  // A refusal leaves the field, so focus goes back to it: the message is about
+  // that field. After a tick, so it also wins over where Tab was moving focus.
+  async function commitName() {
     if (draft === null) return
-    store.setName(draft)
+    const result = store.setName(draft)
+    nameError = result.ok ? '' : result.error
     draft = null
+    if (result.ok) return
+    await tick()
+    nameInput?.focus()
   }
 
   function handleNameKeydown(event) {
@@ -97,7 +107,7 @@
 
   function handleExportValueStream() {
     closeMenu()
-    exportStreamFile(workspaceStore, store.stream.id, store.stream.name)
+    exportStreamFile(workspaceStore, store.stream.id)
   }
 
   // Home keeps the open stream as the active one, so a reload comes back to it.
@@ -202,19 +212,35 @@
     />
   </div>
 
-  <label class="flex items-center gap-2">
-    <span class="sr-only">Map name</span>
-    <input
-      type="text"
-      class="px-3 py-1 border border-gray-300 rounded-md font-semibold focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-      placeholder="Map name"
-      value={name}
-      data-testid="map-name-input"
-      oninput={handleNameInput}
-      onblur={commitName}
-      onkeydown={handleNameKeydown}
-    />
-  </label>
+  <div>
+    <label class="flex items-center gap-2">
+      <span class="sr-only">Value stream name</span>
+      <input
+        type="text"
+        class="px-3 py-1 border border-gray-300 rounded-md font-semibold focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+        placeholder="Value stream name"
+        aria-required="true"
+        value={name}
+        bind:this={nameInput}
+        aria-invalid={nameError ? 'true' : undefined}
+        aria-describedby={nameError ? 'stream-name-error' : undefined}
+        data-testid="stream-name-input"
+        oninput={handleNameInput}
+        onblur={commitName}
+        onkeydown={handleNameKeydown}
+      />
+    </label>
+    {#if nameError}
+      <p
+        id="stream-name-error"
+        role="alert"
+        class="mt-1 text-red-700"
+        data-testid="name-error"
+      >
+        {nameError}
+      </p>
+    {/if}
+  </div>
 
   <p class="text-gray-600" data-testid="editing-indicator">
     Editing: {label}
