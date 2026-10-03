@@ -5,26 +5,17 @@
     "helpers:pinGitHubActionDigests",
     "docker:pinDigests"
   ],
-  "schedule": [
-    "before 6am on monday"
-  ],
+  "schedule": ["before 6am on monday"],
   "prConcurrentLimit": 5,
   "minimumReleaseAge": "3 days",
   "internalChecksFilter": "strict",
-  "automerge": false,
-  "labels": [
-    "dependencies"
-  ],
+  "automerge": true,
+  "labels": ["dependencies"],
   "packageRules": [
     {
       "description": "Group minor and patch npm updates into one PR.",
-      "matchManagers": [
-        "npm"
-      ],
-      "matchUpdateTypes": [
-        "minor",
-        "patch"
-      ],
+      "matchManagers": ["npm"],
+      "matchUpdateTypes": ["minor", "patch"],
       "groupName": "non-major dependencies"
     },
     {
@@ -42,9 +33,7 @@
     {
       "customType": "regex",
       "description": "Keep the Playwright image in scripts/e2e-baseline.sh in step with the one in the workflow.",
-      "managerFilePatterns": [
-        "/^scripts/e2e-baseline\\.sh$/"
-      ],
+      "managerFilePatterns": ["/^scripts/e2e-baseline\\.sh$/"],
       "matchStrings": [
         "IMAGE='(?<depName>[^:']+):(?<currentValue>[^@']+)@(?<currentDigest>sha256:[a-f0-9]+)'"
       ],
