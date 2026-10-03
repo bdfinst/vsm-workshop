@@ -6,30 +6,105 @@ on:
   push:
     branches: [master]
 
+# A new push to a pull request cancels the run it supersedes. Runs on master
+# are never cancelled, so every merge keeps its own result.
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
 jobs:
-  quality-gate:
+  # Installs dependencies once. The other jobs restore the result from the cache
+  # instead of running `npm ci` themselves. The key covers the Node version
+  # (.nvmrc) and the lockfile, so a change to either installs again.
+  install:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
 
       - uses: actions/setup-node@v4
         with:
-          node-version: '24'
+          node-version-file: '.nvmrc'
           cache: 'npm'
 
+      - name: Cache node_modules
+        id: node-modules
+        uses: actions/cache@v4
+        with:
+          path: node_modules
+          key: node-modules-${{ runner.os }}-${{ hashFiles('.nvmrc', 'package-lock.json') }}
+          lookup-only: true
+
       - name: Install dependencies
+        if: steps.node-modules.outputs.cache-hit != 'true'
         run: npm ci
 
-      - name: Unit tests
-        run: npm test
+  # Builds the app and the standalone file once. The e2e job downloads the
+  # result, and the quality gate fails when this job does.
+  build:
+    needs: install
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
 
-      - name: Build
-        run: npm run build
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: '.nvmrc'
+
+      - name: Restore node_modules
+        uses: actions/cache/restore@v4
+        with:
+          path: node_modules
+          key: node-modules-${{ runner.os }}-${{ hashFiles('.nvmrc', 'package-lock.json') }}
+          fail-on-cache-miss: true
+
+      - name: Build app and standalone file
+        run: npm run build && npm run build:standalone
+
+      - name: Upload build output
+        uses: actions/upload-artifact@v4
+        with:
+          name: build-output
+          path: |
+            dist
+            dist-standalone
+          if-no-files-found: error
+          retention-days: 1
+
+  quality-gate:
+    needs: [install, build]
+    # Runs even when the build failed, so that the failure is reported here
+    # and not as a skipped job, which a branch rule would count as passing.
+    if: ${{ !cancelled() && needs.install.result == 'success' }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Fail when the build failed
+        if: ${{ needs.build.result != 'success' }}
+        run: |
+          echo "The build job ended with: ${{ needs.build.result }}"
+          exit 1
+
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: '.nvmrc'
+
+      - name: Restore node_modules
+        uses: actions/cache/restore@v4
+        with:
+          path: node_modules
+          key: node-modules-${{ runner.os }}-${{ hashFiles('.nvmrc', 'package-lock.json') }}
+          fail-on-cache-miss: true
 
       - name: Lint
         run: npm run lint
 
+      - name: Unit tests
+        run: npm test
+
   e2e:
+    needs: [install, build]
+    if: ${{ !cancelled() && needs.install.result == 'success' }}
     runs-on: ubuntu-latest
     # Run inside the pinned Playwright image so browsers are preinstalled and,
     # crucially, font/rendering matches the committed visual baselines. Keep
@@ -37,13 +112,29 @@ jobs:
     container:
       image: mcr.microsoft.com/playwright:v1.58.2-noble
     steps:
+      - name: Fail when the build failed
+        if: ${{ needs.build.result != 'success' }}
+        run: |
+          echo "The build job ended with: ${{ needs.build.result }}"
+          exit 1
+
       - uses: actions/checkout@v4
 
-      - name: Install dependencies
-        run: npm ci
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: '.nvmrc'
 
-      - name: Build app and standalone file
-        run: npm run build && npm run build:standalone
+      - name: Restore node_modules
+        uses: actions/cache/restore@v4
+        with:
+          path: node_modules
+          key: node-modules-${{ runner.os }}-${{ hashFiles('.nvmrc', 'package-lock.json') }}
+          fail-on-cache-miss: true
+
+      - name: Download build output
+        uses: actions/download-artifact@v4
+        with:
+          name: build-output
 
       - name: E2E + visual regression tests
         run: npx playwright test
