@@ -1430,6 +1430,108 @@ Feature: Several value streams in one workspace
 **Files**: `src/components/home/HomeScreen.svelte`, `src/components/home/StreamMenu.svelte`, `src/components/session/SessionHeader.svelte`, `src/utils/ui/exportFileName.js`, `tests/unit/v2/exportFileName.test.js`, `tests/e2e/guided/slice-9-home.spec.js`
 **Commit**: `feat(home): import and export a single value stream`
 
+### Slice 9 follow-up: name rules and undo across visits
+
+**Depends-on:** 9
+
+One rule for a value stream's name, and Undo for a home-screen delete that outlives a visit to another stream. Both come from review of Slice 9: the header name field allowed a blank name that home refuses, and the last delete lived in the home screen's own state, so leaving home lost it.
+
+```gherkin
+# Playwright: tests/e2e/guided
+Feature: One name rule and an undo that survives a visit
+  As a facilitator
+  I want a value stream's name to follow the same rule wherever I edit it
+  And to get back a value stream I deleted by mistake, even after a look at another one
+  So that no value stream is lost or left without a name by accident
+
+  Background:
+    Given a workspace with the reference map as "Checkout delivery" and a 3-step map "Onboarding" at the "Steps" stage, in that order
+    And "Checkout delivery" is the active value stream at the "Review" stage
+    And the app is open
+
+  Scenario: A blank name is refused in the header
+    Given I have opened "Onboarding"
+    When I change the value stream name to "   "
+    Then I see "Add a name"
+    And the value stream name is "Onboarding"
+    And there is nothing to undo
+
+  # Refusing a whitespace-only rename from the home screen is the Slice 9 scenario
+  # "A blank name is refused"; it keeps its place and its message "Add a name".
+
+  Scenario: Leaving a new value stream's name field alone keeps it unnamed
+    When I choose "New value stream" from the "File" menu
+    And I move into the value stream name field and out of it again
+    Then I do not see "Add a name"
+    And the value stream name field is empty
+    When I open "All value streams"
+    Then I see value streams "Checkout delivery, Onboarding, Untitled value stream"
+
+  Scenario Outline: A name is trimmed the same way at home and in the header
+    Given I am on the home screen
+    When I change the name of "Onboarding" to "  New hire onboarding  " from <place>
+    Then I see value streams "Checkout delivery, New hire onboarding" on the home screen
+    And the saved name is "New hire onboarding"
+
+    Examples:
+      | place                       |
+      | the home screen             |
+      | the value stream name field |
+
+  Scenario Outline: A blank name is refused the same way at home and in the header
+    Given I am on the home screen
+    When I change the name of "Onboarding" to <typed> from <place>
+    Then I see "Add a name"
+    And the saved name of the second value stream is "Onboarding"
+
+    Examples:
+      | place                       | typed |
+      | the home screen             | "   " |
+      | the value stream name field | "   " |
+
+  Scenario: Undo restores a deleted value stream after a visit to another
+    Given I am on the home screen
+    When I delete "Checkout delivery" and confirm
+    And I open "Onboarding"
+    And I open "All value streams"
+    Then I do not see an Undo toast
+    When I press Ctrl+Z
+    Then I see value streams "Checkout delivery, Onboarding"
+    And "Checkout delivery" has 5 steps
+    And "Checkout delivery restored" is announced to screen readers
+
+  Scenario: A second delete replaces the first undo
+    Given I am on the home screen
+    When I delete "Checkout delivery" and confirm
+    And I delete "Onboarding" and confirm
+    And I press Ctrl+Z
+    Then I see value streams "Onboarding"
+    When I press Ctrl+Z
+    Then I see value streams "Onboarding"
+    And "Checkout delivery" is not restored
+
+  Scenario: A failed undo is dropped
+    Given I am on the home screen
+    And the exported file of "Onboarding"
+    When I delete "Onboarding" and confirm
+    And I import the file as a value stream
+    And I press Ctrl+Z
+    Then I see "Nothing to restore"
+    And I see value streams "Checkout delivery, Onboarding"
+    When I press Ctrl+Z
+    Then the browser keeps Ctrl+Z
+```
+
+**Decisions** (settled with the owner):
+
+- No blank names: a value stream's name cannot be edited to blank or whitespace from the home rename, the header field or the Scope field. One rule in `models/v2/valueStream.js` (`normalizeName`, `isBlankName`, the `Add a name` message) is used by `workspaceStore.rename` and `valueStreamStore.setName`/`setScope`, and by `displayName` and `exportFileName`.
+- New value streams still start unnamed and show "Untitled value stream"; existing unnamed streams are unchanged. Only editing a name to blank is refused.
+- The header refuses a blank name with "Add a name" under the field, keeps the previous name and does not commit. The message clears on the next keystroke.
+- `workspaceStore` owns the last removal: `lastRemoval` (stream id and display name, or null) and `restoreLast()`. A new removal replaces the previous one, a failed restore clears it and opening or adopting another workspace clears it.
+- After the home screen is left and reached again, Ctrl/Cmd+Z restores the last delete. The Undo toast does not come back; the shortcut is what works.
+- The name field is labelled "Value stream name" everywhere (test id `stream-name-input` in the header). "Map" stays for the diagram and its version.
+- Flag tie rules stay as documented.
+
 ### Slice 10: Time ladder, map pane, summary strip
 
 **Depends-on:** 8
