@@ -1,6 +1,5 @@
 <script>
   import { tick } from 'svelte'
-  import { isBlankName } from '../../models/v2/valueStream.js'
   import { controlSelector, focusControl } from '../../utils/session/focus.js'
   import StreamMenu from './StreamMenu.svelte'
 
@@ -113,7 +112,7 @@
           class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
           bind:value={draft}
           bind:this={nameInput}
-          placeholder={isBlankName(summary.rawName) ? summary.name : undefined}
+          placeholder={summary.unnamed ? summary.name : undefined}
           aria-required="true"
           aria-invalid={renameError ? 'true' : undefined}
           aria-describedby={renameError ? errorId : undefined}

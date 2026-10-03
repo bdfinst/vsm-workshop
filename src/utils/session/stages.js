@@ -4,7 +4,7 @@ import {
   UNIT_OF_WORK,
 } from '../../models/v2/constants.js'
 import { timeFieldsOf } from '../../models/v2/step.js'
-import { isBlankName } from '../../models/v2/valueStream.js'
+import { isUnnamed } from '../../models/v2/valueStream.js'
 import { stepLabelOf } from './stepData.js'
 
 /**
@@ -54,7 +54,7 @@ const SCOPE_FIELDS = [
     key: 'name',
     article: 'a',
     noun: 'name in the header',
-    isMissing: ({ name }) => isBlankName(name),
+    isMissing: isUnnamed,
   },
   {
     key: 'trigger',

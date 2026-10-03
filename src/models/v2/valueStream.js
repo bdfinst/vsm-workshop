@@ -54,6 +54,14 @@ export const normalizeName = (name) =>
 export const isBlankName = (name) => normalizeName(name) === ''
 
 /**
+ * Whether a value stream has no name, once normalized. The one answer to "is
+ * this stream unnamed", so a screen asks it of the stream, not of a name.
+ * @param {{name: *}} stream - A value stream, or anything with a `name`
+ * @returns {boolean} True when the stream has no name
+ */
+export const isUnnamed = (stream) => isBlankName(stream.name)
+
+/**
  * The one name-edit operation, for the home rename and the header field alike.
  * Typing a blank name is refused, even over an unnamed stream; surrounding
  * space does not count as a change.

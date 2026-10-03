@@ -14,6 +14,7 @@ import {
   createValueStream,
   displayName,
   isBlankName,
+  isUnnamed,
   nameEdit,
   nameOrUntitled,
   normalizeName,
@@ -746,6 +747,24 @@ describe('the value stream name rule', () => {
   it('names the untitled value stream as the cards and files show it', () => {
     expect(UNTITLED_NAME).toBe('Untitled value stream')
     expect(nameOrUntitled('')).toBe(UNTITLED_NAME)
+  })
+})
+
+describe('isUnnamed', () => {
+  it.each(['', '   ', '\t\n', undefined, null, 5])(
+    'calls a stream whose name is %j unnamed',
+    (name) => {
+      expect(isUnnamed({ name })).toBe(true)
+    }
+  )
+
+  it.each(['a', ' a ', '0'])('calls a stream named %j named', (name) => {
+    expect(isUnnamed({ name })).toBe(false)
+  })
+
+  it('is the stream a new value stream starts as, until it is named', () => {
+    expect(isUnnamed(createValueStream())).toBe(true)
+    expect(isUnnamed(createValueStream({ name: 'Onboarding' }))).toBe(false)
   })
 })
 
