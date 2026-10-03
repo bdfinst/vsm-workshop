@@ -49,7 +49,7 @@ All durations are stored in whole minutes. Percentages are stored as 0–100. `w
 
 | Entity      | Fields                                                                                                                                                                                                                                                                                        | Rules                                                                                                                                                                                                                                      |
 | ----------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| Workspace   | `format: "vsm-workspace"`, `schemaVersion: 1`, `id`, `streams[]` (ValueStream, in workspace order), `activeStreamId` (nullable), `revision`, `savedAt`                                                                                                                                        | Stream names are trimmed and need not be unique. A stream with no name yet is shown as "Untitled value stream"; renaming to blank is refused. Stream ids are unique. `revision` counts edits, not navigation. An empty workspace is valid. |
+| Workspace   | `format: "vsm-workspace"`, `schemaVersion: 1`, `id`, `streams[]` (ValueStream, in workspace order), `activeStreamId` (nullable), `revision`, `savedAt`                                                                                                                                        | Stream names are trimmed and need not be unique. A stream with no name yet is shown as "Untitled value stream"; a name cannot be edited to blank, from the home rename or the header's value stream name field. A new stream starts unnamed. Stream ids are unique. `revision` counts edits, not navigation. An empty workspace is valid. |
 | ValueStream | `schemaVersion: 2`, `id`, `name`, `description`, `trigger`, `endPoint`, `unitOfWork` (`story` \| `feature` \| `defect`, no default), `workdayHours` (default 8, range 1–24), `versions[]`, `activeVersionId`, `session{activeStage, furthestStage}`, `createdAt`, `updatedAt`                 | Exactly one `current` version. `session` persists so a reload resumes the session.                                                                                                                                                         |
 | MapVersion  | `id`, `kind` (`current` \| `future`), `label`, `basedOnVersionId`, `focusItems[]` (≤ 2), `steps[]`, `reworkPaths[]`, `createdAt`                                                                                                                                                              | See the version rules below.                                                                                                                                                                                                               |
 | Step        | `id`, `originStepId`, `name`, `description`, `performedBy`, `kind` (`team` \| `outside`), `isHandoff`, `processTime{typ,min?,max?}`, `waitTime{typ,min?,max?}`, `elapsedTime{typ}`, `timeSource` (`estimate` \| `measured`), `pctCA` (null until entered), `notes`, `position{x,y}` | See the step rules below.                                                                                                                                                                                                                  |
@@ -132,13 +132,13 @@ Forward connections are no longer stored: flow follows step order. `position` is
   - "New value stream", "Open workspace", "Save as…" (Chrome and Edge), "Import value stream" and "Export value stream" sit under a "File" menu, each with a one-line helper.
   - The first, auto-created stream also offers "Have a workspace file? Open it" on Scope.
   - In Chrome and Edge, after the first real edit, a one-time dismissible nudge says "Save as… to keep a file copy."
-  - Under 640 px the header shows the map name, the save status and a menu.
+  - Under 640 px the header shows the value stream name, the save status and a menu.
 - **Home screen.**
   - It lists every stream in workspace order with its name, last updated time, step count and furthest stage (a pure `streamSummary(stream, now)`). An unnamed stream also shows its created date. The home screen explains "workspace" once.
   - Actions:
     - "New value stream" appends a stream.
     - Open.
-    - Rename.
+    - Rename. A blank name is refused with "Add a name", and the header's "Value stream name" field refuses it the same way, keeping the previous name. Names are trimmed in both places.
     - Duplicate inserts the copy after its source, named "<name> (copy)", then "<name> (copy 2)".
     - Delete confirms, naming the stream, then shows an Undo toast.
     - "Import value stream" (a v1 or v2 map JSON) appends a stream. An imported id that already exists gets a new one.
@@ -150,7 +150,7 @@ Forward connections are no longer stored: flow follows step order. `position` is
   - The app opens the active stream at its `session.activeStage` when there is one. Going to the home screen keeps `activeStreamId`, so a reload reopens that stream.
   - With an empty workspace, including a reload after every stream was deleted, it creates a stream and opens it at Scope. The empty home screen shows only until the next reload.
   - With streams but none active, it shows the home screen.
-- **Undo** is per stream, and its snapshots leave out `session`. Opening another stream starts a fresh undo history. Home-screen deletes are undone from their toast or with Ctrl/Cmd+Z on the home screen, for the session.
+- **Undo** is per stream, and its snapshots leave out `session`. Opening another stream starts a fresh undo history. The workspace remembers the last home-screen delete (a newer delete replaces it), so it is undone from its toast or with Ctrl/Cmd+Z on the home screen, for the session. The shortcut still works after opening another stream and coming back; the toast does not come back. A restore that cannot work (the stream's id is in use again) ends it, and opening another workspace clears it.
 
 ### Calculations (pure functions, `src/utils/calculations/`)
 
@@ -221,7 +221,7 @@ These replace `calculateReworkImpact` (a summed rate with a geometric multiplier
 ### Layout
 
 - **Shell regions:**
-  - a header with "All value streams", the map name, the "Editing:" indicator and switcher, the save status, undo and redo, Export, and Compare;
+  - a header with "All value streams", the value stream name, the "Editing:" indicator and switcher, the save status, undo and redo, Export, and Compare;
   - the stage rail;
   - the stage prompt card and work area;
   - from stage 2 on, a map pane with a Map / Table / Canvas switch;

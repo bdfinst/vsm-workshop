@@ -37,7 +37,7 @@ Mockup: open [mockups/guided-mapping.html](mockups/guided-mapping.html) in a bro
 - Empty workspace: "No value streams yet", with "New value stream" offered. A reload of an empty workspace starts a new stream at Scope instead.
 - **Delete:**
   - It confirms, naming the stream, then shows a "<Stream> deleted" toast whose Undo is announced along with its shortcut, Ctrl/Cmd+Z.
-  - Ctrl/Cmd+Z on the home screen undoes the last delete, for the whole session.
+  - Ctrl/Cmd+Z on the home screen undoes the last delete, for the whole session, even after opening another stream and coming back. The toast does not return; the shortcut does.
   - Focus moves to the next card, or to "New value stream" when none are left.
 - **Reconnect:** on launch in Chrome or Edge with a previously linked file, a banner offers "Reconnect to <file>".
   - The banner is a region and doesn't take focus.
@@ -52,12 +52,12 @@ Mockup: open [mockups/guided-mapping.html](mockups/guided-mapping.html) in a bro
 
 ### 1. Guided session shell
 
-- **Header:** "All value streams", the map name ("Untitled value stream" until named), an "Editing: <label>" indicator with a version switcher, Undo and Redo, Export, Compare, the save status, one "Save" button, and a "File" menu.
+- **Header:** "All value streams", the value stream name ("Untitled value stream" until named; it cannot be edited to blank), an "Editing: <label>" indicator with a version switcher, Undo and Redo, Export, Compare, the save status, one "Save" button, and a "File" menu.
   - The "File" menu has "New value stream", "Open workspace", "Save as…" (Chrome and Edge), "Import value stream" and "Export value stream", each with a one-line helper.
   - "File" is a menu button: Enter or Space opens it on the first item, arrow keys move, Escape closes it and returns focus to "File".
   - "Open workspace" with changes not in a file asks to save first. Focus starts on Cancel, Escape cancels, and focus returns to the control that opened it.
   - "Open workspace" on a file holding one value stream says "This is a single value stream — use Import value stream."
-  - Under 640 px the header shows the map name, the save status and one menu holding everything else.
+  - Under 640 px the header shows the value stream name, the save status and one menu holding everything else.
   - On the first, auto-created stream, Scope also shows "Have a workspace file? Open it".
   - In Chrome and Edge, after the first real edit, a one-time dismissible nudge says "Save as… to keep a file copy."
   - Undo and redo also work from Ctrl/Cmd+Z and Ctrl/Cmd+Shift+Z.
