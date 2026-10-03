@@ -3,11 +3,8 @@ import { flushSync } from 'svelte'
 import { performance } from 'node:perf_hooks'
 import { calculateMetrics } from '../../../src/utils/calculations/v2/index.js'
 import { validateVersion } from '../../../src/utils/validation/v2/versionValidator.js'
-import {
-  LADDER_MODE,
-  ladderModel,
-  sizeLadder,
-} from '../../../src/utils/ui/ladderLayout.js'
+import { LADDER_MODE, sizeLadder } from '../../../src/utils/ui/ladderLayout.js'
+import { ladderModel } from '../../../src/utils/ui/ladderModel.js'
 import {
   openStream,
   pathBetween,
@@ -110,10 +107,12 @@ describe('recalculation budget', () => {
       minutes += 1
       store.updateStep(target.id, { processTime: { typ: minutes } })
       flushSync()
-      void [store.metrics.flags, store.ladder.steps]
+      void [store.metrics.flags, store.ladderModel.steps]
     })
 
-    expect(store.ladder.steps[STEP_COUNT - 1].minutes.process).toBe(minutes)
+    expect(store.ladderModel.steps[STEP_COUNT - 1].minutes.process).toBe(
+      minutes
+    )
     expect(typicalMs).toBeLessThan(BUDGET_MS)
   })
 })

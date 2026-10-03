@@ -1,8 +1,8 @@
 import { describe, it, expect } from 'vitest'
 import {
-  MAX_EQUAL_WIDTH,
+  MAX_EQUAL_BOX_WIDTH,
   MAX_PIXELS_PER_MINUTE,
-  MIN_EQUAL_WIDTH,
+  MIN_EQUAL_BOX_WIDTH,
   MIN_PIXELS_PER_MINUTE,
   LABEL_CHAR_WIDTH,
   LABEL_FONT_SIZE,
@@ -10,9 +10,9 @@ import {
   LABEL_INSET,
   TONE,
   annotationsOf,
-  equalWidthFor,
+  equalBoxWidthFor,
   labelLanes,
-  labelLayout,
+  layoutLabels,
   labelOverhangFor,
   pixelsPerMinuteToFit,
   textWidthOf,
@@ -20,9 +20,9 @@ import {
 import {
   LADDER_MODE,
   MIN_SCALED_BOX_WIDTH,
-  ladderModel,
   sizeLadder,
 } from '../../../src/utils/ui/ladderLayout.js'
+import { ladderModel } from '../../../src/utils/ui/ladderModel.js'
 import { createStep } from '../../../src/models/v2/step.js'
 import { calculateMetrics } from '../../../src/utils/calculations/v2/index.js'
 import {
@@ -137,10 +137,10 @@ describe('a long stream on a narrow pane', () => {
   })
 
   it('is wider than the pane in equal width, so the pane scrolls', () => {
-    const width = equalWidthFor(41, PANE)
+    const boxWidth = equalBoxWidthFor(41, PANE)
 
     expect(
-      sizeLadder(modelOf(fortyOne()), { mode: LADDER_MODE.EQUAL, width })
+      sizeLadder(modelOf(fortyOne()), { mode: LADDER_MODE.EQUAL, boxWidth })
         .totalWidth
     ).toBeGreaterThan(PANE)
   })
@@ -173,25 +173,28 @@ describe('pixelsPerMinuteToFit with short steps', () => {
 
     const { steps } = scaledLayout(intakeAndDevelopment, pixelsPerMinute)
 
-    expect(steps[1].wait.width / steps[1].process.width).toBeCloseTo(2, 5)
+    expect(steps[1].waitBlock.width / steps[1].processBlock.width).toBeCloseTo(
+      2,
+      5
+    )
   })
 })
 
-describe('equalWidthFor', () => {
+describe('equalBoxWidthFor', () => {
   it('splits the available width between the steps', () => {
-    expect(equalWidthFor(5, 700)).toBe(140)
+    expect(equalBoxWidthFor(5, 700)).toBe(140)
   })
 
   it('stays readable for a long stream, which then scrolls', () => {
-    expect(equalWidthFor(41, 900)).toBe(MIN_EQUAL_WIDTH)
+    expect(equalBoxWidthFor(41, 900)).toBe(MIN_EQUAL_BOX_WIDTH)
   })
 
   it('does not stretch a few steps across the pane', () => {
-    expect(equalWidthFor(2, 900)).toBe(MAX_EQUAL_WIDTH)
+    expect(equalBoxWidthFor(2, 900)).toBe(MAX_EQUAL_BOX_WIDTH)
   })
 
   it('splits evenly in between', () => {
-    expect(equalWidthFor(6, 720)).toBe(120)
+    expect(equalBoxWidthFor(6, 720)).toBe(120)
   })
 })
 
@@ -322,7 +325,7 @@ describe('textWidthOf', () => {
   })
 })
 
-describe('labelLayout', () => {
+describe('layoutLabels', () => {
   const layoutOf = (steps, pixelsPerMinute = 0.1) =>
     scaledLayout(steps, pixelsPerMinute).steps
 
@@ -331,19 +334,19 @@ describe('labelLayout', () => {
   })
 
   it('has nothing for no steps', () => {
-    expect(labelLayout([])).toEqual({ labels: [], lanes: [], rightEdge: 0 })
+    expect(layoutLabels([])).toEqual({ labels: [], lanes: [], rightEdge: 0 })
   })
 
   it('measures a label by its widest line, from the inset, at the conservative width', () => {
     const name = 'Customer intake and triage'
     const [step] = layoutOf([team(name, 60, 60)])
 
-    const { labels } = labelLayout([step])
+    const { labels } = layoutLabels([step])
 
     expect(labels[0]).toMatchObject({
       step,
       left: step.x + LABEL_INSET,
-      width: name.length * LABEL_CHAR_WIDTH,
+      labelWidth: name.length * LABEL_CHAR_WIDTH,
     })
     expect(labels[0].lines[0]).toEqual({ text: name, tone: null })
   })
@@ -351,16 +354,16 @@ describe('labelLayout', () => {
   it('measures a CJK name by the em, so its label is wider than the same count of average characters', () => {
     const steps = layoutOf([team(CJK_NAME, 60, 60)])
 
-    const { labels } = labelLayout(steps)
+    const { labels } = layoutLabels(steps)
 
-    expect(labels[0].width).toBe(20 * LABEL_FONT_SIZE)
+    expect(labels[0].labelWidth).toBe(20 * LABEL_FONT_SIZE)
   })
 
   it('lists the name first and then the annotations', () => {
     const steps = layoutOf(reworkSteps())
     const codeReview = steps.find((s) => s.name === 'Code review')
 
-    const { labels } = labelLayout([codeReview])
+    const { labels } = layoutLabels([codeReview])
 
     expect(labels[0].lines.map(({ text }) => text)).toEqual([
       'Code review',
@@ -373,10 +376,10 @@ describe('labelLayout', () => {
     const steps = layoutOf([createStep({ name: 'Intake' })])
     const [intake] = steps
 
-    const { rightEdge } = labelLayout(steps)
+    const { rightEdge } = layoutLabels(steps)
 
     const label = 'needs process time'.length * LABEL_CHAR_WIDTH
-    expect(intake.width).toBeLessThan(label)
+    expect(intake.boxWidth).toBeLessThan(label)
     expect(rightEdge).toBe(intake.x + LABEL_INSET + label)
   })
 
@@ -384,7 +387,7 @@ describe('labelLayout', () => {
     const steps = layoutOf(referenceSteps())
     const last = steps.at(-1)
 
-    expect(labelLayout(steps).rightEdge).toBe(last.x + last.width)
+    expect(layoutLabels(steps).rightEdge).toBe(last.x + last.boxWidth)
   })
 
   it('gives a long name on an earlier step the right edge', () => {
@@ -393,10 +396,10 @@ describe('labelLayout', () => {
       team('Deploy', 600, 600),
     ])
 
-    const { rightEdge, labels } = labelLayout(steps)
+    const { rightEdge, labels } = layoutLabels(steps)
 
     expect(rightEdge).toBe(
-      Math.max(labels[0].right, steps[1].x + steps[1].width)
+      Math.max(labels[0].right, steps[1].x + steps[1].boxWidth)
     )
   })
 
@@ -407,7 +410,7 @@ describe('labelLayout', () => {
       )
     )
 
-    const { labels, lanes } = labelLayout(steps)
+    const { labels, lanes } = layoutLabels(steps)
 
     const byLane = Object.groupBy(
       labels.map((label, index) => ({ ...label, lane: lanes[index] })),
@@ -425,7 +428,7 @@ describe('labelLayout', () => {
   it('draws no more lanes than it needs', () => {
     const steps = layoutOf(referenceSteps(), 0.1)
 
-    expect(Math.max(...labelLayout(steps).lanes)).toBeLessThanOrEqual(1)
+    expect(Math.max(...layoutLabels(steps).lanes)).toBeLessThanOrEqual(1)
   })
 })
 
@@ -472,7 +475,7 @@ describe('labelOverhangFor', () => {
     ]
     const layout = scaledLayout(steps, 0.5)
 
-    const { rightEdge } = labelLayout(layout.steps)
+    const { rightEdge } = layoutLabels(layout.steps)
 
     expect(rightEdge - layout.totalWidth).toBeLessThanOrEqual(
       labelOverhangFor(modelOf(steps).steps, MIN_SCALED_BOX_WIDTH)

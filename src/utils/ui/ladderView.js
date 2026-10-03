@@ -8,8 +8,8 @@ export const MIN_PIXELS_PER_MINUTE = 0.05
 /** Pixels per minute: an hour is 30 pixels at most, so a short map is not blown up. */
 export const MAX_PIXELS_PER_MINUTE = 0.5
 /** The narrowest and widest a box is drawn in equal mode, in pixels. */
-export const MIN_EQUAL_WIDTH = 96
-export const MAX_EQUAL_WIDTH = 160
+export const MIN_EQUAL_BOX_WIDTH = 96
+export const MAX_EQUAL_BOX_WIDTH = 160
 
 const clamp = (value, min, max) => Math.min(Math.max(value, min), max)
 
@@ -18,12 +18,12 @@ const sum = (numbers) => numbers.reduce((total, n) => total + n, 0)
 const minutesInStep = ({ minutes }) =>
   sum(Object.values(minutes).map((n) => n ?? 0))
 
-// The pixels per minute at which the boxes fill `width`, where a box too short
+// The pixels per minute at which the boxes fill `availableWidth`, where a box too short
 // for its minutes is drawn at MIN_SCALED_BOX_WIDTH instead. Setting those boxes
 // aside leaves less width for the rest, which can make more of them too short,
 // so it repeats until none more are.
-const fillingPixelsPerMinute = (minutes, width) => {
-  const pixelsPerMinute = width / sum(minutes)
+const fillingPixelsPerMinute = (minutes, availableWidth) => {
+  const pixelsPerMinute = availableWidth / sum(minutes)
   const long = minutes.filter(
     (m) => m * pixelsPerMinute >= MIN_SCALED_BOX_WIDTH
   )
@@ -32,7 +32,7 @@ const fillingPixelsPerMinute = (minutes, width) => {
   }
   return fillingPixelsPerMinute(
     long,
-    width - (minutes.length - long.length) * MIN_SCALED_BOX_WIDTH
+    availableWidth - (minutes.length - long.length) * MIN_SCALED_BOX_WIDTH
   )
 }
 
@@ -41,7 +41,7 @@ const fillingPixelsPerMinute = (minutes, width) => {
  * between MIN_PIXELS_PER_MINUTE and MAX_PIXELS_PER_MINUTE. Boxes too short for
  * their minutes are drawn at the minimum box width and counted in the fit.
  * Below the minimum the ladder is wider than the pane and the pane scrolls.
- * @param {{steps: Object[]}} model - The ladder model (`store.ladder`)
+ * @param {{steps: Object[]}} model - The ladder model (`store.ladderModel`)
  * @param {number} availableWidth - Pixels the ladder may use
  * @returns {number} Pixels per minute
  */
@@ -62,11 +62,11 @@ export const pixelsPerMinuteToFit = (model, availableWidth) => {
  * @param {number} availableWidth - Pixels the ladder may use
  * @returns {number} Pixels
  */
-export const equalWidthFor = (stepCount, availableWidth) =>
+export const equalBoxWidthFor = (stepCount, availableWidth) =>
   clamp(
     availableWidth / Math.max(stepCount, 1),
-    MIN_EQUAL_WIDTH,
-    MAX_EQUAL_WIDTH
+    MIN_EQUAL_BOX_WIDTH,
+    MAX_EQUAL_BOX_WIDTH
   )
 
 const MISSING_PREFIX = 'needs'
@@ -175,30 +175,30 @@ const labelWidthOf = (lines) =>
 
 /**
  * Where each step's label goes and how far right the labels reach: the label
- * lines (the name, then its annotations), the left edge and estimated width,
+ * lines (the name, then its annotations), the left edge and estimated `labelWidth`,
  * the lane each takes so none overlaps, and the right-most pixel of the
  * ladder, boxes and labels together. A label can run past the last box (a
  * narrow box with a long name), so an SVG must be at least `rightEdge` wide.
  * Widths are estimated by textWidthOf, which errs wide.
  * @param {Object[]} steps - Laid-out steps, from sizeLadder
  * @param {number} [gap] - Pixels to keep between labels on one lane
- * @returns {{labels: {step: Object, lines: {text: string, tone: ?string}[], left: number, width: number, right: number}[], lanes: number[], rightEdge: number}}
+ * @returns {{labels: {step: Object, lines: {text: string, tone: ?string}[], left: number, labelWidth: number, right: number}[], lanes: number[], rightEdge: number}}
  */
-export const labelLayout = (steps, gap = LABEL_GAP) => {
+export const layoutLabels = (steps, gap = LABEL_GAP) => {
   const labels = steps.map((step) => {
     const lines = linesOf(step)
     const left = step.x + LABEL_INSET
-    const width = labelWidthOf(lines)
-    return { step, lines, left, width, right: left + width }
+    const labelWidth = labelWidthOf(lines)
+    return { step, lines, left, labelWidth, right: left + labelWidth }
   })
   const lanes = labelLanes(
-    labels.map(({ left, width }) => ({ x: left, width })),
+    labels.map(({ left, labelWidth }) => ({ x: left, width: labelWidth })),
     gap
   )
   const rightEdge = Math.max(
     0,
     ...labels.map(({ right }) => right),
-    ...steps.map(({ x, width }) => x + width)
+    ...steps.map(({ x, boxWidth }) => x + boxWidth)
   )
   return { labels, lanes, rightEdge }
 }

@@ -62,7 +62,7 @@ const box = async (locator) => {
 const waitRatio = async (page, over, under) => {
   const widthOf = async (name) => {
     const attribute = await stepOf(page, name)
-      .getByTestId('ladder-wait')
+      .getByTestId('ladder-wait-block')
       .getAttribute('width')
     const width = Number(attribute)
     if (!(width > 0)) {
@@ -220,9 +220,11 @@ test.describe('Live time-ladder map', () => {
       'Code review',
       'Deploy',
     ]) {
-      const wait = await box(stepOf(page, name).getByTestId('ladder-wait'))
+      const wait = await box(
+        stepOf(page, name).getByTestId('ladder-wait-block')
+      )
       const process = await box(
-        stepOf(page, name).getByTestId('ladder-process')
+        stepOf(page, name).getByTestId('ladder-process-block')
       )
       expect(
         wait.y + wait.height,
@@ -300,7 +302,7 @@ test.describe('Live time-ladder map', () => {
       dash: DASHED_STROKE_DASH,
     })
     await expect(deploy.getByText('needs wait time')).toBeVisible()
-    await expect(deploy.getByTestId('ladder-wait')).toHaveCount(0)
+    await expect(deploy.getByTestId('ladder-wait-block')).toHaveCount(0)
   })
 
   test('Outside encoding', async ({ page, seed }) => {

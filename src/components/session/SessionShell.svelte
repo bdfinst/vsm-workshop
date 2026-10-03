@@ -146,7 +146,7 @@
           aria-labelledby="view-tab-map"
           class="mt-3"
         >
-          <LadderMap ladder={store.ladder} />
+          <LadderMap ladderModel={store.ladderModel} />
         </div>
       </div>
     </section>

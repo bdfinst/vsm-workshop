@@ -2,24 +2,24 @@
   import {
     LADDER_MODE,
     MIN_SCALED_BOX_WIDTH,
-    OUTLINE,
     sizeLadder,
   } from '../../utils/ui/ladderLayout.js'
+  import { OUTLINE } from '../../utils/ui/ladderModel.js'
   import {
     LABEL_FONT_SIZE,
     LABEL_INSET,
-    MIN_EQUAL_WIDTH,
+    MIN_EQUAL_BOX_WIDTH,
     TONE,
-    equalWidthFor,
-    labelLayout,
+    equalBoxWidthFor,
+    layoutLabels,
     labelOverhangFor,
     pixelsPerMinuteToFit,
   } from '../../utils/ui/ladderView.js'
 
-  // LadderMap props: ladder (`store.ladder`, the pane-independent model of the
-  // version being drawn). The ladder sizes it for the pane and works out
-  // neither metrics nor flags.
-  let { ladder } = $props()
+  // LadderMap props: ladderModel (`store.ladderModel`, the pane-independent
+  // model of the version being drawn). The map sizes it for its scroll region
+  // and works out neither metrics nor flags.
+  let { ladderModel } = $props()
 
   const MODES = [
     { value: LADDER_MODE.SCALED, label: 'To scale' },
@@ -66,37 +66,43 @@
     'Handoffs, outside steps, missing times and the largest wait and lowest percent complete and accurate are also written as text under each step.'
 
   let mode = $state(LADDER_MODE.SCALED)
-  let paneWidth = $state(0)
+  let scrollerWidth = $state(0)
   let modeLabel = $derived(MODES.find(({ value }) => value === mode).label)
 
   // A label can run past the last box, so the fit leaves room for the furthest
   // it can reach (see labelOverhangFor) and nothing is clipped or scrolls for it.
   let labelOverhang = $derived(
     labelOverhangFor(
-      ladder.steps,
-      mode === LADDER_MODE.SCALED ? MIN_SCALED_BOX_WIDTH : MIN_EQUAL_WIDTH
+      ladderModel.steps,
+      mode === LADDER_MODE.SCALED ? MIN_SCALED_BOX_WIDTH : MIN_EQUAL_BOX_WIDTH
     )
   )
   let available = $derived(
-    Math.max(paneWidth - 2 * PAD_X - FIT_SLACK - labelOverhang, 0)
+    Math.max(scrollerWidth - 2 * PAD_X - FIT_SLACK - labelOverhang, 0)
   )
-  let layout = $derived(
+  let ladderLayout = $derived(
     sizeLadder(
-      ladder,
+      ladderModel,
       mode === LADDER_MODE.SCALED
-        ? { mode, pixelsPerMinute: pixelsPerMinuteToFit(ladder, available) }
-        : { mode, width: equalWidthFor(ladder.steps.length, available) }
+        ? {
+            mode,
+            pixelsPerMinute: pixelsPerMinuteToFit(ladderModel, available),
+          }
+        : {
+            mode,
+            boxWidth: equalBoxWidthFor(ladderModel.steps.length, available),
+          }
     )
   )
 
-  let labelled = $derived(labelLayout(layout.steps))
+  let labelLayout = $derived(layoutLabels(ladderLayout.steps))
   let laneHeight = $derived(
-    Math.max(0, ...labelled.labels.map(({ lines }) => lines.length)) *
+    Math.max(0, ...labelLayout.labels.map(({ lines }) => lines.length)) *
       LINE_HEIGHT +
       LANE_PADDING
   )
-  let laneCount = $derived(Math.max(...labelled.lanes, 0) + 1)
-  let svgWidth = $derived(labelled.rightEdge + 2 * PAD_X)
+  let laneCount = $derived(Math.max(...labelLayout.lanes, 0) + 1)
+  let svgWidth = $derived(labelLayout.rightEdge + 2 * PAD_X)
   let svgHeight = $derived(LABEL_TOP + laneCount * laneHeight)
 
   const outlineAttrs = {
@@ -146,7 +152,7 @@
     role="region"
     aria-label="Time ladder"
     tabindex="0"
-    bind:clientWidth={paneWidth}
+    bind:clientWidth={scrollerWidth}
     data-testid="ladder-scroll"
   >
     <svg
@@ -183,46 +189,46 @@
         <rect
           x="0"
           y={TRACK_Y}
-          width={layout.totalWidth}
+          width={ladderLayout.totalWidth}
           height={TRACK_HEIGHT}
           class="fill-map-track"
           data-testid="ladder-track"
         />
-        {#each labelled.labels as { step, lines }, index (step.stepId)}
-          {@const laneTop = LABEL_TOP + labelled.lanes[index] * laneHeight}
+        {#each labelLayout.labels as { step, lines }, index (step.stepId)}
+          {@const laneTop = LABEL_TOP + labelLayout.lanes[index] * laneHeight}
           <g
             role="group"
             aria-label={step.name}
             data-testid="ladder-step"
             data-outline={step.outline}
           >
-            {#if step.wait && step.wait.width > 0}
+            {#if step.waitBlock && step.waitBlock.width > 0}
               <rect
-                x={step.wait.x}
+                x={step.waitBlock.x}
                 y={WAIT_TOP}
-                width={step.wait.width}
+                width={step.waitBlock.width}
                 height={BLOCK_HEIGHT}
                 stroke-width="1.5"
                 class="fill-map-wait-fill stroke-map-wait-outline"
-                data-testid="ladder-wait"
+                data-testid="ladder-wait-block"
               />
             {/if}
-            {#if step.process && step.process.width > 0}
+            {#if step.processBlock && step.processBlock.width > 0}
               <rect
-                x={step.process.x}
+                x={step.processBlock.x}
                 y={PROCESS_TOP}
-                width={step.process.width}
+                width={step.processBlock.width}
                 height={BLOCK_HEIGHT}
                 stroke-width="1.5"
                 class="fill-map-process-fill stroke-map-process-outline"
-                data-testid="ladder-process"
+                data-testid="ladder-process-block"
               />
             {/if}
             {#if step.outsideText}
               <rect
                 x={step.x}
                 y={WAIT_TOP}
-                width={step.width}
+                width={step.boxWidth}
                 height={COLUMN_BOTTOM - WAIT_TOP}
                 fill="url(#ladder-hatch)"
                 data-testid="ladder-hatched"
@@ -231,7 +237,7 @@
             <rect
               x={step.x}
               y={OUTLINE_TOP}
-              width={step.width}
+              width={step.boxWidth}
               height={OUTLINE_HEIGHT}
               fill="none"
               {...outlineAttrs[step.outline]}

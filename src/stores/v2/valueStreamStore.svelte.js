@@ -9,7 +9,7 @@
 
 import { createUndoStore } from '../undoStore.svelte.js'
 import { calculateMetrics } from '../../utils/calculations/v2/index.js'
-import { ladderModel } from '../../utils/ui/ladderLayout.js'
+import { ladderModel } from '../../utils/ui/ladderModel.js'
 import { validateVersion } from '../../utils/validation/v2/versionValidator.js'
 import { validateScope } from '../../utils/validation/v2/scopeValidator.js'
 import {
@@ -118,8 +118,8 @@ export const createValueStreamStore = ({ stream, persist }) => {
   const metrics = $derived(calculateMetrics(activeVersion))
   // What the time ladder draws that does not depend on the pane: minutes,
   // encodings and the flags already in `metrics`. Components size it for their
-  // width (`sizeLadder`) and never work out metrics or flags themselves.
-  const ladder = $derived(ladderModel(activeVersion, metrics.flags))
+  // pane (`sizeLadder`) and never work out metrics or flags themselves.
+  const activeLadderModel = $derived(ladderModel(activeVersion, metrics.flags))
 
   const save = (options) => persist($state.snapshot(current), options)
 
@@ -419,8 +419,8 @@ export const createValueStreamStore = ({ stream, persist }) => {
     get metrics() {
       return metrics
     },
-    get ladder() {
-      return ladder
+    get ladderModel() {
+      return activeLadderModel
     },
     setName,
     setScope,

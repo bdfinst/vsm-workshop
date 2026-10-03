@@ -2,10 +2,9 @@ import { describe, it, expect } from 'vitest'
 import {
   LADDER_MODE,
   MIN_SCALED_BOX_WIDTH,
-  OUTLINE,
-  ladderModel,
   sizeLadder,
 } from '../../../src/utils/ui/ladderLayout.js'
+import { OUTLINE, ladderModel } from '../../../src/utils/ui/ladderModel.js'
 import { calculateMetrics } from '../../../src/utils/calculations/v2/index.js'
 import { createStep } from '../../../src/models/v2/step.js'
 import {
@@ -32,8 +31,8 @@ const modelOf = (steps, flags) => {
 const scaled = (steps, pixelsPerMinute = PX_PER_MINUTE) =>
   sizeLadder(modelOf(steps), { mode: LADDER_MODE.SCALED, pixelsPerMinute })
 
-const equal = (steps, width = EQUAL_WIDTH) =>
-  sizeLadder(modelOf(steps), { mode: LADDER_MODE.EQUAL, width })
+const equal = (steps, boxWidth = EQUAL_WIDTH) =>
+  sizeLadder(modelOf(steps), { mode: LADDER_MODE.EQUAL, boxWidth })
 
 const flagLabels = (layout, name) =>
   stepBox(layout, name).flags.map(({ label }) => label)
@@ -43,8 +42,8 @@ describe('sizeLadder', () => {
     it('draws waits in proportion to their minutes', () => {
       const layout = scaled(referenceSteps())
 
-      const codeReview = stepBox(layout, 'Code review').wait.width
-      const refinement = stepBox(layout, 'Refinement').wait.width
+      const codeReview = stepBox(layout, 'Code review').waitBlock.width
+      const refinement = stepBox(layout, 'Refinement').waitBlock.width
 
       expect(codeReview / refinement).toBe(6)
     })
@@ -54,8 +53,8 @@ describe('sizeLadder', () => {
 
       const refinement = stepBox(layout, 'Refinement')
       const development = stepBox(layout, 'Development')
-      expect(refinement.width).toBe((240 + 480) * PX_PER_MINUTE)
-      expect(development.x).toBe(refinement.x + refinement.width)
+      expect(refinement.boxWidth).toBe((240 + 480) * PX_PER_MINUTE)
+      expect(development.x).toBe(refinement.x + refinement.boxWidth)
     })
 
     it('reports a total width that is the lead time to scale', () => {
@@ -68,9 +67,9 @@ describe('sizeLadder', () => {
     it('puts the wait first and the process after it inside the box', () => {
       const layout = scaled(referenceSteps())
 
-      const { x, wait, process } = stepBox(layout, 'Refinement')
-      expect(wait).toEqual({ x, width: 240, minutes: 480 })
-      expect(process).toEqual({ x: x + 240, width: 120, minutes: 240 })
+      const { x, waitBlock, processBlock } = stepBox(layout, 'Refinement')
+      expect(waitBlock).toEqual({ x, width: 240, minutes: 480 })
+      expect(processBlock).toEqual({ x: x + 240, width: 120, minutes: 240 })
     })
   })
 
@@ -98,8 +97,8 @@ describe('sizeLadder', () => {
         outline: OUTLINE.DASHED,
         missingTimeLabels: ['wait time'],
       })
-      expect(deploy.wait).toBeNull()
-      expect(deploy.process).toMatchObject({ minutes: 30 })
+      expect(deploy.waitBlock).toBeNull()
+      expect(deploy.processBlock).toMatchObject({ minutes: 30 })
       expect(stepBox(layout, 'Development').missingTimeLabels).toEqual([])
     })
 
@@ -112,8 +111,8 @@ describe('sizeLadder', () => {
       expect(layout.steps[0]).toMatchObject({
         outline: OUTLINE.DASHED,
         missingTimeLabels: ['process time', 'wait time'],
-        wait: null,
-        process: null,
+        waitBlock: null,
+        processBlock: null,
       })
     })
 
@@ -124,13 +123,13 @@ describe('sizeLadder', () => {
       ])
 
       const [intake, idle] = layout.steps
-      expect(intake.width).toBeGreaterThanOrEqual(MIN_SCALED_BOX_WIDTH)
-      expect(idle.width).toBeGreaterThanOrEqual(MIN_SCALED_BOX_WIDTH)
-      expect(idle.wait).toMatchObject({ width: 0, minutes: 0 })
-      expect(idle.process).toMatchObject({ width: 0, minutes: 0 })
+      expect(intake.boxWidth).toBeGreaterThanOrEqual(MIN_SCALED_BOX_WIDTH)
+      expect(idle.boxWidth).toBeGreaterThanOrEqual(MIN_SCALED_BOX_WIDTH)
+      expect(idle.waitBlock).toMatchObject({ width: 0, minutes: 0 })
+      expect(idle.processBlock).toMatchObject({ width: 0, minutes: 0 })
       expect(idle.missingTimeLabels).toEqual([])
       expect(idle.outline).toBe(OUTLINE.SOLID)
-      expect(layout.totalWidth).toBe(intake.width + idle.width)
+      expect(layout.totalWidth).toBe(intake.boxWidth + idle.boxWidth)
     })
 
     it('draws an outside step as a hatched dashed block as wide as its elapsed time', () => {
@@ -143,13 +142,13 @@ describe('sizeLadder', () => {
       const security = stepBox(scaled(steps), 'Security review')
 
       expect(security).toMatchObject({
-        width: 1440 * PX_PER_MINUTE,
+        boxWidth: 1440 * PX_PER_MINUTE,
         outline: OUTLINE.DASHED,
         outsideText: { label: 'elapsed · split unknown', text: 'outside' },
         handoffText: 'handoff',
         missingTimeLabels: [],
-        wait: null,
-        process: null,
+        waitBlock: null,
+        processBlock: null,
       })
     })
 
@@ -162,7 +161,7 @@ describe('sizeLadder', () => {
 
       const layout = equal(steps)
 
-      expect(stepBox(layout, 'Security review').width).toBe(EQUAL_WIDTH)
+      expect(stepBox(layout, 'Security review').boxWidth).toBe(EQUAL_WIDTH)
       expect(stepBox(layout, 'Security review').outsideText).toMatchObject({
         text: 'outside',
       })
@@ -189,7 +188,9 @@ describe('sizeLadder', () => {
         outline: OUTLINE.DASHED,
         missingTimeLabels: ['elapsed time'],
       })
-      expect(layout.steps[0].width).toBeGreaterThanOrEqual(MIN_SCALED_BOX_WIDTH)
+      expect(layout.steps[0].boxWidth).toBeGreaterThanOrEqual(
+        MIN_SCALED_BOX_WIDTH
+      )
     })
 
     it('leaves non-outside steps without the outside encoding', () => {
@@ -214,7 +215,7 @@ describe('sizeLadder', () => {
 
       expect(layout.steps[0]).toMatchObject({
         x: 0,
-        width: 600 * PX_PER_MINUTE,
+        boxWidth: 600 * PX_PER_MINUTE,
         outline: OUTLINE.DASHED,
       })
       expect(layout.steps[1].x).toBe(600 * PX_PER_MINUTE)
@@ -224,8 +225,8 @@ describe('sizeLadder', () => {
       const layout = scaled([...referenceSteps(), outsideStep('Vendor', 600)])
 
       const vendor = stepBox(layout, 'Vendor')
-      expect(vendor.width).toBe(600 * PX_PER_MINUTE)
-      expect(layout.totalWidth).toBe(vendor.x + vendor.width)
+      expect(vendor.boxWidth).toBe(600 * PX_PER_MINUTE)
+      expect(layout.totalWidth).toBe(vendor.x + vendor.boxWidth)
     })
   })
 
@@ -273,7 +274,7 @@ describe('sizeLadder', () => {
 
       const layout = sizeLadder(modelOf(steps, flags), {
         mode: LADDER_MODE.EQUAL,
-        width: EQUAL_WIDTH,
+        boxWidth: EQUAL_WIDTH,
       })
 
       expect(flagLabels(layout, 'Deploy')).toEqual(['largest wait'])
@@ -299,14 +300,17 @@ describe('sizeLadder', () => {
 
   describe('options', () => {
     it.each([
-      ['an unknown mode', { mode: 'fit', pixelsPerMinute: 1, width: 1 }],
+      ['an unknown mode', { mode: 'fit', pixelsPerMinute: 1, boxWidth: 1 }],
       ['scaled with no pixelsPerMinute', { mode: LADDER_MODE.SCALED }],
       [
         'scaled with a zero pixelsPerMinute',
         { mode: LADDER_MODE.SCALED, pixelsPerMinute: 0 },
       ],
-      ['equal with no width', { mode: LADDER_MODE.EQUAL }],
-      ['equal with a negative width', { mode: LADDER_MODE.EQUAL, width: -5 }],
+      ['equal with no boxWidth', { mode: LADDER_MODE.EQUAL }],
+      [
+        'equal with a negative boxWidth',
+        { mode: LADDER_MODE.EQUAL, boxWidth: -5 },
+      ],
       [
         'scaled with an infinite pixelsPerMinute',
         { mode: LADDER_MODE.SCALED, pixelsPerMinute: Infinity },
@@ -316,8 +320,8 @@ describe('sizeLadder', () => {
         { mode: LADDER_MODE.SCALED, pixelsPerMinute: NaN },
       ],
       [
-        'equal with an infinite width',
-        { mode: LADDER_MODE.EQUAL, width: Infinity },
+        'equal with an infinite boxWidth',
+        { mode: LADDER_MODE.EQUAL, boxWidth: Infinity },
       ],
     ])('refuses %s', (_, options) => {
       expect(() => sizeLadder(modelOf(referenceSteps()), options)).toThrow(
@@ -330,7 +334,7 @@ describe('sizeLadder', () => {
     it('gives every step the same width, whatever its times', () => {
       const layout = equal(referenceSteps())
 
-      expect(layout.steps.map((s) => s.width)).toEqual(
+      expect(layout.steps.map((s) => s.boxWidth)).toEqual(
         Array(5).fill(EQUAL_WIDTH)
       )
     })
@@ -343,41 +347,13 @@ describe('sizeLadder', () => {
     })
 
     it('draws a known wait and process across the whole column', () => {
-      const { x, wait, process } = stepBox(equal(referenceSteps()), 'Deploy')
+      const { x, waitBlock, processBlock } = stepBox(
+        equal(referenceSteps()),
+        'Deploy'
+      )
 
-      expect(wait).toMatchObject({ x, width: EQUAL_WIDTH, minutes: 1440 })
-      expect(process).toMatchObject({ x, width: EQUAL_WIDTH, minutes: 30 })
+      expect(waitBlock).toMatchObject({ x, width: EQUAL_WIDTH, minutes: 1440 })
+      expect(processBlock).toMatchObject({ x, width: EQUAL_WIDTH, minutes: 30 })
     })
-  })
-})
-
-describe('ladderModel', () => {
-  it('holds what does not depend on the view: minutes, encodings, flags', () => {
-    const model = modelOf(reworkSteps())
-
-    const codeReview = model.steps.find((s) => s.name === 'Code review')
-    expect(codeReview).toMatchObject({
-      minutes: { wait: 2880, process: 60 },
-      outline: OUTLINE.SOLID,
-      flags: [
-        { kind: 'largest-wait', label: 'largest wait', tone: 'warn' },
-        { kind: 'lowest-ca', label: 'lowest %C/A', tone: 'crit' },
-      ],
-    })
-    expect(codeReview).not.toHaveProperty('x')
-    expect(codeReview).not.toHaveProperty('width')
-  })
-
-  it('uses the flags it is given instead of working them out', () => {
-    const version = versionOf(reworkSteps())
-    const { flags } = calculateMetrics(version)
-
-    const model = ladderModel(version, { ...flags, lowestCA: null })
-
-    expect(
-      model.steps
-        .find((s) => s.name === 'Code review')
-        .flags.map(({ label }) => label)
-    ).toEqual(['largest wait'])
   })
 })

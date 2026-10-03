@@ -808,7 +808,7 @@ describe('valueStreamStore: drag a step', () => {
 
 describe('valueStreamStore: derived ladder and metrics', () => {
   const ladderStep = (store, name) =>
-    store.ladder.steps.find((step) => step.name === name)
+    store.ladderModel.steps.find((step) => step.name === name)
   const deployProcess = (store) => ladderStep(store, 'Deploy').minutes.process
   const longerDeploy = (store) =>
     store.updateStep(stepNamed(store, 'Deploy').id, {
@@ -818,7 +818,7 @@ describe('valueStreamStore: derived ladder and metrics', () => {
   it('exposes one ladder step per step of the active version', () => {
     const { store } = openStream(referenceReworkStream())
 
-    expect(store.ladder.steps.map((step) => step.name)).toEqual(
+    expect(store.ladderModel.steps.map((step) => step.name)).toEqual(
       stepNames(store)
     )
     expect(deployProcess(store)).toBe(30)
