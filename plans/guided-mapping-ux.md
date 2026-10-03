@@ -1761,6 +1761,7 @@ Feature: The ladder map measures labels true and can be shared
       | class                                    | text   | ems  |
       | an ordinary character                    | e      | 0.67 |
       | a capital                                | H      | 0.72 |
+      | a capital with an accent                 | É      | 0.72 |
       | a lower-case m                           | m      | 0.9  |
       | a lower-case w                           | w      | 0.9  |
       | the wide capitals                        | W      | 1    |
@@ -1769,6 +1770,7 @@ Feature: The ladder map measures labels true and can be shared
       | an emoji                                 | 🚀     | 1.3  |
       | an emoji with a skin tone, one glyph     | 👍🏽    | 1.3  |
       | a flag, one glyph                        | 🇯🇵    | 1.3  |
+      | an emoji with a presentation selector    | ❤️     | 1.3  |
       | a family joined by zero-width joiners    | 👨‍👩‍👧 | 1.3  |
       | a letter with a combining accent         | é      | 0.67 |
 

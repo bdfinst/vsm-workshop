@@ -135,31 +135,58 @@ const WIDE_RANGES = [
 ]
 // The capitals a bold sans draws about as wide as an em.
 const WIDE_CAPITALS = new Set(['W', 'M'])
+// The lower-case letters that run well past the average.
+const WIDE_LOWERCASE = new Set(['m', 'w'])
+const CAPITAL = /^\p{Lu}/u
+// A glyph from the emoji fonts: pictographs, flags (regional indicators), and
+// anything made emoji by a presentation selector or a keycap.
+const EMOJI = /\p{Extended_Pictographic}|\p{Regional_Indicator}|\uFE0F|\u20E3/u
 
-const isWide = (character) => {
-  const code = character.codePointAt(0)
+// Widths of the classes, in ems of LABEL_FONT_SIZE, probed in the label font
+// (IBM Plex Sans semibold) and rounded up so the estimate stays on the wide
+// side: the widest capitals (H, N, O, G, Q) are 0.72 em, m is 0.89, w 0.82 and
+// an emoji 1.25 in the system emoji fonts. Everything else is the ordinary
+// LABEL_CHAR_WIDTH.
+const CAPITAL_EMS = 0.72
+const WIDE_LOWERCASE_EMS = 0.9
+const FULL_EM = 1
+const EMOJI_EMS = 1.3
+
+// Splits text into what a reader sees as one character: a skin-toned or joined
+// emoji, a flag or a letter with its accent is one.
+const segmenter = new Intl.Segmenter()
+const graphemesOf = (text) =>
+  Array.from(segmenter.segment(text), ({ segment }) => segment)
+
+const isWide = (grapheme) => {
+  const code = grapheme.codePointAt(0)
   return (
-    WIDE_CAPITALS.has(character) ||
+    WIDE_CAPITALS.has(grapheme) ||
     WIDE_RANGES.some(([from, to]) => code >= from && code <= to)
   )
 }
 
+const widthOfGrapheme = (grapheme) => {
+  if (EMOJI.test(grapheme)) return EMOJI_EMS * LABEL_FONT_SIZE
+  if (isWide(grapheme)) return FULL_EM * LABEL_FONT_SIZE
+  if (CAPITAL.test(grapheme)) return CAPITAL_EMS * LABEL_FONT_SIZE
+  if (WIDE_LOWERCASE.has(grapheme)) return WIDE_LOWERCASE_EMS * LABEL_FONT_SIZE
+  return LABEL_CHAR_WIDTH
+}
+
 /**
  * An estimate, in pixels, of how wide a label line is drawn. It weights each
- * character by class: East Asian wide and fullwidth characters and the capitals
- * W and M at a full em, every other character at LABEL_CHAR_WIDTH. It is
- * pure, so it cannot read font metrics: it covers Latin, kana, hangul and
- * ideograph text, and glyphs it does not know (emoji, say) are taken as
- * ordinary characters.
+ * character (a grapheme, so a joined emoji or an accented letter counts once)
+ * by class: emoji at 1.3 em, East Asian wide and fullwidth characters and the
+ * capitals W and M at a full em, the other capitals at 0.72 em, the lower-case
+ * m and w at 0.9 em, and every other character at LABEL_CHAR_WIDTH. It is
+ * pure, so it cannot read font metrics: it measures by class, from widths
+ * probed in the label font, and errs on the wide side so labels never overlap
+ * or clip. Needs Intl.Segmenter.
  * @param {string} text
  * @returns {number} Pixels
  */
-export const textWidthOf = (text) =>
-  sum(
-    [...text].map((character) =>
-      isWide(character) ? LABEL_FONT_SIZE : LABEL_CHAR_WIDTH
-    )
-  )
+export const textWidthOf = (text) => sum(graphemesOf(text).map(widthOfGrapheme))
 
 /** Pixels from a step's left edge to where its label text starts. */
 export const LABEL_INSET = 4

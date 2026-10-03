@@ -38,6 +38,8 @@ import {
 
 const CJK_NAME = '価値流れ図の作成と改善のための手順書一覧' // 20 characters, each a full em
 
+const CAPITAL_WIDTH = 0.72 * LABEL_FONT_SIZE
+
 const REFERENCE_MINUTES = 9030 // every wait and process minute of the reference map
 
 const modelOf = (steps) => {
@@ -282,10 +284,43 @@ describe('textWidthOf', () => {
     expect(textWidthOf('')).toBe(0)
   })
 
-  it('takes an average character at LABEL_CHAR_WIDTH', () => {
-    expect(textWidthOf('Code review')).toBe(
-      'Code review'.length * LABEL_CHAR_WIDTH
-    )
+  it('takes an ordinary character at LABEL_CHAR_WIDTH', () => {
+    expect(textWidthOf('code ride')).toBe('code ride'.length * LABEL_CHAR_WIDTH)
+  })
+
+  // Scenario Outline: A label character is measured by its class
+  it.each([
+    { kind: 'an ordinary character', text: 'e', ems: 2 / 3 },
+    { kind: 'a capital', text: 'H', ems: 0.72 },
+    { kind: 'a capital with an accent', text: 'É', ems: 0.72 },
+    { kind: 'a lower-case m', text: 'm', ems: 0.9 },
+    { kind: 'a lower-case w', text: 'w', ems: 0.9 },
+    { kind: 'a wide capital W', text: 'W', ems: 1 },
+    { kind: 'a wide capital M', text: 'M', ems: 1 },
+    { kind: 'an East Asian wide character', text: '価', ems: 1 },
+    { kind: 'an emoji', text: '🚀', ems: 1.3 },
+    { kind: 'an emoji with a skin tone, one glyph', text: '👍🏽', ems: 1.3 },
+    { kind: 'a flag, one glyph', text: '🇯🇵', ems: 1.3 },
+    {
+      kind: 'a family joined by zero-width joiners, one glyph',
+      text: '👨‍👩‍👧',
+      ems: 1.3,
+    },
+    {
+      kind: 'an emoji with a presentation selector, one glyph',
+      text: '❤️',
+      ems: 1.3,
+    },
+    { kind: 'a letter with a combining accent', text: 'e\u0301', ems: 2 / 3 },
+  ])(
+    'A label character is measured by its class: $kind at $ems em',
+    ({ text, ems }) => {
+      expect(textWidthOf(text)).toBeCloseTo(ems * LABEL_FONT_SIZE, 10)
+    }
+  )
+
+  it('takes a digit, a space and punctuation as ordinary characters', () => {
+    expect(textWidthOf('7 %.')).toBe(4 * LABEL_CHAR_WIDTH)
   })
 
   it('takes a CJK character at a full em, wider than an average one', () => {
@@ -313,14 +348,16 @@ describe('textWidthOf', () => {
     expect(textWidthOf(capital)).toBe(LABEL_FONT_SIZE)
   })
 
-  it('takes a narrow capital and a lower-case w at the average', () => {
-    expect(textWidthOf('Iw')).toBe(2 * LABEL_CHAR_WIDTH)
-  })
-
   it('adds the classes up in a mixed name', () => {
-    // Q, A, a space and a space are average; 自, 動, 化, W and M are a full em.
-    expect(textWidthOf('QA 自動化 WM')).toBe(
-      4 * LABEL_CHAR_WIDTH + 5 * LABEL_FONT_SIZE
+    // Q and A are capitals; the two spaces are ordinary; 自, 動, 化, W and M are a full em;
+    // m is a wide lower-case letter; the rocket is an emoji.
+    expect(textWidthOf('QA 自動化 WM m🚀')).toBeCloseTo(
+      2 * CAPITAL_WIDTH +
+        3 * LABEL_CHAR_WIDTH +
+        5 * LABEL_FONT_SIZE +
+        0.9 * LABEL_FONT_SIZE +
+        1.3 * LABEL_FONT_SIZE,
+      10
     )
   })
 })
@@ -338,7 +375,7 @@ describe('layoutLabels', () => {
   })
 
   it('measures a label by its widest line, from the inset, at the conservative width', () => {
-    const name = 'Customer intake and triage'
+    const name = 'plain intake and triage'
     const [step] = layoutOf([team(name, 60, 60)])
 
     const { labels } = layoutLabels([step])
@@ -378,7 +415,7 @@ describe('layoutLabels', () => {
 
     const { rightEdge } = layoutLabels(steps)
 
-    const label = 'needs process time'.length * LABEL_CHAR_WIDTH
+    const label = textWidthOf('needs process time')
     expect(intake.boxWidth).toBeLessThan(label)
     expect(rightEdge).toBe(intake.x + LABEL_INSET + label)
   })
@@ -403,11 +440,17 @@ describe('layoutLabels', () => {
     )
   })
 
-  it('never lets two labels on one lane overlap, even for bold capitals', () => {
+  it.each([
+    ['capitals', (index) => `HNOGQ ${'H'.repeat(index + 1)}`],
+    [
+      'lower-case m and w',
+      (index) => `${'m'.repeat(index + 1)}${'w'.repeat(3)}`,
+    ],
+    ['emoji', (index) => `Ship ${'🚀'.repeat(index + 1)}`],
+    ['the wide capitals', (index) => `WWWW ${'M'.repeat(index + 1)}`],
+  ])('Names heavy in %s never overlap on one lane', (_, nameFor) => {
     const steps = layoutOf(
-      Array.from({ length: 12 }, (_, index) =>
-        team(`WWWW ${'M'.repeat(index + 1)}`, 5, 5)
-      )
+      Array.from({ length: 12 }, (_, index) => team(nameFor(index), 5, 5))
     )
 
     const { labels, lanes } = layoutLabels(steps)
@@ -423,6 +466,16 @@ describe('layoutLabels', () => {
         )
       })
     }
+  })
+
+  it('reaches as far as an emoji name is wide, so the last label is not clipped', () => {
+    const name = 'Ship it 🚀🎉'
+    const steps = layoutOf([team('Intake', 5, 5), team(name, 5, 5)])
+
+    const { rightEdge, labels } = layoutLabels(steps)
+
+    expect(labels[1].labelWidth).toBe(textWidthOf(name))
+    expect(rightEdge).toBe(labels[1].right)
   })
 
   it('draws no more lanes than it needs', () => {
@@ -443,9 +496,7 @@ describe('labelOverhangFor', () => {
     const model = modelOf([createStep({ name: 'Intake' })])
 
     expect(labelOverhangFor(model.steps, MIN_SCALED_BOX_WIDTH)).toBe(
-      LABEL_INSET +
-        'needs process time'.length * LABEL_CHAR_WIDTH -
-        MIN_SCALED_BOX_WIDTH
+      LABEL_INSET + textWidthOf('needs process time') - MIN_SCALED_BOX_WIDTH
     )
   })
 
@@ -461,9 +512,7 @@ describe('labelOverhangFor', () => {
     const model = modelOf([createStep({ name: 'Intake' }), team('Next', 1, 1)])
 
     expect(labelOverhangFor(model.steps, MIN_SCALED_BOX_WIDTH)).toBeLessThan(
-      LABEL_INSET +
-        'needs process time'.length * LABEL_CHAR_WIDTH -
-        MIN_SCALED_BOX_WIDTH
+      LABEL_INSET + textWidthOf('needs process time') - MIN_SCALED_BOX_WIDTH
     )
   })
 

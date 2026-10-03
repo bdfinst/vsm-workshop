@@ -11,6 +11,7 @@ import {
   withStep,
   withoutWait,
 } from '../../unit/v2/stepFixtures.js'
+import { textWidthOf } from '../../../src/utils/ui/ladderView.js'
 import { test, expect, workspaceAtStage } from './fixtures.js'
 
 // Slice 10 scenarios: the ladder (Step 10.2) and the summary strip (Step 10.3).
@@ -24,6 +25,9 @@ const DASHED_STROKE_DASH = '6px, 4px' // the computed form of the "6 4" dash pat
 const SM_BREAKPOINT = 640 // Tailwind `sm`: the strip collapses below it
 const CJK_NAME = '価値流れ図の作成と改善のための手順書一覧' // 20 characters, each about an em wide
 const ALL_CAPS_NAME = 'WORLDWIDE MEDIA MANAGEMENT WAREHOUSE' // wide bold capitals
+const EMOJI_NAME = 'Ship it 🚀🎉'
+const BROAD_CAPITALS_NAME = 'HNOGQ HNOGQ HNOGQ HNOGQ' // the widest of the capitals bar W and M
+const M_AND_W_NAME = 'mmmmmwwwww mmmmwwww mmwwmmww' // the lower-case letters wider than average
 
 /** A workspace on `stage` whose map has these steps. */
 const workspaceWith = (
@@ -172,6 +176,24 @@ const measuredLabels = async (page) => {
       ),
     }
   })
+}
+
+// The width, in the SVG's own pixels, the browser draws each step's name at
+// (the first line of its label), by step name. Waits for web fonts first.
+const drawnNameWidths = async (page) => {
+  await page.evaluate(() => document.fonts.ready)
+  return page.evaluate(() =>
+    Object.fromEntries(
+      [
+        ...document.querySelectorAll(
+          '[data-testid="ladder-step"] text tspan:first-child'
+        ),
+      ].map((tspan) => [
+        tspan.textContent.trim(),
+        tspan.getComputedTextLength(),
+      ])
+    )
+  )
 }
 
 // In both ladder modes every label, as the browser drew it, ends inside the SVG,
@@ -386,6 +408,60 @@ test.describe('Live time-ladder map', () => {
     await seed(workspaceWith(names.map((name) => team(name, 5, 5))))
 
     await expectMeasuredLabelsFit(page, names)
+  })
+
+  test("An emoji in the last step's name stays inside the map", async ({
+    page,
+    seed,
+  }) => {
+    const names = ['Intake', 'Review', 'Deploy', EMOJI_NAME]
+    await seed(workspaceWith(names.map((name) => team(name, 5, 5))))
+
+    await expectMeasuredLabelsFit(page, names)
+  })
+
+  test('Names heavy in capitals, m and w never overlap', async ({
+    page,
+    seed,
+  }) => {
+    const names = [
+      'Intake',
+      BROAD_CAPITALS_NAME,
+      M_AND_W_NAME,
+      'Review',
+      BROAD_CAPITALS_NAME.toLowerCase(),
+      'Deploy',
+      M_AND_W_NAME.toUpperCase(),
+    ]
+    await seed(workspaceWith(names.map((name) => team(name, 5, 5))))
+
+    await expectMeasuredLabelsFit(page, names)
+  })
+
+  test('The estimate is never narrower than the browser draws', async ({
+    page,
+    seed,
+  }) => {
+    const names = [
+      'Intake',
+      EMOJI_NAME,
+      BROAD_CAPITALS_NAME,
+      M_AND_W_NAME,
+      ALL_CAPS_NAME,
+      CJK_NAME,
+      'Code review',
+    ]
+    await seed(workspaceWith(names.map((name) => team(name, 5, 5))))
+    await expect(page.getByTestId('ladder-step')).toHaveCount(names.length)
+
+    const drawn = await drawnNameWidths(page)
+
+    for (const name of names) {
+      expect(
+        textWidthOf(name),
+        `${name}: estimated ${textWidthOf(name).toFixed(1)}px, drawn ${drawn[name].toFixed(1)}px`
+      ).toBeGreaterThanOrEqual(drawn[name])
+    }
   })
 
   test('the ladder says what its encodings mean', async ({ page, seed }) => {
