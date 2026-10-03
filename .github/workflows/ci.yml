@@ -6,30 +6,127 @@ on:
   push:
     branches: [master]
 
+# A new push to a pull request cancels the run it supersedes. A push to master
+# gets a group of its own per commit, so no merge loses its result: GitHub keeps
+# only one pending run per group and would cancel the others.
+concurrency:
+  group: ci-${{ github.event_name == 'pull_request' && github.ref || github.sha }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+# No job writes to the repository, so none gets more than read access.
+permissions:
+  contents: read
+
 jobs:
-  quality-gate:
+  # Installs dependencies once. The other jobs restore the result from the cache
+  # instead of running `npm ci` themselves. The key covers the Node version
+  # (.nvmrc), the manifest and the lockfile, so a change to any of them installs
+  # again and `npm ci` checks that the manifest and the lockfile agree. A job that
+  # still finds no cache (a failed save, or two runs saving the same key at once)
+  # installs for itself, so a lost cache costs time and never fails a run.
+  install:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
 
       - uses: actions/setup-node@v4
         with:
-          node-version: '24'
+          node-version-file: '.nvmrc'
           cache: 'npm'
 
+      - name: Cache node_modules
+        id: node-modules
+        uses: actions/cache@v4
+        with:
+          path: node_modules
+          key: node-modules-${{ runner.os }}-${{ hashFiles('.nvmrc', 'package.json', 'package-lock.json') }}
+          lookup-only: true
+
       - name: Install dependencies
+        if: steps.node-modules.outputs.cache-hit != 'true'
         run: npm ci
 
-      - name: Unit tests
-        run: npm test
+  # Builds the app and the standalone file once. The e2e job downloads the
+  # result, and the quality gate fails when this job does.
+  build:
+    needs: install
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
 
-      - name: Build
-        run: npm run build
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: '.nvmrc'
+
+      - name: Restore node_modules
+        id: node-modules
+        uses: actions/cache/restore@v4
+        with:
+          path: node_modules
+          key: node-modules-${{ runner.os }}-${{ hashFiles('.nvmrc', 'package.json', 'package-lock.json') }}
+
+      - name: Install dependencies when the cache is missing
+        if: steps.node-modules.outputs.cache-hit != 'true'
+        run: npm ci
+
+      - name: Build app and standalone file
+        run: npm run build && npm run build:standalone
+
+      - name: Upload build output
+        uses: actions/upload-artifact@v4
+        with:
+          name: build-output
+          path: |
+            dist
+            dist-standalone
+          if-no-files-found: error
+          retention-days: 1
+
+  quality-gate:
+    needs: [install, build]
+    # Runs when install or build failed, so that the failure is reported here and
+    # not as a skipped job, which a branch rule would count as passing.
+    if: ${{ !cancelled() }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Fail when install or build did not succeed
+        if: ${{ needs.install.result != 'success' || needs.build.result != 'success' }}
+        run: |
+          echo "install: ${{ needs.install.result }}, build: ${{ needs.build.result }}"
+          exit 1
+
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: '.nvmrc'
+
+      - name: Restore node_modules
+        id: node-modules
+        uses: actions/cache/restore@v4
+        with:
+          path: node_modules
+          key: node-modules-${{ runner.os }}-${{ hashFiles('.nvmrc', 'package.json', 'package-lock.json') }}
+
+      - name: Install dependencies when the cache is missing
+        if: steps.node-modules.outputs.cache-hit != 'true'
+        run: npm ci
 
       - name: Lint
         run: npm run lint
 
+      - name: Unit tests
+        run: npm test
+
   e2e:
+    needs: [install, build]
+    if: ${{ !cancelled() }}
     runs-on: ubuntu-latest
     # Run inside the pinned Playwright image so browsers are preinstalled and,
     # crucially, font/rendering matches the committed visual baselines. Keep
@@ -37,13 +134,41 @@ jobs:
     container:
       image: mcr.microsoft.com/playwright:v1.58.2-noble
     steps:
-      - uses: actions/checkout@v4
+      - name: Fail when install or build did not succeed
+        if: ${{ needs.install.result != 'success' || needs.build.result != 'success' }}
+        run: |
+          echo "install: ${{ needs.install.result }}, build: ${{ needs.build.result }}"
+          exit 1
 
-      - name: Install dependencies
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: '.nvmrc'
+
+      # The cache version depends on the compression tool. The runner saved the
+      # cache with zstd, and this image has none, so without it the restore would
+      # look for a gzip cache and always miss.
+      - name: Install zstd for the cache
+        run: apt-get update -qq && apt-get install -y -qq zstd
+
+      - name: Restore node_modules
+        id: node-modules
+        uses: actions/cache/restore@v4
+        with:
+          path: node_modules
+          key: node-modules-${{ runner.os }}-${{ hashFiles('.nvmrc', 'package.json', 'package-lock.json') }}
+
+      - name: Install dependencies when the cache is missing
+        if: steps.node-modules.outputs.cache-hit != 'true'
         run: npm ci
 
-      - name: Build app and standalone file
-        run: npm run build && npm run build:standalone
+      - name: Download build output
+        uses: actions/download-artifact@v4
+        with:
+          name: build-output
 
       - name: E2E + visual regression tests
         run: npx playwright test

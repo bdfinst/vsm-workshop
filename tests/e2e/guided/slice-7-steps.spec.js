@@ -11,6 +11,12 @@ const nameField = (scope) => scope.getByLabel('Name', { exact: true })
 const moveButton = (scope, direction) =>
   scope.getByRole('button', { name: new RegExp(`^move ${direction}`, 'i') })
 const handoffBox = (scope) => scope.getByLabel('Handed off to another team')
+// The steps of the saved stream's active version, or undefined before the first save.
+// A reload only keeps what the app has already saved, so a test waits on this first.
+const savedSteps = async (page) => {
+  const stream = (await savedWorkspace(page))?.streams[0]
+  return stream?.versions.find((v) => v.id === stream.activeVersionId)?.steps
+}
 const insertButton = (scope) =>
   scope.getByRole('button', { name: /insert step here/i })
 const refusal = (page) => page.getByTestId('move-refusal')
@@ -130,6 +136,12 @@ test.describe('A new map on the Steps stage', () => {
     const intake = row(page, 1)
     await expect(intake.getByLabel('Description')).toHaveValue('Request logged')
     await expect(intake.getByLabel('Performed by')).toHaveValue('Product owner')
+    await expect
+      .poll(async () => {
+        const intakeStep = (await savedSteps(page))?.[0]
+        return [intakeStep?.description, intakeStep?.performedBy]
+      })
+      .toEqual(['Request logged', 'Product owner'])
 
     await page.reload()
     await expect(row(page, 1).getByLabel('Description')).toHaveValue(
@@ -158,6 +170,12 @@ test.describe('A new map on the Steps stage', () => {
     await expect(refinement.getByLabel('Performed by')).toHaveValue('Dev team')
     await expect(handoffBox(refinement)).toBeChecked()
     await expect(handoffBox(row(page, 1))).not.toBeChecked()
+    await expect
+      .poll(async () => {
+        const saved = (await savedSteps(page))?.[1]
+        return [saved?.name, saved?.performedBy, saved?.isHandoff]
+      })
+      .toEqual(['Refinement', 'Dev team', true])
 
     await page.reload()
     await expect(rows(page)).toHaveCount(2)
