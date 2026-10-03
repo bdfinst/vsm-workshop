@@ -43,7 +43,7 @@ const SIZERS = {
     }),
 }
 
-const minutesOf = (step) =>
+export const minutesOf = (step) =>
   isOutside(step)
     ? { elapsed: step.elapsedTime?.typ }
     : { wait: step.waitTime?.typ, process: step.processTime?.typ }

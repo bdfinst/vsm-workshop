@@ -1498,6 +1498,16 @@ Feature: Live time-ladder map
     And the summary strip shows "incomplete"
 ```
 
+**Decisions (settled at the build gate):**
+
+- **Dark tokens.** Light is the default. A dark palette for the map and strip tokens is defined under `:root[data-theme="dark"]` and contrast-tested, but nothing applies it until a theme toggle exists. The app has no dark mode today; this slice does not add one.
+- **Map pane placement.** The map pane is a full-width band under the stage content, with horizontal scroll and zoom to fit, and the summary strip pinned below it. The empty 320px side `aside` in `SessionShell` is removed. The map shows on stages 2–7 (Steps to Future), as in Step 10.2.
+- **Rail status deferred to Slice 11.** The Steps and Time rail statuses (`stepsReason` / `STAGE_REASONS`) stay deferred; no Slice 10 scenario needs them.
+- **Flags.** The ladder and the strip both read `metrics.flags` (`topWaits[0]` for the largest wait, `lowestCA` for the lowest %C/A); neither recomputes them.
+- **No flag when nothing is low.** `lowestCA` returns null when the lowest entered %C/A is 100, so a clean map flags no step as "lowest %C/A" (it used to flag the first step on a tie at 100). The first-step-on-a-tie rule stays for ties below 100.
+- **Ladder geometry (Step 10.1).** `scale` is pixels per minute. In scaled mode a box is the wait plus the process time, side by side with no gaps, so the total width is the lead time to scale; equal mode gives every box the same width. Layout never shrinks to fit: fit and zoom belong to `LadderMap`.
+- **Tokens live in `src/index.css`** (`@theme` and `:root`), not `tailwind.config.js`, which Tailwind v4 ignores.
+
 **Steps:**
 
 #### Step 10.1: Pure ladder layout

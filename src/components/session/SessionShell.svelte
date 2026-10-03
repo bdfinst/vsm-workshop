@@ -13,6 +13,8 @@
   import TimeStage from './stages/TimeStage.svelte'
   import SessionHeader from './SessionHeader.svelte'
   import StageRail from './StageRail.svelte'
+  import LadderMap from '../map/LadderMap.svelte'
+  import ViewSwitch from '../map/ViewSwitch.svelte'
 
   // Each stage's own component, by stage number; the rest are still placeholders.
   // Every stage is given the same props and uses the ones it needs: store,
@@ -29,6 +31,7 @@
   let stage = $derived(stream?.session.activeStage ?? STAGE_NUMBER.SCOPE)
   let stageName = $derived(STAGE_NAMES[stage - 1])
   let statuses = $derived(stream ? stageStatus(stream) : [])
+  let showMap = $derived(Boolean(store) && stage >= STAGE_NUMBER.STEPS)
   let StageComponent = $derived(
     (store && STAGE_COMPONENTS[stage]) || PlaceholderStage
   )
@@ -115,8 +118,25 @@
         {/key}
       </div>
     </main>
-    <aside class="lg:w-80" aria-label="Map" data-testid="map-pane"></aside>
   </div>
+  {#if showMap}
+    <section class="px-4 pb-4" aria-label="Map" data-testid="map-pane">
+      <div class="bg-map-bg rounded-lg shadow-md p-4">
+        <ViewSwitch panelId="map-view-panel" />
+        <div
+          id="map-view-panel"
+          role="tabpanel"
+          aria-labelledby="view-tab-map"
+          class="mt-3"
+        >
+          <LadderMap
+            version={store.activeVersion}
+            flags={store.metrics.flags}
+          />
+        </div>
+      </div>
+    </section>
+  {/if}
   <div data-testid="strip-region"></div>
   <div class="sr-only" role="status" data-testid="live-region">
     {#key announcement.id}
