@@ -10,6 +10,16 @@ export const TIME_FIELDS = Object.freeze([
 ])
 
 /**
+ * How each time field is named in a sentence: the one place the nouns live, for
+ * the stage reasons, the ladder and the validation messages.
+ */
+export const TIME_FIELD_NOUNS = Object.freeze({
+  processTime: 'process time',
+  waitTime: 'wait time',
+  elapsedTime: 'elapsed time',
+})
+
+/**
  * The time fields a step of this kind holds.
  * @param {string} kind - STEP_KIND.TEAM or STEP_KIND.OUTSIDE
  * @returns {readonly string[]}
@@ -58,3 +68,11 @@ export const createStep = (overrides = {}) => {
  */
 export const hasRejects = (step) =>
   typeof step.pctCA === 'number' && step.pctCA < FULL_PCT_CA
+
+/**
+ * The typical times a step still needs, by field. Zero counts as entered.
+ * @param {{kind: string}} step - A v2 step, or a row with the same time fields
+ * @returns {string[]} Field names, in the order a step of its kind holds them
+ */
+export const missingTimesOf = (step) =>
+  timeFieldsOf(step.kind).filter((field) => step[field]?.typ == null)

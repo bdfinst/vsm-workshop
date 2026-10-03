@@ -3,7 +3,7 @@ import {
   STAGE_NUMBER,
   UNIT_OF_WORK,
 } from '../../models/v2/constants.js'
-import { timeFieldsOf } from '../../models/v2/step.js'
+import { TIME_FIELD_NOUNS, missingTimesOf } from '../../models/v2/step.js'
 import { isUnnamed } from '../../models/v2/valueStream.js'
 import { stepLabelOf } from './stepData.js'
 
@@ -124,13 +124,6 @@ export const stepsReason = (steps) => {
   return unattributed ? `Add who does "${unattributed.name.trim()}"` : null
 }
 
-// How the Time gate names each time field.
-const TIME_FIELD_NOUNS = {
-  processTime: 'process time',
-  waitTime: 'wait time',
-  elapsedTime: 'elapsed time',
-}
-
 /**
  * The typical times still to enter. Zero counts as entered.
  * @param {{name: string, kind: string}[]} steps - Step rows in order, Intake first
@@ -138,12 +131,10 @@ const TIME_FIELD_NOUNS = {
  */
 export const missingTimeFields = (steps) =>
   steps.flatMap((step, index) =>
-    timeFieldsOf(step.kind)
-      .filter((field) => step[field]?.typ == null)
-      .map((field) => ({
-        stepLabel: stepLabelOf(step.name, index + 1),
-        noun: TIME_FIELD_NOUNS[field],
-      }))
+    missingTimesOf(step).map((field) => ({
+      stepLabel: stepLabelOf(step.name, index + 1),
+      noun: TIME_FIELD_NOUNS[field],
+    }))
   )
 
 /**

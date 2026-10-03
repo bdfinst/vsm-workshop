@@ -1,4 +1,5 @@
 import { isOutside } from '../../models/v2/constants.js'
+import { TIME_FIELD_NOUNS, missingTimesOf } from '../../models/v2/step.js'
 import { displayNameOf, flagsOf } from './flaggedSteps.js'
 
 /** How a ladder is sized: `SCALED` by minutes, `EQUAL` one width for every box. */
@@ -23,13 +24,6 @@ const OUTSIDE_TEXT = Object.freeze({
   label: 'elapsed · split unknown',
   text: 'outside',
 })
-
-// The time fields a step of each kind needs, in the order they are named when missing.
-const TEAM_TIMES = [
-  ['processTime', 'process time'],
-  ['waitTime', 'wait time'],
-]
-const OUTSIDE_TIMES = [['elapsedTime', 'elapsed time']]
 
 // How each mode turns a step's minutes (null when not entered) into widths. A
 // scaled box is its wait, process or elapsed time side by side; an equal box
@@ -67,9 +61,7 @@ const minutesOf = (step) =>
     : { wait: step.waitTime?.typ, process: step.processTime?.typ }
 
 const missingTimeLabelsOf = (step) =>
-  (isOutside(step) ? OUTSIDE_TIMES : TEAM_TIMES)
-    .filter(([field]) => step[field]?.typ == null)
-    .map(([, label]) => label)
+  missingTimesOf(step).map((field) => TIME_FIELD_NOUNS[field])
 
 const outlineOf = (missingTimeLabels, outsideText, handoffText) => {
   if (missingTimeLabels.length > 0 || outsideText) return OUTLINE.DASHED

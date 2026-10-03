@@ -3,6 +3,8 @@ import {
   TIME_FIELDS,
   createStep,
   hasRejects,
+  missingTimesOf,
+  TIME_FIELD_NOUNS,
   timeFieldsOf,
 } from '../../../src/models/v2/step.js'
 import { FULL_PCT_CA } from '../../../src/models/v2/constants.js'
@@ -95,6 +97,62 @@ describe('hasRejects', () => {
       expect(hasRejects({ pctCA })).toBe(false)
     }
   )
+})
+
+describe('TIME_FIELD_NOUNS', () => {
+  it('names every time field a step can hold', () => {
+    expect(TIME_FIELD_NOUNS).toEqual({
+      processTime: 'process time',
+      waitTime: 'wait time',
+      elapsedTime: 'elapsed time',
+    })
+    expect(Object.keys(TIME_FIELD_NOUNS)).toEqual([...TIME_FIELDS])
+  })
+})
+
+describe('missingTimesOf', () => {
+  it('is empty for a team step with its process and wait time', () => {
+    expect(
+      missingTimesOf(
+        createStep({ processTime: { typ: 5 }, waitTime: { typ: 6 } })
+      )
+    ).toEqual([])
+  })
+
+  it("names a team step's missing times, process before wait", () => {
+    expect(missingTimesOf(createStep())).toEqual(['processTime', 'waitTime'])
+    expect(missingTimesOf(createStep({ processTime: { typ: 5 } }))).toEqual([
+      'waitTime',
+    ])
+    expect(missingTimesOf(createStep({ waitTime: { typ: 5 } }))).toEqual([
+      'processTime',
+    ])
+  })
+
+  it('counts zero as entered', () => {
+    expect(
+      missingTimesOf(
+        createStep({ processTime: { typ: 0 }, waitTime: { typ: 0 } })
+      )
+    ).toEqual([])
+  })
+
+  it('names only the elapsed time for an outside step', () => {
+    expect(missingTimesOf(createStep({ kind: 'outside' }))).toEqual([
+      'elapsedTime',
+    ])
+    expect(
+      missingTimesOf(
+        createStep({ kind: 'outside', elapsedTime: { typ: 1440 } })
+      )
+    ).toEqual([])
+  })
+
+  it('reads a time that is missing its object as not entered', () => {
+    expect(missingTimesOf({ kind: 'team', processTime: { typ: 1 } })).toEqual([
+      'waitTime',
+    ])
+  })
 })
 
 describe('timeFieldsOf', () => {
