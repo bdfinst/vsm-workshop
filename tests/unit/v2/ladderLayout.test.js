@@ -261,7 +261,15 @@ describe('sizeLadder', () => {
     it('uses the flags it is given instead of working them out', () => {
       const steps = reworkSteps()
       const deploy = steps.find((s) => s.name === 'Deploy')
-      const flags = { largestWait: { stepId: deploy.id }, lowestCA: null }
+      const flags = {
+        ...calculateMetrics(versionOf(steps)).flags,
+        largestWait: {
+          stepId: deploy.id,
+          name: deploy.name,
+          wait: deploy.waitTime.typ,
+        },
+        lowestCA: null,
+      }
 
       const layout = sizeLadder(modelOf(steps, flags), {
         mode: LADDER_MODE.EQUAL,

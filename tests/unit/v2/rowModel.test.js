@@ -85,7 +85,7 @@ describe('rowModel', () => {
       Intake: [],
       Refinement: [],
       Development: [],
-      'Code review': ['top-wait', 'lowest-ca'],
+      'Code review': ['largest-wait', 'lowest-ca'],
       Deploy: [],
     })
   })
@@ -102,7 +102,7 @@ describe('rowModel', () => {
     const { steps } = rowModel(version, { ...metrics, flags })
 
     expect(
-      steps.filter((row) => row.flags.includes('top-wait')).map((r) => r.id)
+      steps.filter((row) => row.flags.includes('largest-wait')).map((r) => r.id)
     ).toEqual([named.id])
   })
 
@@ -114,7 +114,7 @@ describe('rowModel', () => {
     ]
     const { steps: rows } = rowsOf(versionOf(steps))
 
-    expect(rows.map((row) => row.flags.includes('top-wait'))).toEqual([
+    expect(rows.map((row) => row.flags.includes('largest-wait'))).toEqual([
       false,
       true,
       false,
@@ -126,7 +126,7 @@ describe('rowModel', () => {
       versionOf([team('Intake', 10, 0), team('Deploy', 10, 0)])
     )
 
-    expect(rows.every((row) => !row.flags.includes('top-wait'))).toBe(true)
+    expect(rows.every((row) => !row.flags.includes('largest-wait'))).toBe(true)
   })
 
   it('leaves outside steps out of the reject rate and the flags', () => {
@@ -221,7 +221,13 @@ describe('rowModel', () => {
 
     const { paths } = rowsOf(version)
 
-    expect(paths[0]).toMatchObject({ fromName: 'Code review', toName: null })
+    expect(paths[0]).toMatchObject({
+      fromName: 'Code review',
+      toName: null,
+      depth: 4,
+      reworkTime: { typ: 0, low: 0, high: 0 },
+      addedTime: { typ: 0, low: 0, high: 0 },
+    })
   })
 
   it('has no path rows without rework paths', () => {
