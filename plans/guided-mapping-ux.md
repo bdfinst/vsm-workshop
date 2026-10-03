@@ -2903,7 +2903,7 @@ See each step's **Complexity** line. The `complex` steps are 3.1 (migration), 4.
 - [x] Slice 8: Time stage (slice review done, findings fixed; 1477 unit tests, 142 guided e2e)
   - [x] Step 8.1: DurationInput
   - [x] Step 8.2: Time stage
-- [ ] Slice 9: Workspace home screen
+- [x] Slice 9: Workspace home screen (slice review done, findings fixed; 1647 unit tests, 183 guided e2e)
   - [x] Step 9.1: HomeScreen, launch and screen
   - [x] Step 9.2: Card menu, rename, duplicate and delete with undo
   - [x] Step 9.3: Import and export one value stream
