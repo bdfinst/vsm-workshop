@@ -60,15 +60,17 @@ export function createToastStore() {
    * @param {string} text - The message
    * @param {string} [type] - info, success, warning or error (errors stay)
    * @param {number} [duration] - Milliseconds before it goes
-   * @param {{action?: {label: string, onclick: function}}} [options] - An
-   *   action button; a message with one stays 10 s unless `duration` is given
+   * @param {{action?: {label: string, onclick: function}, hint?: string}} [options] - An
+   *   action button; a message with one stays 10 s unless `duration` is given.
+   *   `hint` is a second line, read out with the message.
    * @returns {string} The id of the new message
    */
   const add = (text, type = TOAST_TYPE.INFO, duration, options) => {
     const action = options?.action
+    const hint = options?.hint
     nextId = nextId + 1
     const id = `toast-${nextId}`
-    messages = [...messages, { id, text, type, action }]
+    messages = [...messages, { id, text, type, action, hint }]
 
     if (type !== TOAST_TYPE.ERROR) {
       durations.set(

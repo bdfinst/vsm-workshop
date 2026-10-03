@@ -259,3 +259,259 @@ test.describe('Several value streams in one workspace (slice 9.1)', () => {
     await axe()
   })
 })
+
+const menuButton = (page, name) =>
+  page.getByRole('button', { name: `Actions for ${name}`, exact: true })
+const menuItem = (page, name) =>
+  page.getByRole('menuitem', { name, exact: true })
+const confirmDialog = (page) => page.getByRole('alertdialog')
+const toast = (page) => page.getByTestId('toast-message')
+const newValueStreamButton = (page) =>
+  page.getByRole('button', { name: 'New value stream', exact: true })
+
+const openMenuFor = async (page, name) => {
+  await menuButton(page, name).click()
+  await expect(page.getByRole('menu')).toBeVisible()
+}
+
+const chooseFromMenu = async (page, name, item) => {
+  await openMenuFor(page, name)
+  await menuItem(page, item).click()
+}
+
+const renameStream = async (page, name, newName) => {
+  await chooseFromMenu(page, name, 'Rename')
+  await page.getByLabel('Value stream name').fill(newName)
+  await page.keyboard.press('Enter')
+}
+
+const duplicateStream = (page, name) => chooseFromMenu(page, name, 'Duplicate')
+
+const deleteStream = async (page, name) => {
+  await chooseFromMenu(page, name, 'Delete')
+  await confirmDialog(page)
+    .getByRole('button', { name: 'Delete', exact: true })
+    .click()
+}
+
+const openStream = (page, name) =>
+  page.getByRole('link', { name, exact: true }).click()
+
+const stepNames = (page) =>
+  page.getByTestId('step-row').evaluateAll((items) =>
+    items.map((item) => {
+      const input = item.querySelector('[data-field="name"]')
+      return input
+        ? input.value
+        : item.querySelector('[data-testid="step-name"]').textContent
+    })
+  )
+
+const startOnHome = async (page, seed) => {
+  await openBackground(page, seed)
+  await openAllValueStreams(page)
+}
+
+test.describe('Manage value streams from the home screen (slice 9.2)', () => {
+  test('Rename a value stream', async ({ page, seed }) => {
+    await startOnHome(page, seed)
+
+    await renameStream(page, 'Onboarding', 'New hire onboarding')
+
+    await expectValueStreams(page, ['Checkout delivery', 'New hire onboarding'])
+    await expect(menuButton(page, 'New hire onboarding')).toBeFocused()
+  })
+
+  test('A blank name is refused', async ({ page, seed }) => {
+    await startOnHome(page, seed)
+
+    await renameStream(page, 'Onboarding', '   ')
+
+    await expect(page.getByText('Add a name')).toBeVisible()
+    await expectValueStreams(page, ['Checkout delivery', 'Onboarding'])
+  })
+
+  test('Duplicate a value stream', async ({ page, seed }) => {
+    await startOnHome(page, seed)
+
+    await duplicateStream(page, 'Checkout delivery')
+    await expectValueStreams(page, [
+      'Checkout delivery',
+      'Checkout delivery (copy)',
+      'Onboarding',
+    ])
+
+    await duplicateStream(page, 'Checkout delivery')
+    await expectValueStreams(page, [
+      'Checkout delivery',
+      'Checkout delivery (copy 2)',
+      'Checkout delivery (copy)',
+      'Onboarding',
+    ])
+  })
+
+  test('A duplicate is independent', async ({ page, seed }) => {
+    await startOnHome(page, seed)
+
+    await duplicateStream(page, 'Checkout delivery')
+    await openStream(page, 'Checkout delivery (copy)')
+    await stageButton(page, 'Steps').click()
+    await page.getByRole('button', { name: 'Delete Deploy' }).click()
+    await confirmDialog(page)
+      .getByRole('button', { name: 'Delete', exact: true })
+      .click()
+    await expect.poll(() => stepNames(page)).not.toContain('Deploy')
+    await openAllValueStreams(page)
+    await openStream(page, 'Checkout delivery')
+    await stageButton(page, 'Steps').click()
+
+    await expect.poll(() => stepNames(page)).toEqual(REFERENCE_STEPS)
+  })
+
+  test('The card menu works from the keyboard', async ({ page, seed }) => {
+    await startOnHome(page, seed)
+
+    await menuButton(page, 'Onboarding').focus()
+    await page.keyboard.press('Enter')
+
+    await expect(page.getByRole('menuitem')).toHaveText([
+      'Rename',
+      'Duplicate',
+      'Export value stream',
+      'Delete',
+    ])
+    await expect(menuItem(page, 'Rename')).toBeFocused()
+    await page.keyboard.press('ArrowDown')
+    await expect(menuItem(page, 'Duplicate')).toBeFocused()
+    await page.keyboard.press('Escape')
+    await expect(page.getByRole('menu')).toHaveCount(0)
+    await expect(menuButton(page, 'Onboarding')).toBeFocused()
+
+    await page.keyboard.press('Space')
+    await expect(menuItem(page, 'Rename')).toBeFocused()
+  })
+
+  test('Delete asks first and can be cancelled', async ({ page, seed }) => {
+    await startOnHome(page, seed)
+
+    await chooseFromMenu(page, 'Onboarding', 'Delete')
+
+    await expect(confirmDialog(page)).toContainText('Onboarding')
+    await confirmDialog(page).getByRole('button', { name: 'Cancel' }).click()
+    await expect(confirmDialog(page)).toHaveCount(0)
+    await expectValueStreams(page, ['Checkout delivery', 'Onboarding'])
+    await expect(menuButton(page, 'Onboarding')).toBeFocused()
+  })
+
+  const UNDO_METHODS = [
+    [
+      '"Undo" on the toast',
+      (page) =>
+        toast(page).getByRole('button', { name: 'Undo', exact: true }).click(),
+    ],
+    ['Ctrl+Z', (page) => page.keyboard.press('Control+z')],
+  ]
+
+  for (const [method, undo] of UNDO_METHODS) {
+    test(`Delete can be undone: ${method}`, async ({ page, seed }) => {
+      await startOnHome(page, seed)
+
+      await deleteStream(page, 'Checkout delivery')
+
+      await expectValueStreams(page, ['Onboarding'])
+      await expect(
+        page.getByRole('link', { name: 'Onboarding', exact: true })
+      ).toBeFocused()
+      await expect(toast(page)).toContainText('Checkout delivery deleted')
+      await expect(toast(page)).toContainText('Ctrl+Z to undo')
+      await expect(toast(page)).toHaveAttribute('aria-live', 'polite')
+
+      await undo(page)
+
+      await expectValueStreams(page, ['Checkout delivery', 'Onboarding'])
+      await expect(cardOf(page, 'Checkout delivery')).toContainText('5 steps')
+      await expect(toast(page)).toHaveCount(0)
+    })
+  }
+
+  test('Deleting every value stream shows the empty home screen', async ({
+    page,
+    seed,
+  }) => {
+    await startOnHome(page, seed)
+
+    await deleteStream(page, 'Checkout delivery')
+    await deleteStream(page, 'Onboarding')
+
+    await expect(page.getByText('No value streams yet')).toBeVisible()
+    await expect(newValueStreamButton(page)).toBeVisible()
+    await expect(newValueStreamButton(page)).toBeFocused()
+  })
+
+  test('Focus after a delete goes to the previous card when the last one goes', async ({
+    page,
+    seed,
+  }) => {
+    await startOnHome(page, seed)
+
+    await deleteStream(page, 'Onboarding')
+
+    await expect(
+      page.getByRole('link', { name: 'Checkout delivery', exact: true })
+    ).toBeFocused()
+  })
+
+  test('Reloading an empty workspace starts a value stream at Scope', async ({
+    page,
+    seed,
+  }) => {
+    await startOnHome(page, seed)
+    await deleteStream(page, 'Checkout delivery')
+    await deleteStream(page, 'Onboarding')
+    await expect
+      .poll(async () => (await savedWorkspace(page))?.streams.length)
+      .toBe(0)
+
+    await page.reload()
+
+    await expectCurrentStage(page, 'Scope')
+    await expect(mapName(page)).toHaveValue('')
+  })
+
+  test('The card menu and delete confirmation have no accessibility violations', async ({
+    page,
+    seed,
+    axe,
+  }) => {
+    await startOnHome(page, seed)
+    await page.clock.resume()
+
+    await openMenuFor(page, 'Onboarding')
+    await axe()
+    await menuItem(page, 'Delete').click()
+    await expect(confirmDialog(page)).toBeVisible()
+    await axe()
+    await confirmDialog(page).getByRole('button', { name: 'Cancel' }).click()
+    await expect(confirmDialog(page)).toHaveCount(0)
+    await chooseFromMenu(page, 'Onboarding', 'Rename')
+    await expect(page.getByLabel('Value stream name')).toBeVisible()
+    await axe()
+  })
+
+  test('The empty home screen and its Undo toast have no accessibility violations', async ({
+    page,
+    seed,
+    axe,
+  }) => {
+    await startOnHome(page, seed)
+    await deleteStream(page, 'Checkout delivery')
+    await deleteStream(page, 'Onboarding')
+    await expect(page.getByText('No value streams yet')).toBeVisible()
+
+    // axe needs the page's timers, so time runs for this scan; the toast waits
+    // while the pointer is on it.
+    await toast(page).hover()
+    await page.clock.resume()
+    await axe()
+  })
+})

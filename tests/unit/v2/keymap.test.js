@@ -1,5 +1,10 @@
 import { describe, it, expect } from 'vitest'
-import { isTextEntry, shortcutFor } from '../../../src/utils/ui/keymap.js'
+import {
+  isTextEntry,
+  menuActionFor,
+  menuIndexFor,
+  shortcutFor,
+} from '../../../src/utils/ui/keymap.js'
 
 const press = (key, modifiers = {}) => ({
   key,
@@ -69,5 +74,56 @@ describe('isTextEntry', () => {
     ['nothing focused', null],
   ])('%s does not take text', (_name, element) => {
     expect(isTextEntry(element)).toBe(false)
+  })
+})
+
+describe('menuActionFor', () => {
+  it.each([
+    ['ArrowDown', 'next'],
+    ['ArrowUp', 'previous'],
+    ['Home', 'first'],
+    ['End', 'last'],
+    ['Escape', 'close'],
+    ['Tab', 'leave'],
+  ])('%s is %s', (key, action) => {
+    expect(menuActionFor(press(key))).toBe(action)
+  })
+
+  it.each([
+    ['a letter', press('a')],
+    ['Enter, which activates the item itself', press('Enter')],
+    ['Ctrl+ArrowDown', press('ArrowDown', { ctrlKey: true })],
+    ['Alt+ArrowUp', press('ArrowUp', { altKey: true })],
+  ])('%s is not for the menu', (_name, event) => {
+    expect(menuActionFor(event)).toBeNull()
+  })
+})
+
+describe('menuActionFor leaving', () => {
+  it('Shift+Tab leaves the menu too', () => {
+    expect(menuActionFor(press('Tab', { shiftKey: true }))).toBe('leave')
+  })
+})
+
+describe('menuIndexFor', () => {
+  it('moves down and up, wrapping at the ends', () => {
+    expect(menuIndexFor('next', 0, 4)).toBe(1)
+    expect(menuIndexFor('next', 3, 4)).toBe(0)
+    expect(menuIndexFor('previous', 2, 4)).toBe(1)
+    expect(menuIndexFor('previous', 0, 4)).toBe(3)
+  })
+
+  it('jumps to the first and last items', () => {
+    expect(menuIndexFor('first', 2, 4)).toBe(0)
+    expect(menuIndexFor('last', 1, 4)).toBe(3)
+  })
+
+  it('starts from the first item when none has focus', () => {
+    expect(menuIndexFor('next', -1, 4)).toBe(0)
+    expect(menuIndexFor('previous', -1, 4)).toBe(3)
+  })
+
+  it('stays put for actions that do not move', () => {
+    expect(menuIndexFor('close', 2, 4)).toBe(2)
   })
 })

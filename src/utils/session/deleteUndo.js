@@ -6,12 +6,14 @@ import { TOAST_TYPE } from '../../stores/toastStore.svelte.js'
  * (or the stage is left); otherwise it would undo that change instead.
  * @param {Object} options
  * @param {{add: function, dismiss: function}} options.toastStore - Shows the toast
- * @param {{activeVersion: Object, undo: function}} options.store - The open value stream store; read when used, so a getter can follow a changing prop
+ * @param {{activeVersion: Object, undo: function}} [options.store] - The open value stream store; read when used, so a getter can follow a changing prop. Without one there is no version to go stale.
+ * @param {function(): {ok: boolean, announcement?: string}} [options.undo] - What Undo does; the store's undo by default
+ * @param {string} [options.hint] - Shown with the toast, e.g. the keyboard shortcut
  * @param {function(string): void} [options.onannounce] - Says something to screen readers
  * @returns {{offer: function(string): void, close: function(): void, closeIfStale: function(): void}}
  */
 export const createDeleteUndo = (options) => {
-  const { toastStore, onannounce } = options
+  const { toastStore, onannounce, hint } = options
   // The toast of the last delete, and the version it was offered on.
   let offered = null
 
@@ -21,7 +23,7 @@ export const createDeleteUndo = (options) => {
   }
 
   const undo = () => {
-    const result = options.store.undo()
+    const result = options.undo ? options.undo() : options.store.undo()
     if (result.ok) onannounce?.(result.announcement)
   }
 
@@ -36,15 +38,16 @@ export const createDeleteUndo = (options) => {
     offered = {
       id: toastStore.add(`${label} deleted`, TOAST_TYPE.INFO, undefined, {
         action,
+        hint,
       }),
-      version: options.store.activeVersion,
+      version: options.store?.activeVersion,
     }
   }
 
   /** Close the toast if the version has changed since it was offered. */
   const closeIfStale = () => {
     // Read first, so an effect calling this depends on the version even with no toast.
-    const version = options.store.activeVersion
+    const version = options.store?.activeVersion
     if (offered && version !== offered.version) close()
   }
 
