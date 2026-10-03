@@ -1,6 +1,7 @@
 import { isRecord } from '../../utils/validation/v2/result.js'
 import { STAGE_NAMES } from '../../models/v2/constants.js'
 import { refuse } from '../../models/v2/result.js'
+import { normalizeName } from '../../models/v2/valueStream.js'
 import { migrateV1Safely } from '../../utils/migration/migrateV1Safely.js'
 import {
   isNewerVersion,
@@ -63,7 +64,8 @@ const readableTime = (time, fallback) =>
 
 // The fields the home screen reads, which the structural check leaves open, so
 // a card never shows a stage that does not exist or a time that is not one.
-// Time that cannot be read becomes the time of the import.
+// Time that cannot be read becomes the time of the import. The name is
+// normalized, as it is for a value stream made in the app.
 const withReadableFields = (stream) => {
   const activeStage = inRangeStage(stream.session.activeStage)
   const furthestStage = Math.max(
@@ -73,6 +75,7 @@ const withReadableFields = (stream) => {
   const now = new Date().toISOString()
   return {
     ...stream,
+    name: normalizeName(stream.name),
     session: { ...stream.session, activeStage, furthestStage },
     createdAt: readableTime(stream.createdAt, now),
     updatedAt: readableTime(stream.updatedAt, now),

@@ -49,7 +49,7 @@ All durations are stored in whole minutes. Percentages are stored as 0–100. `w
 
 | Entity      | Fields                                                                                                                                                                                                                                                                                        | Rules                                                                                                                                                                                                                                      |
 | ----------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| Workspace   | `format: "vsm-workspace"`, `schemaVersion: 1`, `id`, `streams[]` (ValueStream, in workspace order), `activeStreamId` (nullable), `revision`, `savedAt`                                                                                                                                        | Stream names are trimmed and need not be unique. A stream with no name yet is shown as "Untitled value stream"; renaming to blank is refused. Stream ids are unique. `revision` counts edits, not navigation. An empty workspace is valid. |
+| Workspace   | `format: "vsm-workspace"`, `schemaVersion: 1`, `id`, `streams[]` (ValueStream, in workspace order), `activeStreamId` (nullable), `revision`, `savedAt`                                                                                                                                        | Stream names are trimmed when a stream is created, imported, migrated or edited (a saved workspace is taken as stored) and need not be unique. A stream with no name yet is shown as "Untitled value stream"; a name cannot be edited to blank, from the home rename or the header's value stream name field. A new stream starts unnamed. Stream ids are unique. `revision` counts edits, not navigation. An empty workspace is valid. |
 | ValueStream | `schemaVersion: 2`, `id`, `name`, `description`, `trigger`, `endPoint`, `unitOfWork` (`story` \| `feature` \| `defect`, no default), `workdayHours` (default 8, range 1–24), `versions[]`, `activeVersionId`, `session{activeStage, furthestStage}`, `createdAt`, `updatedAt`                 | Exactly one `current` version. `session` persists so a reload resumes the session.                                                                                                                                                         |
 | MapVersion  | `id`, `kind` (`current` \| `future`), `label`, `basedOnVersionId`, `focusItems[]` (≤ 2), `steps[]`, `reworkPaths[]`, `createdAt`                                                                                                                                                              | See the version rules below.                                                                                                                                                                                                               |
 | Step        | `id`, `originStepId`, `name`, `description`, `performedBy`, `kind` (`team` \| `outside`), `isHandoff`, `processTime{typ,min?,max?}`, `waitTime{typ,min?,max?}`, `elapsedTime{typ}`, `timeSource` (`estimate` \| `measured`), `pctCA` (null until entered), `notes`, `position{x,y}` | See the step rules below.                                                                                                                                                                                                                  |
@@ -125,24 +125,26 @@ Forward connections are no longer stored: flow follows step order. `position` is
   - With any status other than saved (in either mode), the app first asks "You have changes that aren't in a file. Save them first?" with "Save", "Discard" and "Cancel". Focus starts on Cancel, Escape cancels, and focus returns to the control that opened it.
   - Every "Open workspace" entry point goes through one open operation.
   - Opening swaps the file handle first, then marks the new workspace as saved. It never writes to the old file, and it invalidates pending home-screen undo.
-  - A single value stream file is refused with "This is a single value stream — use Import value stream."
+  - A value stream JSON file is refused with "This is a single value stream — use Import value stream."
 - **File menu.**
   - The header shows the save status and one "Save" button.
   - "File" is a menu button: Enter or Space opens it on the first item, arrow keys move, Escape closes it and returns focus to "File".
   - "New value stream", "Open workspace", "Save as…" (Chrome and Edge), "Import value stream" and "Export value stream" sit under a "File" menu, each with a one-line helper.
   - The first, auto-created stream also offers "Have a workspace file? Open it" on Scope.
   - In Chrome and Edge, after the first real edit, a one-time dismissible nudge says "Save as… to keep a file copy."
-  - Under 640 px the header shows the map name, the save status and a menu.
+  - Under 640 px the header shows the value stream name, the save status and a menu.
 - **Home screen.**
   - It lists every stream in workspace order with its name, last updated time, step count and furthest stage (a pure `streamSummary(stream, now)`). An unnamed stream also shows its created date. The home screen explains "workspace" once.
   - Actions:
     - "New value stream" appends a stream.
     - Open.
-    - Rename.
-    - Duplicate inserts the copy after its source, named "<name> (copy)", then "<name> (copy 2)".
+    - Rename. A blank name is refused with "Add a name", and the header's "Value stream name" field refuses it the same way, keeping the previous name. Names are trimmed in both places, and saving a name that is unchanged once trimmed changes nothing (no new "updated" time, no lost undo history). Typing a blank name is refused even for an unnamed stream; leaving the header field untouched is not an edit.
+    - A refusal shows its message under the field (`role="alert"`, with `aria-invalid` and `aria-describedby` on the field), keeps focus in the field, and clears on the next edit. The header's refusal also clears when another stream is opened.
+    - A value stream's name is edited in those two places only. Scope has no name field: while the stream is unnamed it shows one line, "Name this value stream in the header.", and the Next gate says "Add a name in the header".
+    - Duplicate inserts the copy after its source, named "<name> (copy)", then "<name> (copy 2)". A copy of an unnamed stream is named "Untitled value stream (copy)": the copy is named after how its source is listed.
     - Delete confirms, naming the stream, then shows an Undo toast.
-    - "Import value stream" (a v1 or v2 map JSON) appends a stream. An imported id that already exists gets a new one.
-    - "Export value stream" writes a v2 map JSON named "<name>.json", with characters invalid in file names replaced by "-".
+    - "Import value stream" (a v1 map file or a value stream JSON file) appends a stream. An imported id that already exists gets a new one, and its name is trimmed.
+    - "Export value stream" writes a value stream JSON file named "<name>.json" (an unnamed stream is "Untitled value stream.json"), with characters invalid in file names replaced by "-".
   - Each card is a link, with a sibling "⋯" menu button named "Actions for <stream>".
   - An empty workspace shows "No value streams yet" and offers "New value stream". The header's "All value streams" returns to the home screen.
 - **Launch and screen.**
@@ -150,7 +152,7 @@ Forward connections are no longer stored: flow follows step order. `position` is
   - The app opens the active stream at its `session.activeStage` when there is one. Going to the home screen keeps `activeStreamId`, so a reload reopens that stream.
   - With an empty workspace, including a reload after every stream was deleted, it creates a stream and opens it at Scope. The empty home screen shows only until the next reload.
   - With streams but none active, it shows the home screen.
-- **Undo** is per stream, and its snapshots leave out `session`. Opening another stream starts a fresh undo history. Home-screen deletes are undone from their toast or with Ctrl/Cmd+Z on the home screen, for the session.
+- **Undo** is per stream, and its snapshots leave out `session`. Opening another stream starts a fresh undo history. The workspace remembers the last home-screen delete (a newer delete replaces it), so it is undone from its toast or with Ctrl/Cmd+Z on the home screen, for the session. The shortcut still works after opening another stream and coming back; the toast does not come back. A restore that cannot work (the stream's id is in use again) ends it, and opening another workspace clears it.
 
 ### Calculations (pure functions, `src/utils/calculations/`)
 
@@ -216,12 +218,12 @@ These replace `calculateReworkImpact` (a summed rate with a geometric multiplier
   | 6     | none                                                                     |
   | 7     | none                                                                     |
 
-- The "why Next is disabled" text names only what is missing.
+- The "why Next is disabled" text names only what is missing. The name is edited in the header, so its part reads "a name in the header".
 
 ### Layout
 
 - **Shell regions:**
-  - a header with "All value streams", the map name, the "Editing:" indicator and switcher, the save status, undo and redo, Export, and Compare;
+  - a header with "All value streams", the value stream name, the "Editing:" indicator and switcher, the save status, undo and redo, Export, and Compare;
   - the stage rail;
   - the stage prompt card and work area;
   - from stage 2 on, a map pane with a Map / Table / Canvas switch;
@@ -387,7 +389,7 @@ New modules live under `v2/` directories with canonical identifier names (`creat
 
 **Data and export**
 
-23. A v1 map in localStorage (on first launch), or a v1 JSON file (on import), migrates per the migration rules into a stream of the workspace:
+23. A v1 map in localStorage (on first launch), or a v1 map file (on import), migrates per the migration rules into a stream of the workspace:
     - It produces exactly the same LT and PT, except for steps whose wait was clamped, which are listed.
     - The v1 original is kept.
     - The "Map upgraded" notice lists exactly the changes that applied.
@@ -412,7 +414,7 @@ New modules live under `v2/` directories with canonical identifier names (`creat
 
 **Workspace and distribution**
 
-32. The home screen lists every stream in workspace order. A user can create, open, rename, duplicate and delete streams (delete confirms, then offers Undo), import a v1 or v2 map JSON as a new stream, and export one stream as JSON. Edits to one stream never change another.
+32. The home screen lists every stream in workspace order. A user can create, open, rename, duplicate and delete streams (delete confirms, then offers Undo), import a v1 map or a value stream JSON file as a new stream, and export one stream as a value stream JSON file. Edits to one stream never change another.
 33. In Chrome and Edge, after the user links a workspace file, every valid change is written to it within 2 s, and the header shows "Saved to <file>". On the next launch the app offers to reconnect to that file. A file changed elsewhere since the last save is never overwritten until the user chooses "Keep mine".
 34. In Firefox and Safari, "Save" downloads the workspace file and "Open workspace" loads one. The header shows "Not saved to a file · Save" whenever there are edits since the last save, and "Downloaded vsm-workspace.vsm.json" after one. A fresh launch with no edits shows nothing unsaved.
 35. While there are unsaved changes, a pending save or a failed save, closing the window, reloading or leaving the page shows the browser's "Leave site?" prompt. With everything saved, or with no edits since launch, no prompt appears.
@@ -454,7 +456,7 @@ New modules live under `v2/` directories with canonical identifier names (`creat
 | Multiple value streams                                                   | `requires-stakeholder-input` | human       | Yes: a workspace with a home screen.                                                                                                                               |
 | Warn before leaving with unsaved changes                                 | `requires-stakeholder-input` | human       | Yes: the browser's `beforeunload` prompt, plus a save status in the header.                                                                                        |
 | Autosave to the linked file vs explicit Save                             | `inferable`                  | inference   | With a linked file, autosave keeps the file current so the warning rarely fires. Download mode can't autosave, so it needs an explicit Save.                       |
-| One workspace file for all streams, not one file per stream              | `inferable`                  | inference   | One file is one thing to back up and one permission grant. Single streams can still be exported and imported as map JSON.                                          |
+| One workspace file for all streams, not one file per stream              | `inferable`                  | inference   | One file is one thing to back up and one permission grant. Single streams can still be exported and imported as value stream JSON files.                                          |
 | IndexedDB as the working copy                                            | `inferable`                  | inference   | It survives reloads and crashes and holds more than localStorage. The file stays the durable copy because browsers may clear storage.                              |
 | Stream names need not be unique                                          | `inferable`                  | inference   | Streams are identified by id. Duplicates get " (copy)", and blocking duplicate names adds friction with no benefit.                                                |
 | Overwriting a linked file changed elsewhere                              | `inferable`                  | inference   | Never silently. A `revision` and `savedAt` stamp is compared on reconnect and before every write, and the user chooses "Keep mine", "Load file" or "Cancel".       |

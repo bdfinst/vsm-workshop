@@ -4,6 +4,7 @@ import {
   standaloneHtml,
   standaloneSize,
 } from './standalone.fixture.js'
+import { streamName } from './fixtures.js'
 
 const MB = 1024 * 1024
 
@@ -19,7 +20,8 @@ test.describe('Standalone app in one file', () => {
     ).toHaveAttribute('aria-current', 'step')
 
     const field = (label) => page.getByLabel(label, { exact: true })
-    await field('Value stream name').fill('Checkout delivery')
+    await streamName(page).fill('Checkout delivery')
+    await streamName(page).press('Enter')
     await field('Trigger').fill('A customer asks for a change')
     await field('End point').fill('The change is live')
     await field('Unit of work').selectOption('story')

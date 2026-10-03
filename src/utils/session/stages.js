@@ -4,6 +4,7 @@ import {
   UNIT_OF_WORK,
 } from '../../models/v2/constants.js'
 import { timeFieldsOf } from '../../models/v2/step.js'
+import { isBlankName } from '../../models/v2/valueStream.js'
 import { stepLabelOf } from './stepData.js'
 
 /**
@@ -46,12 +47,14 @@ export const STAGES = Object.freeze(
 const isBlank = (value) => typeof value !== 'string' || value.trim() === ''
 
 // In form order; `noun` and `article` are how the gate reason names the field.
+// The name is not on the Scope form: it is edited in the header, so its reason
+// says where.
 const SCOPE_FIELDS = [
   {
     key: 'name',
     article: 'a',
-    noun: 'name',
-    isMissing: ({ name }) => isBlank(name),
+    noun: 'name in the header',
+    isMissing: ({ name }) => isBlankName(name),
   },
   {
     key: 'trigger',
@@ -91,8 +94,8 @@ const joinWithAnd = (items) =>
     : `${items.slice(0, -1).join(', ')} and ${items.at(-1)}`
 
 /**
- * Why Next is disabled on Scope: it names only what is missing. A map with
- * nothing filled yet gets the short form without repeated articles.
+ * Why Next is disabled on Scope: it names only what is missing. A value stream
+ * with nothing filled yet gets the short form without repeated articles.
  * @param {string[]} missing - Keys from `missingScopeFields`
  * @returns {?string} The reason, or null when nothing is missing
  */

@@ -1,6 +1,7 @@
 <script>
   import PromptCard from '../PromptCard.svelte'
   import { STAGE_NUMBER, UNIT_OF_WORK } from '../../../models/v2/constants.js'
+  import { isBlankName } from '../../../models/v2/valueStream.js'
   import {
     STAGES,
     missingScopeFields,
@@ -16,13 +17,8 @@
   const inputClass =
     'w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent'
 
+  // The value stream's name is not here: it is edited in the header, once.
   const TEXT_FIELDS = [
-    {
-      key: 'name',
-      id: 'scope-name',
-      label: 'Value stream name',
-      testid: 'scope-name-input',
-    },
     {
       key: 'trigger',
       id: 'scope-trigger',
@@ -84,6 +80,11 @@
   nextReason={reason}
   {onnext}
 >
+  {#if isBlankName(stream.name)}
+    <p class="mb-4 text-gray-700" data-testid="scope-name-hint">
+      Name this value stream in the header.
+    </p>
+  {/if}
   <div class="grid gap-4 md:grid-cols-2" data-testid="scope-stage">
     {#each TEXT_FIELDS as field (field.key)}
       <div>

@@ -92,13 +92,13 @@ Spec revision 5, criteria 1–37, are ticked at PR review of the slice that sati
   - "The reference map in a guided session" with no stage named seeds the "Review" stage, with every stage reached. Seeded maps are named "Checkout delivery" with trigger, end point and unit of work filled, and every step has a performer. Seed helpers never click through earlier stages.
 - **File-system stub** (`tests/e2e/helpers/fileSystemStub.js`, 11.2). File-picker Givens ("the browser can link files", "linked to …") become fixture calls that install it with `addInitScript`. File contents live outside the page, in a context-level store in the test process reached through `page.exposeBinding`. The page sees each handle as a cloneable token (`{ kind: 'file', name, token }`), so a handle survives IndexedDB and a reload. The stub can hold writes until released, fail them, and change a file "elsewhere". "Linked to X" writes the seeded workspace to X and records its `revision` and `savedAt` as the last-saved stamp, as a real save would. "The browser can't link files" removes `showSaveFilePicker` and `showOpenFilePicker`.
 - **Leave-page dialogs.** The fixture's default `page.on('dialog')` handler accepts every dialog, so reloads in any scenario never hang. Only the leave-page scenarios (11.4) replace it with a recording handler, which dismisses.
-- **Save-state Givens.** Each is a fixture helper (`withUnsavedChanges`, `withWriteHeld`, `withFailedWrite`, `withEverythingSaved`, `inDownloadMode`) that performs the seed plus explicit actions on a paused clock. "with unsaved changes": change the map name, no clock advance. "with a write held": hold writes, change the map name, run the clock 500 ms. "whose last write failed" and "that can't be written" (once edited): make writes fail, change the map name, run the clock 2000 ms. "with everything saved": linked, no edits. "in download mode": the browser can't link files. In a linked-but-failed state, "Save" in the open prompt means "Save a copy".
+- **Save-state Givens.** Each is a fixture helper (`withUnsavedChanges`, `withWriteHeld`, `withFailedWrite`, `withEverythingSaved`, `inDownloadMode`) that performs the seed plus explicit actions on a paused clock. "with unsaved changes": change the value stream name, no clock advance. "with a write held": hold writes, change the value stream name, run the clock 500 ms. "whose last write failed" and "that can't be written" (once edited): make writes fail, change the value stream name, run the clock 2000 ms. "with everything saved": linked, no edits. "in download mode": the browser can't link files. In a linked-but-failed state, "Save" in the open prompt means "Save a copy".
 - **Walking every stage.** The `walkEveryStage(upTo)` fixture helper ("through every stage up to X") chooses Next from the first stage and asserts the stage heading after each Next, so the test fails if a stage is skipped or out of order.
 - **Clock.** Scenarios that depend on time call `page.clock.install()` before the page loads, then `pauseAt`: the home Background freezes it for "Updated 2 days ago", and save-timing scenarios advance it explicitly; "When N seconds pass" and "When N milliseconds pass" are `page.clock.runFor` calls. Assertions that a write completed use a retrying `expect`, since the write itself is async. A scenario asserts the transitional status ("Unsaved changes", "Saving…") before the settled one, so "Saved to" is never vacuous.
 - **Standalone runs.** `tests/e2e/guided/standalone.fixture.js` (6.1) opens `dist-standalone/vsm-workshop.html` from disk. The engine is the scenario's `<browser>` value, or `STANDALONE_ENGINE` (default Chromium) when the scenario names none. Each standalone test uses a persistent user-data directory (`launchPersistentContext`) so "close the browser and open the file again" reopens the same profile. "The page made no network requests" is defined once in `standalone.fixture.js`: `context.route('**', …)` aborts every request that isn't the opened `file:` URL, and a `page.on('request')` listener records each one; the test asserts the record is empty.
 - **Sizes.** 5 MB means 5 × 1024 × 1024 bytes.
 - **Placeholder stages.** Step 5.1 renders a placeholder body for every stage not yet built: the stage heading, and "This stage is not built yet", with Next enabled. Each later slice replaces its placeholder. This way rail navigation, heading focus and the map pane can be tested from Slice 5 on.
-- **Wording.** "Announced to screen readers" means the text of the session's `aria-live` region. Validation messages that name several missing items join them as "a, b and c". "Value stream" is used throughout; "map" only in "map name" and the map pane.
+- **Wording.** "Announced to screen readers" means the text of the session's `aria-live` region. Validation messages that name several missing items join them as "a, b and c". "Value stream" is used throughout, including "value stream name"; "map" only for the diagram, its version and the map pane.
 - Unless a scenario says otherwise, **"the reference map"** means the Slice 1 Background table: Intake 60/2400, Refinement 240/480, Development 480/960, Code review 60/2880, Deploy 30/1440, all team steps, all at %C/A 100, with an 8-hour working day. **"The reference rework map"** is the reference map with Code review at %C/A 80 and one path from Code review to Intake at share 100. Both are defined once in the shared fixture modules (`tests/unit/v2/fixtures.js`, and re-exported to `tests/e2e/guided/fixtures.js`).
 - From Slice 5 on, every UI slice's Playwright test runs the axe helper on each screen it adds. Slice 5.1 adds the helper to the shared fixture.
 
@@ -659,16 +659,16 @@ The v1 undo tests stay green. The undo scenarios are written as tests in 4.3.
   - `open`.
   - `rename`; a blank name is refused with "Add a name".
   - `duplicate` inserts the copy after its source, named "(copy)" then "(copy 2)", with new ids.
-  - `remove` returns a restore token, and `restore` uses it.
+  - `remove` keeps the removal as the last one (`lastRemoval`), and `restoreLast` restores it. There is no token to hold.
   - `importStream(text)` appends, with a new id on collision.
   - `exportStream(id)`.
-  - `replaceWorkspace(workspace)` sets `savedRevision = revision`, fires no `subscribeCommit`, and invalidates restore tokens.
+  - `replaceWorkspace(workspace)` sets `savedRevision = revision`, fires no `subscribeCommit`, and clears the last removal.
 - **Fixtures.** Add `makeStore()` to `tests/unit/v2/fixtures.js`: a fresh store over the memory repository per test (see Conventions).
 
 **TEST**:
 
 - The editing-rule, undo, isolation and per-stream undo scenarios.
-- Unit tests: a second save waits for the first; navigation doesn't bump `revision` or fire `subscribeCommit`; `screen` is never persisted; the baseline after load, migration and auto-create; duplicate naming and placement; the import id collision; a restore token is invalid after `replaceWorkspace`; nothing is created before `ready`.
+- Unit tests: a second save waits for the first; navigation doesn't bump `revision` or fire `subscribeCommit`; `screen` is never persisted; the baseline after load, migration and auto-create; duplicate naming and placement; the import id collision; the last removal is cleared by `replaceWorkspace`; nothing is created before `ready`.
 
 **REFACTOR**: Keep stream validation in the codec; the store only orchestrates.
 **Files**: `src/stores/v2/workspaceStore.svelte.js`, `tests/unit/v2/workspaceStore.test.js`, `tests/unit/v2/fixtures.js`, `tests/unit/v2/slice-4-store.test.js`
@@ -697,29 +697,38 @@ Feature: Guided session shell
     Given I start a new guided map
     Then I see the stage rail with stages "Scope, Steps, Time, Quality, Rework, Review, Future"
     And "Scope" is the current stage
-    And "Next" is disabled with the reason "Add a name, trigger, end point and unit of work"
+    And "Next" is disabled with the reason "Add a name in the header, trigger, end point and unit of work"
 
+  # The name is edited in the header only; Scope has no name field.
   Scenario Outline: Each missing Scope field is named
     Given I start a new guided map
-    When I fill every Scope field except <field>
+    When I fill every Scope field, and name the value stream in the header, except <field>
     Then "Next" is disabled with the reason "Add <reason>"
 
     Examples:
-      | field        | reason         |
-      | name         | a name         |
-      | trigger      | a trigger      |
-      | end point    | an end point   |
-      | unit of work | a unit of work |
+      | field        | reason               |
+      | name         | a name in the header |
+      | trigger      | a trigger            |
+      | end point    | an end point         |
+      | unit of work | a unit of work       |
 
   Scenario: Several missing Scope fields are listed together
     Given I start a new guided map
     When I fill only the end point and unit of work
-    Then "Next" is disabled with the reason "Add a name and a trigger"
+    Then "Next" is disabled with the reason "Add a name in the header and a trigger"
 
   Scenario: Whitespace-only name counts as empty
     Given I start a new guided map
-    When I enter name "   " and fill the other Scope fields
-    Then "Next" is disabled with the reason "Add a name"
+    When I enter name "   " in the header and fill the other Scope fields
+    Then "Next" is disabled with the reason "Add a name in the header"
+
+  Scenario: The Scope gate names the header when the value stream is unnamed
+    Given a value stream with no name, at the "Scope" stage with the other Scope fields filled
+    Then I see "Name this value stream in the header."
+    And "Next" is disabled with the reason "Add a name in the header"
+    When I name the value stream in the header
+    Then I do not see "Name this value stream in the header."
+    And "Next" is enabled
 
   Scenario: Completing Scope moves to Steps
     Given I start a new guided map
@@ -761,29 +770,29 @@ Feature: Guided session shell
     Then the header shows "Editing: Current state"
 
   Scenario: Undo and redo from the toolbar and keyboard
-    Given I have reached the "Steps" stage of a map named "Checkout delivery"
+    Given I have reached the "Steps" stage of a value stream named "Checkout delivery"
     Then "Undo" and "Redo" are disabled
-    When I change the map name to "Checkout v2"
+    When I change the value stream name to "Checkout v2"
     And I press the "Undo" button
-    Then the map name is "Checkout delivery"
-    And "Undo: map name" is announced to screen readers
+    Then the value stream name is "Checkout delivery"
+    And "Undo: value stream name" is announced to screen readers
     When I press Ctrl+Shift+Z
-    Then the map name is "Checkout v2"
+    Then the value stream name is "Checkout v2"
     And "Redo" is disabled
 
   Scenario: A new edit clears redo
-    Given I have reached the "Steps" stage of a map named "Checkout delivery"
-    When I change the map name to "Checkout v2"
+    Given I have reached the "Steps" stage of a value stream named "Checkout delivery"
+    When I change the value stream name to "Checkout v2"
     And I press the "Undo" button
-    And I change the map name to "Checkout v3"
+    And I change the value stream name to "Checkout v3"
     Then "Redo" is disabled
 
   Scenario: Reload resumes the session
-    Given I have reached the "Steps" stage of a map named "Checkout delivery"
-    When I change the map name to "Checkout v2"
+    Given I have reached the "Steps" stage of a value stream named "Checkout delivery"
+    When I change the value stream name to "Checkout v2"
     And I reload the page
     Then "Steps" is the current stage
-    And the map name is "Checkout v2"
+    And the value stream name is "Checkout v2"
 
   Scenario: Upgrade notice lists what changed
     Given a saved v1 map with no Intake step
@@ -827,10 +836,10 @@ Feature: Guided session shell
     And focus is on "Start an empty workspace"
 
   Scenario: Start a new value stream from the header
-    Given I have reached the "Steps" stage of a map named "Checkout delivery"
+    Given I have reached the "Steps" stage of a value stream named "Checkout delivery"
     When I choose "New value stream" from the "File" menu
     Then "Scope" is the current stage
-    And the map name field is empty
+    And the value stream name field is empty
 ```
 
 **Steps:**
@@ -859,7 +868,7 @@ Feature: Guided session shell
 **IMPLEMENT**:
 
 - Write `SessionHeader` with:
-  - the map name, an inline-editable field labelled "Map name", on every stage;
+  - the value stream name, an inline-editable field labelled "Value stream name", on every stage;
   - "Editing: <label>", with a switcher placeholder until Slice 14;
   - Undo and Redo buttons, aria-labelled and disabled when the stack is empty;
   - a "File" menu holding only "New value stream" for now. Slice 9 adds Import and Export value stream; Slice 11 adds Open workspace and Save as….
@@ -875,7 +884,7 @@ Feature: Guided session shell
 #### Step 5.3: StageRail, PromptCard, Scope stage, Next gate
 
 **Complexity**: standard
-**IMPLEMENT**: Write `StageRail` (a `nav` with `aria-current="step"`, showing complete, needs-attention and not-selectable states), `stageStatus(stream)` (derived completion, pure), `PromptCard`, and `ScopeStage` with a unit-of-work select that has no default. The Next gate has `aria-describedby` pointing at its reason. Focus moves to the stage heading on change.
+**IMPLEMENT**: Write `StageRail` (a `nav` with `aria-current="step"`, showing complete, needs-attention and not-selectable states), `stageStatus(stream)` (derived completion, pure), `PromptCard`, and `ScopeStage` with a unit-of-work select that has no default. It has no name field: the name is edited in the header, and an unnamed stream shows a hint and a Next reason that point there. The Next gate has `aria-describedby` pointing at its reason. Focus moves to the stage heading on change.
 **TEST**: The new-map, missing-field, several-missing, whitespace and completing-Scope scenarios, plus axe.
 **REFACTOR**: Keep `STAGES` metadata in one module.
 **Files**: `src/components/session/StageRail.svelte`, `src/components/session/PromptCard.svelte`, `src/components/session/stages/ScopeStage.svelte`, `src/utils/session/stages.js`
@@ -1216,14 +1225,16 @@ Feature: Several value streams in one workspace
   Scenario: Launch opens the active value stream where it left off
     Given "Onboarding" is the active value stream at the "Time" stage
     When I reload the page
-    Then the map name is "Onboarding"
+    Then the value stream name is "Onboarding"
     And "Time" is the current stage
 
   Scenario: A reload after visiting home reopens the value stream
-    When I open "All value streams"
+    Given I am on the home screen
+    When I open "Onboarding"
+    And I open "All value streams"
     And I reload the page
-    Then the map name is "Checkout delivery"
-    And "Review" is the current stage
+    Then the value stream name is "Onboarding"
+    And "Steps" is the current stage
 
   Scenario: Launch with no active value stream shows the home screen
     Given no value stream is active
@@ -1234,7 +1245,7 @@ Feature: Several value streams in one workspace
     Given I am on the home screen
     When I choose "New value stream"
     Then "Scope" is the current stage
-    And the map name field is empty
+    And the value stream name field is empty
     When I open "All value streams"
     Then I see value streams "Checkout delivery, Onboarding, Untitled value stream"
 
@@ -1251,7 +1262,7 @@ Feature: Several value streams in one workspace
   Scenario: Open a value stream from the home screen
     Given I am on the home screen
     When I open "Onboarding"
-    Then the map name is "Onboarding"
+    Then the value stream name is "Onboarding"
     And "Steps" is the current stage
     And focus is on the "Steps" heading
     And the header shows "All value streams"
@@ -1313,6 +1324,7 @@ Feature: Several value streams in one workspace
       | method              |
       | "Undo" on the toast |
       | Ctrl+Z              |
+      | Cmd+Z               |
 
   Scenario: Deleting every value stream shows the empty home screen
     Given I am on the home screen
@@ -1328,7 +1340,7 @@ Feature: Several value streams in one workspace
     And I delete "Onboarding" and confirm
     And I reload the page
     Then "Scope" is the current stage
-    And the map name field is empty
+    And the value stream name field is empty
 
   Scenario: Import a value stream
     Given I am on the home screen
@@ -1371,7 +1383,7 @@ Feature: Several value streams in one workspace
 
 - "Created 3 Mar" is formatted in UTC with a fixed English locale, so it is the same on every machine. "Updated 2 days ago" is computed from the `now` passed to `streamSummary(stream, now)`, which e2e freezes with the page clock.
 - After a delete, focus goes to the card now in the deleted card's position, else the previous card, else "New value stream".
-- The home screen has no stream undo history: Ctrl/Cmd+Z there restores the most recent stream delete. Opening a stream starts its own edit history.
+- The home screen has no stream undo history: Ctrl/Cmd+Z there restores the most recent stream delete, which `workspaceStore` keeps (`lastRemoval`, `restoreLast`; see "Slice 9 follow-up"). Opening a stream starts its own edit history.
 - Deleting every stream shows "No value streams yet". A reload with an empty workspace then creates a stream at Scope.
 - `exportFileName` replaces each of `\ / : * ? " < > |` with "-", with no collapsing or trimming.
 - An imported stream is appended at the end. Duplicate names are allowed and a clashing id is replaced. Tests tell identical names apart by position.
@@ -1407,7 +1419,7 @@ Feature: Several value streams in one workspace
   - It holds Rename (an inline field; "Add a name" on blank), Duplicate (placed after the source), Export value stream (9.3) and Delete.
 - Delete:
   - It confirms with `ConfirmPopover`, naming the stream.
-  - It then shows a "<Stream> deleted" toast with Undo (the toast action from 7.3) and the hint "Ctrl+Z to undo". Ctrl/Cmd+Z on the home screen restores the last delete through `workspaceStore.restore`.
+  - It then shows a "<Stream> deleted" toast with Undo (the toast action from 7.3) and the hint "Ctrl+Z to undo". Ctrl/Cmd+Z on the home screen restores the last delete through `workspaceStore.restoreLast`, which stays available after opening another stream and coming back (the Undo toast does not return).
   - Focus then goes to the next card, else the previous one, else "New value stream".
 - An empty workspace shows "No value streams yet" and offers "New value stream".
 
@@ -1429,6 +1441,183 @@ Feature: Several value streams in one workspace
 **REFACTOR**: None beyond keeping the file-name rule in `exportFileName`.
 **Files**: `src/components/home/HomeScreen.svelte`, `src/components/home/StreamMenu.svelte`, `src/components/session/SessionHeader.svelte`, `src/utils/ui/exportFileName.js`, `tests/unit/v2/exportFileName.test.js`, `tests/e2e/guided/slice-9-home.spec.js`
 **Commit**: `feat(home): import and export a single value stream`
+
+### Slice 9 follow-up: name rules and undo across visits
+
+**Depends-on:** 9
+
+One rule for a value stream's name, and Undo for a home-screen delete that outlives a visit to another stream. Both come from review of Slice 9: the header name field allowed a blank name that home refuses, and the last delete lived in the home screen's own state, so leaving home lost it.
+
+```gherkin
+# Playwright: tests/e2e/guided
+Feature: One name rule and an undo that survives a visit
+  As a facilitator
+  I want a value stream's name to follow the same rule wherever I edit it
+  And to get back a value stream I deleted by mistake, even after a look at another one
+  So that no value stream is lost or left without a name by accident
+
+  Background:
+    Given a workspace with the reference map as "Checkout delivery" and a 3-step map "Onboarding" at the "Steps" stage, in that order
+    And "Checkout delivery" is the active value stream at the "Review" stage
+    And the app is open
+
+  # Refusing a whitespace-only rename from the home screen is the Slice 9 scenario
+  # "A blank name is refused"; it keeps its place and its message "Add a name".
+
+  Scenario: Leaving a new value stream's name field alone keeps it unnamed
+    When I choose "New value stream" from the "File" menu
+    And I move into the value stream name field and out of it again
+    Then focus has moved on from the field
+    And I do not see "Add a name"
+    And the value stream name field is empty
+    When I open "All value streams"
+    Then I see value streams "Checkout delivery, Onboarding, Untitled value stream"
+
+  Scenario Outline: A name is trimmed the same way at home and in the header
+    Given I am on the home screen
+    When I change the name of "Onboarding" to "  New hire onboarding  " from <place>
+    Then I see value streams "Checkout delivery, New hire onboarding" on the home screen
+    And the saved name is "New hire onboarding"
+
+    Examples:
+      | place                       |
+      | the home screen             |
+      | the value stream name field |
+
+  Scenario Outline: A blank name is refused the same way at home and in the header
+    Given I am on the home screen
+    When I change the name of "Onboarding" to <typed> from <place>
+    Then I see "Add a name"
+    And the saved name of the second value stream is "Onboarding"
+
+    Examples:
+      | place                       | typed |
+      | the home screen             | "   " |
+      | the home screen             | ""    |
+      | the value stream name field | "   " |
+      | the value stream name field | ""    |
+
+  Scenario: Saving the rename of an unnamed value stream without a name is refused
+    Given the value stream "Onboarding" has no name
+    And I am on the home screen
+    When I choose "Rename" for "Untitled value stream" and press Enter without typing
+    Then I see "Add a name"
+    When I press Escape
+    Then I see value streams "Checkout delivery, Untitled value stream"
+
+  Scenario: The refusal at home goes away when the name is typed again
+    Given I am on the home screen
+    And I have changed the name of "Onboarding" to "   " from the home screen
+    When I type "N" in the name field
+    Then I do not see "Add a name"
+    And the name field is announced as required
+    When I press Enter
+    Then I see value streams "Checkout delivery, N"
+
+  Scenario Outline: Undo restores a deleted value stream after a visit to another
+    Given I am on the home screen
+    When I delete "Checkout delivery" and confirm
+    And I open "Onboarding"
+    And I open "All value streams"
+    Then I do not see an Undo toast
+    When I press <shortcut>
+    Then I see value streams "Checkout delivery, Onboarding"
+    And "Checkout delivery" has 5 steps
+    And "Checkout delivery restored" is announced to screen readers
+    And the saved active value stream is "Onboarding"
+
+    Examples:
+      | shortcut |
+      | Ctrl+Z   |
+      | Cmd+Z    |
+
+  Scenario: A second delete replaces the first undo
+    Given I am on the home screen
+    When I delete "Checkout delivery" and confirm
+    And I delete "Onboarding" and confirm
+    And I press Ctrl+Z
+    Then I see value streams "Onboarding"
+    When I press Ctrl+Z
+    Then I see value streams "Onboarding"
+    And "Checkout delivery" is not restored
+
+  Scenario: A failed undo is dropped
+    Given I am on the home screen
+    And the exported file of "Onboarding"
+    When I delete "Onboarding" and confirm
+    And I import the file as a value stream
+    And I press Ctrl+Z
+    Then I see "Nothing to restore"
+    And I see value streams "Checkout delivery, Onboarding"
+    When I press Ctrl+Z
+    Then the browser keeps Ctrl+Z
+```
+
+The header name field is checked on its own workspace, a single value stream, so these scenarios do not use the Background above.
+
+```gherkin
+# Playwright: tests/e2e/guided
+Feature: The header name field follows the name rule
+  As a facilitator
+  I want a blank name refused in the header with a message I can see and act on
+  So that I never leave a value stream without a name by accident
+
+  Scenario: A blank name is refused in the header
+    Given the open value stream is "Checkout delivery" at the "Steps" stage
+    When I change the value stream name to "   "
+    Then I see "Add a name"
+    And the value stream name is "Checkout delivery"
+    And there is nothing to undo
+
+  Scenario: A blank name is refused when the field is left, not only on Enter
+    Given the open value stream is "Checkout delivery" at the "Steps" stage
+    When I clear the value stream name and press Tab
+    Then I see "Add a name"
+    And the value stream name is "Checkout delivery"
+    And focus is in the value stream name field
+
+  Scenario: The refusal goes away when the name is typed again
+    Given the open value stream is "Checkout delivery" at the "Steps" stage
+    And I have changed the value stream name to "   "
+    When I type "Checkout v2" in the value stream name field
+    Then I do not see "Add a name"
+    When I press Enter
+    Then the value stream name is "Checkout v2"
+
+  Scenario: A name saved from the header is trimmed
+    Given the open value stream is "Checkout delivery" at the "Steps" stage
+    When I change the value stream name to "  Checkout v2  "
+    Then the value stream name is "Checkout v2"
+    And the saved name is "Checkout v2"
+
+  Scenario: Typing a name and then clearing it on an unnamed value stream is refused
+    Given I have started a new value stream
+    When I type "Checkout" in the value stream name field, clear it and leave the field
+    Then I see "Add a name"
+    And the value stream name field is empty
+
+  Scenario: A refusal does not follow the user to a new value stream
+    Given the open value stream is "Checkout delivery" at the "Steps" stage
+    And I have changed the value stream name to "   "
+    When I choose "New value stream" from the "File" menu
+    Then I do not see "Add a name"
+    And the value stream name field is empty and is not marked invalid
+```
+
+**Decisions** (settled with the owner):
+
+- One editor per property: a value stream's name is edited only in the header and in the home card's rename. The Scope stage has no name field. Its Next gate still needs a name and says "Add a name in the header"; while the stream is unnamed Scope shows the line "Name this value stream in the header." (test id `scope-name-hint`).
+- No silent failures in any field: a refusal, revert or clamp shows a visible, announced message (`role="alert"`, with `aria-invalid` and `aria-describedby` on the field) that clears on the next edit.
+- No blank names: a value stream's name cannot be edited to blank or whitespace from the home rename or the header field. One operation in `models/v2/valueStream.js`, `nameEdit(current, typed)`, returns the refusal ("Add a name") or the normalized name and whether it changed. `workspaceStore.rename` and `valueStreamStore.setName`/`setScope` use it and compose none of the rule themselves; `displayName` and `exportFileName` use `normalizeName` and `UNTITLED_NAME`.
+- An unchanged name (once trimmed) is a no-op in both stores, before any history, `updatedAt`, revision or store rebuild; the card rename leaves that check to the store.
+- Typing a blank name is refused everywhere, even over an unnamed stream: an explicit blank entry is an edit to blank. An untouched field is not an edit, so leaving the header field alone keeps a new stream unnamed. Saving the card rename of an unnamed stream empty is an explicit blank, and is refused.
+- Names are normalized when a stream is created (`createValueStream`), imported (`withReadableFields`) or migrated from v1 (which goes through `createValueStream`). The stream a card or file name is derived from is found by id.
+- New value streams still start unnamed and show "Untitled value stream"; existing unnamed streams are unchanged. Only editing a name to blank is refused. A duplicate of an unnamed stream is named "Untitled value stream (copy)".
+- The header refuses a blank name with "Add a name" under the field, keeps the previous name, does not commit and keeps focus in the field (Enter never leaves it; when the field is left with Tab, focus is brought back). The message clears on the next keystroke and when another value stream is opened (the header is keyed by stream id).
+- `workspaceStore` owns the last removal: `lastRemoval` (stream id and display name, or null) and `restoreLast()`. A new removal replaces the previous one, a failed restore clears it and opening or adopting another workspace clears it. `remove` returns only `{ ok: true }`: there is no token, and `restoreLast` is the only way to restore.
+- After the home screen is left and reached again, Ctrl/Cmd+Z restores the last delete. The Undo toast does not come back; the shortcut is what works.
+- The name field is labelled "Value stream name" everywhere (test id `stream-name-input` in the header). "Map" stays for the diagram and its version.
+- Flag tie rules stay as documented.
 
 ### Slice 10: Time ladder, map pane, summary strip
 
@@ -1604,7 +1793,7 @@ Feature: Saving the workspace to a file
 
   Scenario: A change reaches the file within 2 seconds
     Given the reference map in a guided session linked to "team.vsm.json"
-    When I change the map name to "Checkout v2"
+    When I change the value stream name to "Checkout v2"
     Then the save status is "Unsaved changes"
     When 2 seconds pass
     Then the save status is "Saved to team.vsm.json"
@@ -1613,7 +1802,7 @@ Feature: Saving the workspace to a file
   Scenario: Autosave shows each state
     Given the reference map in a guided session linked to "team.vsm.json"
     And writes to "team.vsm.json" are held until released
-    When I change the map name to "Checkout v2"
+    When I change the value stream name to "Checkout v2"
     Then the save status is "Unsaved changes"
     When 500 milliseconds pass
     Then the save status is "Saving…"
@@ -1638,7 +1827,7 @@ Feature: Saving the workspace to a file
     Given the reference map in a guided session linked to "team.vsm.json"
     When I reload the page
     And I <action>
-    And I change the map name to "Checkout v2"
+    And I change the value stream name to "Checkout v2"
     Then the save status is "Not saved to a file · Save"
     And I see <message>
     And the file "team.vsm.json" has no value stream named "Checkout v2"
@@ -1666,18 +1855,18 @@ Feature: Saving the workspace to a file
   Scenario: The first write checks the file first
     Given the reference map in a guided session linked to "team.vsm.json"
     And "team.vsm.json" is changed elsewhere to hold only the value stream "Alpha"
-    When I change the map name to "Checkout v2"
+    When I change the value stream name to "Checkout v2"
     And 2 seconds pass
     Then I see "This file changed since you last saved"
     And the file "team.vsm.json" holds only "Alpha"
 
   Scenario: A file changed mid-session is checked before the next write
     Given the reference map in a guided session linked to "team.vsm.json"
-    When I change the map name to "Checkout v2"
+    When I change the value stream name to "Checkout v2"
     And 2 seconds pass
     Then the file "team.vsm.json" has a value stream named "Checkout v2"
     When "team.vsm.json" is changed elsewhere to hold only the value stream "Alpha"
-    And I change the map name to "Checkout v3"
+    And I change the value stream name to "Checkout v3"
     And 2 seconds pass
     Then I see "This file changed since you last saved"
     And the file "team.vsm.json" holds only "Alpha"
@@ -1685,7 +1874,7 @@ Feature: Saving the workspace to a file
   Scenario: Load file keeps a backup of my working copy
     Given the reference map in a guided session linked to "team.vsm.json"
     And "team.vsm.json" is changed elsewhere to hold only the value stream "Alpha"
-    When I change the map name to "Checkout v2"
+    When I change the value stream name to "Checkout v2"
     And 2 seconds pass
     And I choose "Load file"
     Then I see the home screen with value streams "Alpha"
@@ -1694,7 +1883,7 @@ Feature: Saving the workspace to a file
   Scenario: Conflict prompt keyboard behaviour
     Given the reference map in a guided session linked to "team.vsm.json"
     And "team.vsm.json" is changed elsewhere to hold only the value stream "Alpha"
-    When I change the map name to "Checkout v2"
+    When I change the value stream name to "Checkout v2"
     And 2 seconds pass
     Then focus is on "Cancel" in the conflict prompt
     When I press Escape
@@ -1710,7 +1899,7 @@ Feature: Saving the workspace to a file
 
   Scenario: Routine autosave is not announced
     Given the reference map in a guided session linked to "team.vsm.json"
-    When I change the map name to "Checkout v2"
+    When I change the value stream name to "Checkout v2"
     And 2 seconds pass
     Then the save status is "Saved to team.vsm.json"
     And nothing about saving is announced to screen readers
@@ -1718,14 +1907,14 @@ Feature: Saving the workspace to a file
   Scenario: Becoming unsaved in download mode is announced once
     Given the browser can't link files
     And the reference map in a guided session
-    When I change the map name to "Checkout v2"
+    When I change the value stream name to "Checkout v2"
     Then "Not saved to a file" is announced to screen readers
-    When I change the map name to "Checkout v3"
+    When I change the value stream name to "Checkout v3"
     Then "Not saved to a file" is not announced again
 
   Scenario: A failed write and its recovery are announced
     Given the reference map in a guided session linked to "team.vsm.json" that can't be written
-    When I change the map name to "Checkout v2"
+    When I change the value stream name to "Checkout v2"
     And 2 seconds pass
     Then "Couldn't save to team.vsm.json" is announced to screen readers
     When the file can be written again and I choose "Retry"
@@ -1733,15 +1922,15 @@ Feature: Saving the workspace to a file
 
   Scenario: A failed write keeps the change and offers Retry
     Given the reference map in a guided session linked to "team.vsm.json" that can't be written
-    When I change the map name to "Checkout v2"
+    When I change the value stream name to "Checkout v2"
     And 2 seconds pass
     Then the save status is "Couldn't save to team.vsm.json. Your work is still in this browser." with "Retry" and "Save a copy"
     When I reload the page
-    Then the map name is "Checkout v2"
+    Then the value stream name is "Checkout v2"
 
   Scenario: A successful Retry saves and clears the warning
     Given the reference map in a guided session linked to "team.vsm.json" that can't be written
-    When I change the map name to "Checkout v2"
+    When I change the value stream name to "Checkout v2"
     And 2 seconds pass
     Then the save status is "Couldn't save to team.vsm.json. Your work is still in this browser."
     When the file can be written again and I choose "Retry"
@@ -1752,7 +1941,7 @@ Feature: Saving the workspace to a file
 
   Scenario: A Retry that fails again keeps the failure and the warning
     Given the reference map in a guided session linked to "team.vsm.json" that can't be written
-    When I change the map name to "Checkout v2"
+    When I change the value stream name to "Checkout v2"
     And 2 seconds pass
     And I choose "Retry"
     Then the save status is "Couldn't save to team.vsm.json. Your work is still in this browser."
@@ -1762,7 +1951,7 @@ Feature: Saving the workspace to a file
 
   Scenario: Save a copy after a failed write
     Given the reference map in a guided session linked to "team.vsm.json" that can't be written
-    When I change the map name to "Checkout v2"
+    When I change the value stream name to "Checkout v2"
     And 2 seconds pass
     And I choose "Save a copy" and pick the file "backup.vsm.json"
     Then the save status is "Saved to backup.vsm.json"
@@ -1772,7 +1961,7 @@ Feature: Saving the workspace to a file
     Given the browser can't link files
     And the reference map in a guided session
     Then the "File" menu has no "Save as…"
-    When I change the map name to "Checkout v2"
+    When I change the value stream name to "Checkout v2"
     Then the save status is "Not saved to a file · Save"
     When I choose "Save"
     Then a file "vsm-workspace.vsm.json" is downloaded with a value stream named "Checkout v2"
@@ -1781,10 +1970,10 @@ Feature: Saving the workspace to a file
   Scenario: An edit after a download is unsaved again
     Given the browser can't link files
     And the reference map in a guided session
-    When I change the map name to "Checkout v2"
+    When I change the value stream name to "Checkout v2"
     And I choose "Save"
     Then the save status is "Downloaded vsm-workspace.vsm.json"
-    When I change the map name to "Checkout v3"
+    When I change the value stream name to "Checkout v3"
     Then the save status is "Not saved to a file · Save"
     When I try to close the page
     Then the browser shows a leave-page warning
@@ -1825,11 +2014,11 @@ Feature: Saving the workspace to a file
       | mode                                              | choice  | result                                                                                  |
       | in download mode                                  | Save    | a file "vsm-workspace.vsm.json" is downloaded, and after I pick that file I see value streams "Alpha, Beta" |
       | in download mode                                  | Discard | after I pick that file I see value streams "Alpha, Beta"                                |
-      | in download mode                                  | Cancel  | the map name is "Checkout delivery" and the save status is "Not saved to a file · Save" |
+      | in download mode                                  | Cancel  | the value stream name is "Checkout delivery" and the save status is "Not saved to a file · Save" |
       | linked to "team.vsm.json" with a write held       | Discard | after I pick that file I see value streams "Alpha, Beta", and once writes are released "team.vsm.json" is unchanged |
-      | linked to "team.vsm.json" whose last write failed | Save    | a copy of the workspace is downloaded with the map name "Checkout delivery", and after I pick that file I see value streams "Alpha, Beta" |
+      | linked to "team.vsm.json" whose last write failed | Save    | a copy of the workspace is downloaded with the value stream name "Checkout delivery", and after I pick that file I see value streams "Alpha, Beta" |
       | linked to "team.vsm.json" whose last write failed | Discard | after I pick that file I see value streams "Alpha, Beta" and "team.vsm.json" is unchanged |
-      | linked to "team.vsm.json" whose last write failed | Cancel  | the map name is "Checkout delivery" and the save status starts with "Couldn't save to team.vsm.json" |
+      | linked to "team.vsm.json" whose last write failed | Cancel  | the value stream name is "Checkout delivery" and the save status starts with "Couldn't save to team.vsm.json" |
 
   Scenario: The open-with-unsaved prompt starts on Cancel
     Given the reference map in a guided session in download mode with unsaved changes
@@ -1855,7 +2044,7 @@ Feature: Saving the workspace to a file
     And a workspace file that <problem>
     When I choose "Open workspace" from the "File" menu and pick that file
     Then I see "<message>"
-    And the map name is "Checkout delivery"
+    And the value stream name is "Checkout delivery"
 
     Examples:
       | problem                           | message                                                   |
@@ -1903,9 +2092,9 @@ Feature: Saving the workspace to a file
   Scenario: A one-time nudge to keep a file copy
     Given the browser can link files
     And the reference map in a guided session
-    When I change the map name to "Checkout v2"
+    When I change the value stream name to "Checkout v2"
     Then I see "Save as… to keep a file copy."
-    When I dismiss the nudge and change the map name to "Checkout v3"
+    When I dismiss the nudge and change the value stream name to "Checkout v3"
     Then I don't see "Save as… to keep a file copy."
 ```
 
@@ -1981,7 +2170,7 @@ Feature: Saving the workspace to a file
   - `UnreadableScreen` gains "Open workspace" first; S11 asserts the full four-item order.
   - Scope on the auto-created stream shows "Have a workspace file? Open it".
   - In Chromium, a one-time nudge appears after the first real edit.
-  - Under 640 px the header shows the map name, the status and one menu.
+  - Under 640 px the header shows the value stream name, the status and one menu.
 
 **TEST**: The open-stream, link, 2-second, autosave-states, reconnect, reconnect-unchanged, not-reconnecting, conflict, first-write, mid-session-conflict, load-file-backup, conflict-keyboard, refused-edit, the three announcement, failed-write, Save-a-copy, download, File-menu-keyboard, open, unreadable-file, unreadable-saved, open-it and nudge scenarios, plus axe (including the header at 400 px).
 **REFACTOR**: One `saveControls` module decides which controls show.
@@ -2555,7 +2744,7 @@ Feature: Standalone app on every browser engine
   Scenario Outline: Work is kept when the file is reopened
     Given I opened the standalone file in <browser> and named the map "Checkout delivery"
     When I close the browser and open the file again
-    Then the map name is "Checkout delivery"
+    Then the value stream name is "Checkout delivery"
 
     Examples:
       | browser  |
@@ -2566,7 +2755,7 @@ Feature: Standalone app on every browser engine
   Scenario: A browser that won't keep data says so
     Given the standalone file opened in a browser with no usable storage
     Then I see "This browser won't keep your work after you close it. Save the workspace file before you leave."
-    When I change the map name to "Checkout v2"
+    When I change the value stream name to "Checkout v2"
     Then the save status is "Not saved to a file · Save"
 
   Scenario: A browser that doesn't grant persistent storage says so
@@ -2927,6 +3116,7 @@ See each step's **Complexity** line. The `complex` steps are 3.1 (migration), 4.
   - [x] Step 8.1: DurationInput
   - [x] Step 8.2: Time stage
 - [x] Slice 9: Workspace home screen (slice review done, findings fixed; 1647 unit tests, 183 guided e2e)
+- [x] Slice 9 follow-up: name rules and undo across visits (one name rule in the model, blank names refused in the header, last removal kept in `workspaceStore`)
   - [x] Step 9.1: HomeScreen, launch and screen
   - [x] Step 9.2: Card menu, rename, duplicate and delete with undo
   - [x] Step 9.3: Import and export one value stream

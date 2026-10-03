@@ -1,5 +1,6 @@
 <script>
   import { onMount, tick } from 'svelte'
+  import { displayName } from '../../models/v2/valueStream.js'
   import { workspaceStore } from '../../stores/v2/workspaceStore.svelte.js'
   import { toastStore, TOAST_TYPE } from '../../stores/toastStore.svelte.js'
   import { createDeleteUndo } from '../../utils/session/deleteUndo.js'
@@ -32,9 +33,6 @@
 
   onMount(() => heading?.focus())
 
-  // The home screen has no stream undo history: Undo restores the last delete.
-  let lastDelete = null
-
   // The id makes a repeated message a new node, so screen readers say it again.
   let announcement = $state({ id: 0, text: '' })
 
@@ -48,20 +46,20 @@
       ?.querySelector(controlSelector('open-stream'))
       ?.focus()
 
+  // The workspace keeps the last removal, so Undo works from the toast and, once
+  // the home screen is left and reached again, from the shortcut alone.
   function undoLastDelete() {
-    if (!lastDelete) return { ok: false, error: 'Nothing to restore' }
-    const { token, name } = lastDelete
-    const result = workspaceStore.restore(token)
+    const removal = workspaceStore.lastRemoval
+    const result = workspaceStore.restoreLast()
     // Restoring cannot work any more (the id is in use again), so Undo is over:
     // the toast goes and a later Ctrl+Z is the browser's again.
-    lastDelete = null
     deleteUndo.close()
     if (!result.ok) {
       announce(result.error)
       return result
     }
     tick().then(() => focusCardLink(result.streamId))
-    return { ok: true, announcement: `${name} restored` }
+    return { ok: true, announcement: `${removal.name} restored` }
   }
 
   const deleteUndo = createDeleteUndo({
@@ -78,7 +76,7 @@
     const action = shortcutFor(event, {
       inTextField: isTextEntry(event.target),
     })
-    if (action !== 'undo' || !lastDelete) return
+    if (action !== 'undo' || !workspaceStore.lastRemoval) return
     event.preventDefault()
     const result = undoLastDelete()
     if (result.ok) announce(result.announcement)
@@ -92,7 +90,8 @@
     const result = workspaceStore.duplicate(summary.id)
     if (!result.ok) return
     const copy = workspaceStore.streams.find((s) => s.id === result.streamId)
-    announce(`${copy?.name ?? 'A copy'} added after ${summary.name}`)
+    const copyName = copy ? displayName(copy) : 'A copy'
+    announce(`${copyName} added after ${summary.name}`)
   }
 
   // Focus goes to the card now in the deleted one's position, else the one
@@ -101,7 +100,6 @@
     const index = summaries.findIndex((s) => s.id === summary.id)
     const result = workspaceStore.remove(summary.id)
     if (!result.ok) return
-    lastDelete = { token: result.token, name: summary.name }
     deleteUndo.offer(summary.name)
     await tick()
     const next = summaries[indexAfterDelete(index, summaries.length)]
@@ -133,7 +131,7 @@
   }
 
   function handleExport(summary) {
-    exportStreamFile(workspaceStore, summary.id, summary.name)
+    exportStreamFile(workspaceStore, summary.id)
   }
 
   function handleNewValueStream() {

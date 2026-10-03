@@ -10,8 +10,14 @@ import {
 } from '../../../src/models/v2/reworkPath.js'
 import { createMapVersion } from '../../../src/models/v2/mapVersion.js'
 import {
+  BLANK_NAME_MESSAGE,
   createValueStream,
   displayName,
+  isBlankName,
+  nameEdit,
+  nameOrUntitled,
+  normalizeName,
+  UNTITLED_NAME,
 } from '../../../src/models/v2/valueStream.js'
 import { copyValueStream } from '../../../src/models/v2/valueStreamCopy.js'
 import { referenceStream, withFutureState } from './fixtures.js'
@@ -706,5 +712,108 @@ describe('displayName', () => {
 
   it('lists a stream with a blank name as untitled', () => {
     expect(displayName({ name: '   ' })).toBe('Untitled value stream')
+  })
+})
+
+describe('the value stream name rule', () => {
+  it.each([
+    ['  Onboarding ', 'Onboarding'],
+    ['Onboarding', 'Onboarding'],
+    ['  New  hire ', 'New  hire'],
+    ['   ', ''],
+    ['', ''],
+    [undefined, ''],
+    [null, ''],
+    [5, ''],
+  ])('normalizes %j to %j', (name, expected) => {
+    expect(normalizeName(name)).toBe(expected)
+  })
+
+  it.each(['', '   ', '\t\n', undefined, null, 5])('calls %j blank', (name) => {
+    expect(isBlankName(name)).toBe(true)
+  })
+
+  it.each(['a', ' a ', '0'])('does not call %j blank', (name) => {
+    expect(isBlankName(name)).toBe(false)
+  })
+
+  it('shows a blank name as untitled and any other as its trimmed text', () => {
+    expect(nameOrUntitled('  ')).toBe('Untitled value stream')
+    expect(nameOrUntitled(undefined)).toBe('Untitled value stream')
+    expect(nameOrUntitled(' Onboarding ')).toBe('Onboarding')
+  })
+
+  it('names the untitled value stream as the cards and files show it', () => {
+    expect(UNTITLED_NAME).toBe('Untitled value stream')
+    expect(nameOrUntitled('')).toBe(UNTITLED_NAME)
+  })
+})
+
+describe('nameEdit', () => {
+  it.each(['', '   ', '\t\n', undefined, null, 5])(
+    'refuses %j with the blank-name message, whatever the stream is called',
+    (typed) => {
+      expect(nameEdit('Onboarding', typed)).toEqual({
+        ok: false,
+        error: BLANK_NAME_MESSAGE,
+      })
+      expect(nameEdit('', typed)).toEqual({
+        ok: false,
+        error: BLANK_NAME_MESSAGE,
+      })
+    }
+  )
+
+  it('gives the trimmed name when it differs from the current one', () => {
+    expect(nameEdit('Onboarding', '  New hire onboarding ')).toEqual({
+      ok: true,
+      name: 'New hire onboarding',
+      changed: true,
+    })
+  })
+
+  it('names a stream that had no name', () => {
+    expect(nameEdit('', 'Onboarding')).toEqual({
+      ok: true,
+      name: 'Onboarding',
+      changed: true,
+    })
+  })
+
+  it.each([
+    ['Onboarding', 'Onboarding'],
+    ['Onboarding', '  Onboarding '],
+    ['  Onboarding ', 'Onboarding'],
+  ])(
+    'says nothing changed when %j is edited to %j, once trimmed',
+    (current, typed) => {
+      expect(nameEdit(current, typed)).toEqual({
+        ok: true,
+        name: 'Onboarding',
+        changed: false,
+      })
+    }
+  )
+
+  it('counts a change in interior space as a change', () => {
+    expect(nameEdit('New hire', 'New  hire')).toMatchObject({
+      name: 'New  hire',
+      changed: true,
+    })
+  })
+})
+
+describe('createValueStream names', () => {
+  it('starts unnamed', () => {
+    expect(createValueStream().name).toBe('')
+  })
+
+  it.each([
+    ['  Onboarding ', 'Onboarding'],
+    ['   ', ''],
+    [undefined, ''],
+    [5, ''],
+  ])('keeps the name given as %j as %j', (given, expected) => {
+    expect(createValueStream({ name: given }).name).toBe(expected)
   })
 })
