@@ -15,9 +15,11 @@ import {
   labelLayout,
   labelOverhangFor,
   pixelsPerMinuteToFit,
+  textWidthOf,
 } from '../../../src/utils/ui/ladderView.js'
 import {
   LADDER_MODE,
+  MIN_SCALED_BOX_WIDTH,
   ladderModel,
   sizeLadder,
 } from '../../../src/utils/ui/ladderLayout.js'
@@ -33,6 +35,8 @@ import {
   withStep,
   withoutWait,
 } from './fixtures.js'
+
+const CJK_NAME = '価値流れ図の作成と改善のための手順書一覧' // 20 characters, each a full em
 
 const REFERENCE_MINUTES = 9030 // every wait and process minute of the reference map
 
@@ -270,6 +274,54 @@ describe('annotationsOf for an outside step', () => {
   })
 })
 
+describe('textWidthOf', () => {
+  it('is nothing for no text', () => {
+    expect(textWidthOf('')).toBe(0)
+  })
+
+  it('takes an average character at LABEL_CHAR_WIDTH', () => {
+    expect(textWidthOf('Code review')).toBe(
+      'Code review'.length * LABEL_CHAR_WIDTH
+    )
+  })
+
+  it('takes a CJK character at a full em, wider than an average one', () => {
+    expect([...CJK_NAME]).toHaveLength(20)
+    expect(textWidthOf(CJK_NAME)).toBe(20 * LABEL_FONT_SIZE)
+    expect(textWidthOf(CJK_NAME)).toBeGreaterThan(20 * LABEL_CHAR_WIDTH)
+  })
+
+  it.each([
+    ['Hiragana', 'あ'],
+    ['Katakana', 'カ'],
+    ['Hangul', '한'],
+    ['fullwidth Latin', 'Ａ'],
+    ['CJK punctuation', '、'],
+    ['a CJK character outside the Basic Multilingual Plane', '\u{20BB7}'],
+  ])('takes %s at a full em', (_, character) => {
+    expect(textWidthOf(character)).toBe(LABEL_FONT_SIZE)
+  })
+
+  it('counts a character outside the Basic Multilingual Plane once, not as two halves', () => {
+    expect(textWidthOf('\u{20BB7}\u{20BB7}')).toBe(2 * LABEL_FONT_SIZE)
+  })
+
+  it.each(['W', 'M'])('takes the wide capital %s at a full em', (capital) => {
+    expect(textWidthOf(capital)).toBe(LABEL_FONT_SIZE)
+  })
+
+  it('takes a narrow capital and a lower-case w at the average', () => {
+    expect(textWidthOf('Iw')).toBe(2 * LABEL_CHAR_WIDTH)
+  })
+
+  it('adds the classes up in a mixed name', () => {
+    // Q, A, a space and a space are average; 自, 動, 化, W and M are a full em.
+    expect(textWidthOf('QA 自動化 WM')).toBe(
+      4 * LABEL_CHAR_WIDTH + 5 * LABEL_FONT_SIZE
+    )
+  })
+})
+
 describe('labelLayout', () => {
   const layoutOf = (steps, pixelsPerMinute = 0.1) =>
     scaledLayout(steps, pixelsPerMinute).steps
@@ -294,6 +346,14 @@ describe('labelLayout', () => {
       width: name.length * LABEL_CHAR_WIDTH,
     })
     expect(labels[0].lines[0]).toEqual({ text: name, tone: null })
+  })
+
+  it('measures a CJK name by the em, so its label is wider than the same count of average characters', () => {
+    const steps = layoutOf([team(CJK_NAME, 60, 60)])
+
+    const { labels } = labelLayout(steps)
+
+    expect(labels[0].width).toBe(20 * LABEL_FONT_SIZE)
   })
 
   it('lists the name first and then the annotations', () => {
@@ -370,8 +430,6 @@ describe('labelLayout', () => {
 })
 
 describe('labelOverhangFor', () => {
-  const MIN_BOX = 24
-
   it('is 0 when every label fits its box and the boxes after it', () => {
     const model = modelOf([team('A', 60, 60), team('B', 60, 60)])
 
@@ -381,16 +439,28 @@ describe('labelOverhangFor', () => {
   it('bounds how far the last label can run past the ladder at the minimum box width', () => {
     const model = modelOf([createStep({ name: 'Intake' })])
 
-    expect(labelOverhangFor(model.steps, MIN_BOX)).toBe(
-      LABEL_INSET + 'needs process time'.length * LABEL_CHAR_WIDTH - MIN_BOX
+    expect(labelOverhangFor(model.steps, MIN_SCALED_BOX_WIDTH)).toBe(
+      LABEL_INSET +
+        'needs process time'.length * LABEL_CHAR_WIDTH -
+        MIN_SCALED_BOX_WIDTH
+    )
+  })
+
+  it('counts a CJK name by the em', () => {
+    const model = modelOf([team(CJK_NAME, 60, 60)])
+
+    expect(labelOverhangFor(model.steps, MIN_SCALED_BOX_WIDTH)).toBe(
+      LABEL_INSET + 20 * LABEL_FONT_SIZE - MIN_SCALED_BOX_WIDTH
     )
   })
 
   it('counts the boxes that follow a label, which cover part of its width', () => {
     const model = modelOf([createStep({ name: 'Intake' }), team('Next', 1, 1)])
 
-    expect(labelOverhangFor(model.steps, MIN_BOX)).toBeLessThan(
-      LABEL_INSET + 'needs process time'.length * LABEL_CHAR_WIDTH - MIN_BOX
+    expect(labelOverhangFor(model.steps, MIN_SCALED_BOX_WIDTH)).toBeLessThan(
+      LABEL_INSET +
+        'needs process time'.length * LABEL_CHAR_WIDTH -
+        MIN_SCALED_BOX_WIDTH
     )
   })
 
@@ -405,7 +475,7 @@ describe('labelOverhangFor', () => {
     const { rightEdge } = labelLayout(layout.steps)
 
     expect(rightEdge - layout.totalWidth).toBeLessThanOrEqual(
-      labelOverhangFor(modelOf(steps).steps, MIN_BOX)
+      labelOverhangFor(modelOf(steps).steps, MIN_SCALED_BOX_WIDTH)
     )
   })
 })

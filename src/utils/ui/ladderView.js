@@ -112,11 +112,55 @@ export const labelLanes = (blocks, gap = 0) => {
 /** Pixels. The size labels are drawn at; the width estimate below follows from it. */
 export const LABEL_FONT_SIZE = 12
 /**
- * Pixels one character of a label is assumed to take. Deliberately wide: a
- * bold capital is about two thirds of an em, wider than the average glyph, so
- * the estimate overshoots rather than letting labels overlap or be clipped.
+ * Pixels one ordinary character of a label is assumed to take: two thirds of
+ * an em, a little wider than the average Latin glyph in the semibold label
+ * font, so the estimate leans wide rather than letting labels overlap.
  */
 export const LABEL_CHAR_WIDTH = (LABEL_FONT_SIZE * 2) / 3
+
+// Code points drawn about one em wide: East Asian wide and fullwidth forms
+// (Hangul, CJK punctuation, kana, ideographs, compatibility and fullwidth
+// forms), and the characters outside the Basic Multilingual Plane that
+// Unicode also gives the wide class (CJK extensions B and later).
+const WIDE_RANGES = [
+  [0x1100, 0x115f],
+  [0x2e80, 0x303e],
+  [0x3040, 0xa4cf],
+  [0xac00, 0xd7a3],
+  [0xf900, 0xfaff],
+  [0xfe30, 0xfe6f],
+  [0xff00, 0xff60],
+  [0xffe0, 0xffe6],
+  [0x20000, 0x3fffd],
+]
+// The capitals a bold sans draws about as wide as an em.
+const WIDE_CAPITALS = new Set(['W', 'M'])
+
+const isWide = (character) => {
+  const code = character.codePointAt(0)
+  return (
+    WIDE_CAPITALS.has(character) ||
+    WIDE_RANGES.some(([from, to]) => code >= from && code <= to)
+  )
+}
+
+/**
+ * An estimate, in pixels, of how wide a label line is drawn. It weights each
+ * character by class: East Asian wide and fullwidth characters and the capitals
+ * W and M at a full em, every other character at LABEL_CHAR_WIDTH. It is
+ * pure, so it cannot read font metrics: it covers Latin, kana, hangul and
+ * ideograph text, and glyphs it does not know (emoji, say) are taken as
+ * ordinary characters.
+ * @param {string} text
+ * @returns {number} Pixels
+ */
+export const textWidthOf = (text) =>
+  sum(
+    [...text].map((character) =>
+      isWide(character) ? LABEL_FONT_SIZE : LABEL_CHAR_WIDTH
+    )
+  )
+
 /** Pixels from a step's left edge to where its label text starts. */
 export const LABEL_INSET = 4
 /** Pixels kept between two labels on one lane. */
@@ -127,7 +171,7 @@ const nameLine = ({ name }) => ({ text: name, tone: null })
 const linesOf = (step) => [nameLine(step), ...annotationsOf(step)]
 
 const labelWidthOf = (lines) =>
-  Math.max(...lines.map(({ text }) => text.length)) * LABEL_CHAR_WIDTH
+  Math.max(...lines.map(({ text }) => textWidthOf(text)))
 
 /**
  * Where each step's label goes and how far right the labels reach: the label
@@ -135,7 +179,7 @@ const labelWidthOf = (lines) =>
  * the lane each takes so none overlaps, and the right-most pixel of the
  * ladder, boxes and labels together. A label can run past the last box (a
  * narrow box with a long name), so an SVG must be at least `rightEdge` wide.
- * Widths are estimated at LABEL_CHAR_WIDTH, which errs wide.
+ * Widths are estimated by textWidthOf, which errs wide.
  * @param {Object[]} steps - Laid-out steps, from sizeLadder
  * @param {number} [gap] - Pixels to keep between labels on one lane
  * @returns {{labels: {step: Object, lines: {text: string, tone: ?string}[], left: number, width: number, right: number}[], lanes: number[], rightEdge: number}}

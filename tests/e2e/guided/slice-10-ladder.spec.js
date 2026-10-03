@@ -22,6 +22,8 @@ const STEP_COUNT_OF_A_LONG_STREAM = 41
 const NARROW_VIEWPORT = { width: 400, height: 800 }
 const DASHED_STROKE_DASH = '6px, 4px' // the computed form of the "6 4" dash pattern
 const SM_BREAKPOINT = 640 // Tailwind `sm`: the strip collapses below it
+const CJK_NAME = '価値流れ図の作成と改善のための手順書一覧' // 20 characters, each about an em wide
+const ALL_CAPS_NAME = 'WORLDWIDE MEDIA MANAGEMENT WAREHOUSE' // wide bold capitals
 
 /** A workspace on `stage` whose map has these steps. */
 const workspaceWith = (
@@ -58,10 +60,16 @@ const box = async (locator) => {
 // The drawn (not stroked) width of one step's wait over another's. The ladder
 // refits the pane after an edit, so widths are only compared as a ratio.
 const waitRatio = async (page, over, under) => {
-  const widthOf = async (name) =>
-    Number(
-      await stepOf(page, name).getByTestId('ladder-wait').getAttribute('width')
-    )
+  const widthOf = async (name) => {
+    const attribute = await stepOf(page, name)
+      .getByTestId('ladder-wait')
+      .getAttribute('width')
+    const width = Number(attribute)
+    if (!(width > 0)) {
+      throw new Error(`The wait of ${name} has no drawn width: ${attribute}`)
+    }
+    return width
+  }
   return (await widthOf(over)) / (await widthOf(under))
 }
 
@@ -133,6 +141,68 @@ const pageScrollsHorizontally = (page) =>
       document.documentElement.scrollWidth >
       document.documentElement.clientWidth
   )
+
+// Every label as the browser drew it, in the SVG's own pixels: its text's
+// measured left and right edge (getBBox covers the widest of its lines) and the
+// top of its first line, which says which lane it is on. Waits for web fonts
+// and for the ladder to refit to the pane, so the measure is of the final draw.
+const measuredLabels = async (page) => {
+  await page.evaluate(async () => {
+    await document.fonts.ready
+    const frame = () => new Promise((resolve) => requestAnimationFrame(resolve))
+    await frame()
+    await frame()
+  })
+  return page.evaluate(() => {
+    const svg = document.querySelector('[data-testid="ladder-map"]')
+    const intoSvg = svg.getScreenCTM().inverse()
+    return {
+      svgWidth: svg.width.baseVal.value,
+      labels: [...svg.querySelectorAll('[data-testid="ladder-step"] text')].map(
+        (text) => {
+          const { x, y, width } = text.getBBox()
+          const matrix = intoSvg.multiply(text.getScreenCTM())
+          return {
+            name: text.querySelector('tspan').textContent.trim(),
+            left: matrix.e + x * matrix.a,
+            right: matrix.e + (x + width) * matrix.a,
+            top: Math.round(matrix.f + y * matrix.d),
+          }
+        }
+      ),
+    }
+  })
+}
+
+// In both ladder modes every label, as the browser drew it, ends inside the SVG,
+// and no two labels on one lane overlap.
+const expectMeasuredLabelsFit = async (page, names) => {
+  await expect(page.getByTestId('ladder-step')).toHaveCount(names.length)
+  for (const mode of ['To scale', 'Equal width']) {
+    await page.getByRole('radio', { name: mode }).check()
+    const { svgWidth, labels } = await measuredLabels(page)
+
+    expect(
+      labels.map(({ name }) => name),
+      mode
+    ).toEqual(names)
+    for (const { name, right } of labels) {
+      expect(right, `${mode}: ${name} ends inside the map`).toBeLessThanOrEqual(
+        svgWidth
+      )
+    }
+    const lanes = Object.values(Object.groupBy(labels, ({ top }) => top))
+    for (const lane of lanes) {
+      const leftToRight = [...lane].sort((a, b) => a.left - b.left)
+      leftToRight.slice(1).forEach((label, index) => {
+        expect(
+          label.left,
+          `${mode}: ${label.name} starts after ${leftToRight[index].name} ends`
+        ).toBeGreaterThanOrEqual(leftToRight[index].right)
+      })
+    }
+  }
+}
 
 test.describe('Live time-ladder map', () => {
   test('Wait above the track, process below, to scale', async ({
@@ -289,6 +359,33 @@ test.describe('Live time-ladder map', () => {
     await expectInsideTheMap(page, label)
   })
 
+  test('a long CJK name and a long all-caps name on the last step stay inside the map and clear of the labels beside them', async ({
+    page,
+    seed,
+  }) => {
+    // Tiny times make every box the minimum width, so the labels crowd into
+    // lanes: the CJK label is 240 px wide and the ten boxes after it are 24 px.
+    const names = [
+      'Intake',
+      CJK_NAME,
+      ...['Review', 'Deploy', 'Test', 'Build', 'Plan', 'Ship', 'Close'],
+      ALL_CAPS_NAME,
+    ]
+    await seed(workspaceWith(names.map((name) => team(name, 5, 5))))
+
+    await expectMeasuredLabelsFit(page, names)
+  })
+
+  test('a CJK name on the last step ends inside the map', async ({
+    page,
+    seed,
+  }) => {
+    const names = ['Intake', 'Review', 'Deploy', CJK_NAME]
+    await seed(workspaceWith(names.map((name) => team(name, 5, 5))))
+
+    await expectMeasuredLabelsFit(page, names)
+  })
+
   test('the ladder says what its encodings mean', async ({ page, seed }) => {
     await seed(workspaceWith(referenceSteps()))
 
@@ -379,7 +476,10 @@ test.describe('Live time-ladder map', () => {
     STAGE_NUMBER.REVIEW,
     STAGE_NUMBER.FUTURE,
   ]) {
-    test(`the map pane is shown on stage ${stage}`, async ({ page, seed }) => {
+    test(`the map pane is shown on the ${STAGE_NAMES[stage - 1]} stage`, async ({
+      page,
+      seed,
+    }) => {
       await seed(workspaceWith(referenceSteps(), stage))
 
       await expect(page.getByTestId('map-pane')).toBeVisible()
@@ -507,6 +607,8 @@ test.describe('Live time-ladder map', () => {
       'Rolled %C/A',
       'Handoffs',
     ])
+    // Process 870 min (60+240+480+60+30), lead 9030 min (870 + 8160 waiting):
+    // 870 / 9030 = 9.6%; 9030 / 480 (an 8-hour day) = 18.8 days; 870 / 480 = 1.8.
     await expect(figureValue(page, 'flow-efficiency')).toHaveText('9.6%')
     await expect(figureValue(page, 'lead-time')).toHaveText('18.8 days')
     await expect(figureValue(page, 'process-time')).toHaveText('1.8 days')
@@ -611,6 +713,9 @@ test.describe('Live time-ladder map', () => {
       )
     )
 
+    // Lead 9030 + the outside step's 1440 elapsed = 10470 min. Worst case all
+    // 1440 is waiting: 870 / 10470 = 8.3%. Best case all of it is work:
+    // (870 + 1440) / 10470 = 2310 / 10470 = 22.1%.
     await expect(figureValue(page, 'flow-efficiency')).toHaveText('8.3%–22.1%')
   })
 
@@ -671,6 +776,70 @@ test.describe('Live time-ladder map', () => {
         return pinned.y - (focused.y + focused.height)
       })
       .toBeGreaterThanOrEqual(0)
+  })
+
+  // Measured at 1280x720: the strip is 101 px (14% of the window), so it starts
+  // at 619 px, and the work region starts at 99 px, so 520 px (72% of the
+  // window) of work shows above the strip. The floor is a half: far enough
+  // below the measured share to survive small layout changes, high enough to
+  // fail if the strip or the header grows to crowd the work out.
+  const MIN_WORK_SHARE_OF_WINDOW = 0.5
+
+  test('the work region keeps at least half the window above the pinned strip on the Steps stage', async ({
+    page,
+    seed,
+  }) => {
+    await seed(workspaceWith(longStream(), STAGE_NUMBER.STEPS))
+    await expect(strip(page)).toBeVisible()
+
+    const stripTop = (await box(page.getByTestId('strip-region'))).y
+    const work = await box(page.getByTestId('work-region'))
+    const shownAboveStrip = stripTop - Math.max(work.y, 0)
+
+    expect(shownAboveStrip / page.viewportSize().height).toBeGreaterThanOrEqual(
+      MIN_WORK_SHARE_OF_WINDOW
+    )
+  })
+
+  test('Tab through a tall Steps list never leaves the focused field under the pinned strip', async ({
+    page,
+    seed,
+  }) => {
+    await seed(workspaceWith(longStream(), STAGE_NUMBER.STEPS))
+    await expect(page.getByTestId('step-row')).toHaveCount(
+      STEP_COUNT_OF_A_LONG_STREAM
+    )
+    const stripTop = (await box(page.getByTestId('strip-region'))).y
+    const MAX_TABS = 200
+    const ROW_BELOW_THE_FOLD = 12 // rows are about 220 px, so row 12 starts well past the first screen
+    const rowOfFocus = () =>
+      page.evaluate(() => {
+        const focused = document.activeElement
+        const row = focused.closest('[data-testid="step-row"]')
+        return {
+          bottom: focused.getBoundingClientRect().bottom,
+          row: row
+            ? [
+                ...document.querySelectorAll('[data-testid="step-row"]'),
+              ].indexOf(row) + 1
+            : 0,
+        }
+      })
+
+    let focus = { row: 0 }
+    for (let tabs = 0; focus.row < ROW_BELOW_THE_FOLD; tabs += 1) {
+      expect(tabs, 'Tab reaches a row below the fold').toBeLessThan(MAX_TABS)
+      await page.keyboard.press('Tab')
+      focus = await rowOfFocus()
+      if (focus.row > 0) {
+        expect(
+          focus.bottom,
+          `the field focused in row ${focus.row} ends above the strip`
+        ).toBeLessThanOrEqual(stripTop)
+      }
+    }
+
+    expect(await page.evaluate(() => window.scrollY)).toBeGreaterThan(0)
   })
 
   test('Narrow screen', async ({ page, seed }) => {

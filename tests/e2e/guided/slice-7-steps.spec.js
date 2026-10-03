@@ -15,6 +15,12 @@ const insertButton = (scope) =>
   scope.getByRole('button', { name: /insert step here/i })
 const refusal = (page) => page.getByTestId('move-refusal')
 
+const box = async (locator) => {
+  const bounds = await locator.boundingBox()
+  if (!bounds) throw new Error('Not drawn')
+  return bounds
+}
+
 // The app keeps a toast that has an action for 10 s (ACTION_TOAST_DURATION_MS).
 const UNDO_TOAST_MS = 10000
 // Far longer than the toast's own wait, to show it is being held.
@@ -389,13 +395,23 @@ test('Alt+Down moves a step down, and stops at the ends', async ({
 })
 
 test('Reorder a step: drag and drop', async ({ page, seed }) => {
-  // Tall enough for both rows to show above the pinned summary strip. The page
-  // keeps the strip's height clear when it scrolls, so a drag that had to scroll
-  // between its two ends would move the page under the pointer.
-  await page.setViewportSize({ width: 1280, height: 1000 })
   await seed(workspaceWithSteps(['Deploy', 'Development']))
+  const dragged = row(page, 3)
+  const target = row(page, 2)
+  // Bring both rows into view together: the target row at the top of the
+  // window (scrollIntoViewIfNeeded on each row in turn leaves the target half
+  // above the window, so the drag would then scroll the page).
+  await target.evaluate((element) => element.scrollIntoView({ block: 'start' }))
+  // The pinned summary strip covers the bottom of the window. A drag that
+  // starts or ends under it, or has to scroll between its two ends, moves the
+  // page under the pointer, so both rows must be clear of it before dragging.
+  const stripTop = (await box(page.getByTestId('strip-region'))).y
+  const targetBox = await box(target)
+  const draggedBox = await box(dragged)
+  expect(targetBox.y).toBeGreaterThanOrEqual(0)
+  expect(draggedBox.y + draggedBox.height).toBeLessThanOrEqual(stripTop)
 
-  await row(page, 3).getByTestId('drag-handle').dragTo(row(page, 2))
+  await dragged.getByTestId('drag-handle').dragTo(target)
 
   await expect
     .poll(() => stepNames(page))
