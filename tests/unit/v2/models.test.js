@@ -95,9 +95,15 @@ describe('hasRejects', () => {
     }
   )
 
-  it.each([100, null, undefined, '80', NaN])(
-    'is false for a step at %C/A %j: nothing is known to be rejected',
-    (pctCA) => {
+  it.each([
+    ['100', 100],
+    ['null', null],
+    ['undefined', undefined],
+    ['the text "80"', '80'],
+    ['NaN', NaN],
+  ])(
+    'is false for a step at %C/A %s: nothing is known to be rejected',
+    (_label, pctCA) => {
       expect(hasRejects({ pctCA })).toBe(false)
     }
   )
@@ -108,12 +114,20 @@ describe('isFullCA', () => {
     expect(isFullCA({ pctCA: FULL_PCT_CA })).toBe(true)
   })
 
-  it.each([0, 80, 99, 99.99, 100.5, 101, null, undefined, '100', NaN])(
-    'is false for a step at %C/A %j',
-    (pctCA) => {
-      expect(isFullCA({ pctCA })).toBe(false)
-    }
-  )
+  it.each([
+    ['0', 0],
+    ['80', 80],
+    ['99', 99],
+    ['99.99', 99.99],
+    ['100.5', 100.5],
+    ['101', 101],
+    ['null', null],
+    ['undefined', undefined],
+    ['the text "100"', '100'],
+    ['NaN', NaN],
+  ])('is false for a step at %C/A %s', (_label, pctCA) => {
+    expect(isFullCA({ pctCA })).toBe(false)
+  })
 
   it('is false for a missing step', () => {
     expect(isFullCA(undefined)).toBe(false)
@@ -124,7 +138,6 @@ describe('isFullCA', () => {
 
     expect(hasRejects(unentered)).toBe(false)
     expect(isFullCA(unentered)).toBe(false)
-    expect(isFullCA({ pctCA: FULL_PCT_CA })).toBe(!hasRejects({ pctCA: 100 }))
   })
 })
 

@@ -59,20 +59,20 @@ describe('stageName', () => {
 
 describe('clampStage', () => {
   it.each([
-    [1, 1],
-    [4, 4],
-    [7, 7],
-    [8, 7],
-    [0, 1],
-    [-3, 1],
-    [2.5, 1],
-    ['3', 1],
-    [undefined, 1],
-    [null, 1],
-    [NaN, 1],
-    [Infinity, 1],
-    [-Infinity, 1],
-  ])('turns %j into stage %i', (stage, expected) => {
+    ['1', 1, 1],
+    ['4', 4, 4],
+    ['7', 7, 7],
+    ['8', 8, 7],
+    ['0', 0, 1],
+    ['-3', -3, 1],
+    ['2.5', 2.5, 1],
+    ['the text "3"', '3', 1],
+    ['undefined', undefined, 1],
+    ['null', null, 1],
+    ['NaN', NaN, 1],
+    ['Infinity', Infinity, 1],
+    ['-Infinity', -Infinity, 1],
+  ])('turns %s into stage %i', (_label, stage, expected) => {
     expect(clampStage(stage)).toBe(expected)
   })
 })

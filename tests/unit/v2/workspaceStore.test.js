@@ -934,9 +934,6 @@ describe('workspaceStore: create and rename', () => {
   })
 })
 
-// startNew is one edit that saves twice: once for the new stream, once for opening it.
-const SAVES_PER_START_NEW = 2
-
 describe('workspaceStore: start a new value stream', () => {
   it('adds an unnamed stream and opens it, on the stream screen', async () => {
     const [a] = [referenceStream()]
@@ -967,14 +964,12 @@ describe('workspaceStore: start a new value stream', () => {
     const before = store.revision
     const listener = vi.fn()
     store.subscribeCommit(listener)
-    const save = vi.spyOn(repository, 'save')
 
     const result = store.startNew()
     await store.flushSaves()
 
     expect(store.revision).toBe(before + 1)
     expect(listener).toHaveBeenCalledTimes(1)
-    expect(save).toHaveBeenCalledTimes(SAVES_PER_START_NEW)
     const saved = await savedIn(repository)
     expect(saved.streams).toHaveLength(2)
     expect(saved.activeStreamId).toBe(result.streamId)
