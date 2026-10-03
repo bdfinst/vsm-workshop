@@ -70,9 +70,9 @@ const addedTimeFor = (steps, gap, shareOfItems, reworkTime) =>
     ? mapRange(reworkTime, (minutes) => (shareOfItems * minutes) / 100)
     : incomplete(steps[gap].name)
 
-const analyzePath = (steps, path) => {
-  const fromIndex = steps.findIndex((step) => step.id === path.fromStepId)
-  const toIndex = steps.findIndex((step) => step.id === path.toStepId)
+const analyzePath = (steps, indexOfStep, path) => {
+  const fromIndex = indexOfStep(path.fromStepId)
+  const toIndex = indexOfStep(path.toStepId)
   const gap = findGap(steps, toIndex, fromIndex)
   const shareOfItems = shareOfItemsFor(steps[fromIndex], path)
   const reworkTime = reworkTimeFor(steps, path, toIndex, fromIndex)
@@ -105,7 +105,12 @@ const analyzePath = (steps, path) => {
  * @returns {{paths: Object[], timeOnRework: {typ: number, low: number, high: number}|{incomplete: true, stepName: string}}}
  */
 export const calculateRework = (steps, reworkPaths) => {
-  const analyses = reworkPaths.map((path) => analyzePath(steps, path))
+  // Built once: each path looks up two steps, and a version holds many paths.
+  const indexById = new Map(steps.map((step, index) => [step.id, index]))
+  const indexOfStep = (id) => indexById.get(id) ?? -1
+  const analyses = reworkPaths.map((path) =>
+    analyzePath(steps, indexOfStep, path)
+  )
   const gaps = analyses.map(({ gap }) => gap).filter((gap) => gap != null)
 
   return {

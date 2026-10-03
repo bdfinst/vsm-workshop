@@ -129,6 +129,27 @@ describe('Rework', () => {
     expect(timeOnRework.typ).toBe(216)
   })
 
+  it("keeps each path's row in path order, whichever steps the paths join", () => {
+    const steps = withStep(
+      withStep(reworkSteps(), 'Development', { pctCA: 90 }),
+      'Code review',
+      { pctCA: 80 }
+    )
+    const paths = [
+      pathBetween(steps, 'Code review', 'Intake', { shareOfRejects: 50 }),
+      pathBetween(steps, 'Development', 'Refinement'),
+      pathBetween(steps, 'Code review', 'Development', { shareOfRejects: 50 }),
+    ]
+    const { paths: rows, timeOnRework } = calculateRework(steps, paths)
+
+    expect(rows.map((row) => row.id)).toEqual(paths.map((path) => path.id))
+    expect(rows.map((row) => row.depth)).toEqual([3, 1, 1])
+    expect(rows.map((row) => row.shareOfItems)).toEqual([10, 10, 10])
+    expect(rows.map((row) => row.reworkTime.typ)).toEqual([4620, 720, 1440])
+    expect(rows.map((row) => row.addedTime.typ)).toEqual([462, 72, 144])
+    expect(timeOnRework.typ).toBe(678)
+  })
+
   it('Outside step inside a rework loop', () => {
     const steps = withStep(
       insertAfter(
