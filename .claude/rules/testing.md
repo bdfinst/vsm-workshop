@@ -256,35 +256,22 @@ same Docker image CI uses**, never with a bare local `playwright test
 --update-snapshots`, or the new baselines won't match CI:
 
 ```bash
-npm run test:e2e:baseline   # runs --update-snapshots inside the pinned image
+npm run test:e2e:baseline            # visual.spec.js
+npm run test:e2e:baseline -- <spec>  # another spec file
 ```
 
-Commit the updated `tests/e2e/**/*-snapshots/*.png` files. Keep the image tag in
-`test:e2e:baseline` and `.github/workflows/ci.yml` in sync with the
-`@playwright/test` version in `package.json`.
+`scripts/e2e-baseline.sh` does the whole job, on a Mac as well as on Linux. It
+copies the repo to a temp directory (without `node_modules`, `dist`, `.git` and
+the test output, so the container installs its own Linux builds with `npm ci`),
+regenerates the snapshots in the pinned image, copies the `*-snapshots/*.png`
+files back, then runs the spec again in CI mode (`CI=1`, production build served
+by `vite preview`) and fails if it does not pass. It removes the temp directory
+when it ends.
 
-**Server mode.** In CI (`CI` set) Playwright serves the production build with
-`vite preview`; without `CI` it uses the dev server, which baseline regeneration
-runs. The two rendered the same on the last check (all visual tests passed
-against the preview server with baselines made on the dev server), but nothing
-enforces that. After regenerating baselines, confirm them against the production
-build in the pinned image.
-
-On a Mac, `test:e2e:baseline` mounts the host `node_modules`, which has no Linux
-build of esbuild or rollup, so neither the dev server nor a build starts in the
-container. Work from a copy of the repo and let the container run `npm ci`. The
-image's Node (v24.13.0 at v1.58.2) matches `.nvmrc`. To regenerate, then to
-confirm against the production build:
-
-```bash
-rsync -a --exclude node_modules --exclude dist --exclude .git ./ /tmp/visualcheck/
-docker run --rm --ipc=host -v /tmp/visualcheck:/work -w /work \
-  mcr.microsoft.com/playwright:v<version>-noble sh -c \
-  'npm ci && npx playwright test visual.spec.js --update-snapshots'
-# copy the updated tests/e2e/visual.spec.js-snapshots/*.png back, then:
-docker run --rm --ipc=host -e CI=1 -v /tmp/visualcheck:/work -w /work \
-  mcr.microsoft.com/playwright:v<version>-noble sh -c \
-  'npm run build && npm run build:standalone && npx playwright test visual.spec.js'
-```
+Commit the updated `tests/e2e/**/*-snapshots/*.png` files. The image reference
+(tag and digest) lives in `.github/workflows/ci.yml` and in the script, and
+Renovate moves both together with `@playwright/test` (see `renovate.json`). The
+image runs for the host's architecture; set `DOCKER_DEFAULT_PLATFORM=linux/amd64`
+to match the x86 runners CI uses.
 
 Run the suite locally (against your own browsers) with `npm run test:e2e`.
