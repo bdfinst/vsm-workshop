@@ -31,10 +31,6 @@ const v1Text = () =>
     updatedAt: '2024-01-16T10:00:00.000Z',
   })
 
-// double-waiver: B1 - these refusals happen before the store is reached, so the
-// stand-in's only job is to record that it was never called.
-const untouchedStore = () => ({ importStream: vi.fn() })
-
 describe('importStreamFile', () => {
   it('hands the file text to the store and names the stream it added', async () => {
     const store = await makeStore({ streams: [referenceStream()] })
@@ -51,14 +47,17 @@ describe('importStreamFile', () => {
     expect(store.streams).toHaveLength(2)
   })
 
-  it('names an unnamed stream as the store lists it', async () => {
-    const store = await makeStore()
-    const text = JSON.stringify(referenceStream({ name: '' }))
+  it.each(['', '   '])(
+    'names an unnamed stream (%j) as the store lists it',
+    async (name) => {
+      const store = await makeStore()
+      const text = JSON.stringify(referenceStream({ name }))
 
-    const result = await importStreamFile(fakeFile(text), store)
+      const result = await importStreamFile(fakeFile(text), store)
 
-    expect(result).toMatchObject({ ok: true, name: 'Untitled value stream' })
-  })
+      expect(result).toMatchObject({ ok: true, name: 'Untitled value stream' })
+    }
+  )
 
   it('passes on what upgrading a v1 file changed, so the screen can say so', async () => {
     const store = await makeStore()
@@ -71,15 +70,17 @@ describe('importStreamFile', () => {
 
   it('passes on the store refusal as it is, and adds nothing', async () => {
     const store = await makeStore()
+    const storeSays = (await makeStore()).importStream('nope')
 
     const result = await importStreamFile(fakeFile('nope'), store)
 
-    expect(result).toEqual(refused)
+    expect(storeSays).toEqual(refused)
+    expect(result).toEqual(storeSays)
     expect(store.streams).toEqual([])
   })
 
   it('refuses a file that cannot be read, and does not touch the store', async () => {
-    const store = untouchedStore()
+    const store = await makeStore()
     const file = {
       size: 10,
       text: vi.fn(async () => {
@@ -90,7 +91,8 @@ describe('importStreamFile', () => {
     const result = await importStreamFile(file, store)
 
     expect(result).toEqual({ ok: false, error: READ_ERROR_MESSAGE })
-    expect(store.importStream).not.toHaveBeenCalled()
+    expect(store.streams).toEqual([])
+    expect(store.revision).toBe(0)
   })
 
   describe('the size limit', () => {
@@ -99,7 +101,7 @@ describe('importStreamFile', () => {
     })
 
     it('refuses a file over the limit before reading it', async () => {
-      const store = untouchedStore()
+      const store = await makeStore()
       const file = fakeFile('x', MAX_FILE_BYTES + 1)
 
       const result = await importStreamFile(file, store)
@@ -109,7 +111,8 @@ describe('importStreamFile', () => {
         'File is too large. Please select a file under 10 MB.'
       )
       expect(file.text).not.toHaveBeenCalled()
-      expect(store.importStream).not.toHaveBeenCalled()
+      expect(store.streams).toEqual([])
+      expect(store.revision).toBe(0)
     })
 
     it('reads a file exactly at the limit', async () => {
@@ -143,26 +146,31 @@ describe('exportStreamFile', () => {
     expect(JSON.parse(result.text)).toEqual(stream)
   })
 
-  it('files an unnamed stream as "Untitled value stream"', async () => {
-    const stream = referenceStream({ name: '' })
-    const store = await makeStore({ streams: [stream] })
-    const download = vi.fn()
+  it.each(['', '   '])(
+    'files an unnamed stream (%j) as "Untitled value stream"',
+    async (name) => {
+      const stream = referenceStream({ name })
+      const store = await makeStore({ streams: [stream] })
+      const download = vi.fn()
 
-    exportStreamFile(store, stream.id, { download })
+      exportStreamFile(store, stream.id, { download })
 
-    expect(download).toHaveBeenCalledWith(
-      'Untitled value stream.json',
-      expect.any(String)
-    )
-  })
+      expect(download).toHaveBeenCalledWith(
+        'Untitled value stream.json',
+        expect.any(String)
+      )
+    }
+  )
 
   it('downloads nothing when the store refuses', async () => {
     const store = await makeStore({ streams: [referenceStream()] })
+    const storeSays = store.exportStream('gone')
     const download = vi.fn()
 
     const result = exportStreamFile(store, 'gone', { download })
 
-    expect(result).toEqual(refused)
+    expect(storeSays).toEqual(refused)
+    expect(result).toEqual(storeSays)
     expect(download).not.toHaveBeenCalled()
   })
 })
