@@ -4,17 +4,22 @@
     MIN_SCALED_BOX_WIDTH,
     sizeLadder,
   } from '../../utils/ui/ladderLayout.js'
-  import { OUTLINE } from '../../utils/ui/ladderModel.js'
   import {
-    LABEL_FONT_SIZE,
-    LABEL_INSET,
+    LABEL_TOP,
+    LANE_PADDING,
+    LINE_HEIGHT,
+    PAD_X,
+    TRACK_HEIGHT,
+    TRACK_Y,
+  } from '../../utils/ui/ladderGeometry.js'
+  import {
     MIN_EQUAL_BOX_WIDTH,
-    TONE,
     equalBoxWidthFor,
     layoutLabels,
     labelOverhangFor,
     pixelsPerMinuteToFit,
   } from '../../utils/ui/ladderView.js'
+  import LadderStep from './LadderStep.svelte'
 
   // LadderMap props: ladderModel (`store.ladderModel`, the pane-independent
   // model of the version being drawn). The map sizes it for its scroll region
@@ -26,39 +31,13 @@
     { value: LADDER_MODE.EQUAL, label: 'Equal width' },
   ]
 
-  // Pixels. Wait blocks sit above the track and process blocks below it; the
-  // outline of a step surrounds both; labels hang below in lanes.
-  const PAD_X = 12
-  const BLOCK_HEIGHT = 48
-  const BLOCK_GAP = 4
-  const WAIT_TOP = 8
-  const TRACK_HEIGHT = 2
-  const TRACK_Y = WAIT_TOP + BLOCK_HEIGHT + BLOCK_GAP
-  const PROCESS_TOP = TRACK_Y + TRACK_HEIGHT + BLOCK_GAP
-  const COLUMN_BOTTOM = PROCESS_TOP + BLOCK_HEIGHT
-  const OUTLINE_PADDING = 4
-  const OUTLINE_TOP = WAIT_TOP - OUTLINE_PADDING
-  const OUTLINE_HEIGHT = COLUMN_BOTTOM + OUTLINE_PADDING - OUTLINE_TOP
-  const LABEL_TOP = COLUMN_BOTTOM + 16
-  const LABEL_BASELINE = LABEL_FONT_SIZE
-  const LINE_HEIGHT = 15
-  const LANE_PADDING = 8
-  const HANDOFF_STROKE_WIDTH = 3
-  const DASHED_STROKE_WIDTH = 2
-  const DASH_PATTERN = '6 4'
   // Keeps a fitted ladder a pixel inside the pane, so rounding never adds a scrollbar.
   const FIT_SLACK = 1
-
-  const TONE_CLASS = {
-    [TONE.HANDOFF]: 'fill-handoff-text',
-    [TONE.WARN]: 'fill-warn-text',
-    [TONE.CRIT]: 'fill-crit-text',
-    [TONE.MUTED]: 'fill-muted-text',
-  }
 
   // What the drawing means, for anyone who cannot see it. Every encoding is
   // also written as text beside its step.
   const DESC_ID = 'ladder-desc'
+  const HATCH_ID = 'ladder-hatch'
   const LADDER_DESCRIPTION =
     'Each step is a column on a track. Its wait time is drawn above the track and its process time below it. ' +
     'A solid outline is a plain step, a thick outline a handoff, and a dashed outline a step with a time not yet entered or one done outside the team. ' +
@@ -104,19 +83,6 @@
   let laneCount = $derived(Math.max(...labelLayout.lanes, 0) + 1)
   let svgWidth = $derived(labelLayout.rightEdge + 2 * PAD_X)
   let svgHeight = $derived(LABEL_TOP + laneCount * laneHeight)
-
-  const outlineAttrs = {
-    [OUTLINE.SOLID]: { stroke: 'none', 'stroke-width': 0 },
-    [OUTLINE.HANDOFF]: {
-      class: 'stroke-map-handoff-outline',
-      'stroke-width': HANDOFF_STROKE_WIDTH,
-    },
-    [OUTLINE.DASHED]: {
-      class: 'stroke-map-dashed-outline',
-      'stroke-width': DASHED_STROKE_WIDTH,
-      'stroke-dasharray': DASH_PATTERN,
-    },
-  }
 </script>
 
 <div data-testid="ladder-pane">
@@ -169,7 +135,7 @@
       <desc id={DESC_ID} data-testid="ladder-desc">{LADDER_DESCRIPTION}</desc>
       <defs>
         <pattern
-          id="ladder-hatch"
+          id={HATCH_ID}
           patternUnits="userSpaceOnUse"
           width="8"
           height="8"
@@ -196,79 +162,7 @@
         />
         {#each labelLayout.labels as { step, lines }, index (step.stepId)}
           {@const laneTop = LABEL_TOP + labelLayout.lanes[index] * laneHeight}
-          <g
-            role="group"
-            aria-label={step.name}
-            data-testid="ladder-step"
-            data-outline={step.outline}
-          >
-            {#if step.waitBlock && step.waitBlock.width > 0}
-              <rect
-                x={step.waitBlock.x}
-                y={WAIT_TOP}
-                width={step.waitBlock.width}
-                height={BLOCK_HEIGHT}
-                stroke-width="1.5"
-                class="fill-map-wait-fill stroke-map-wait-outline"
-                data-testid="ladder-wait-block"
-              />
-            {/if}
-            {#if step.processBlock && step.processBlock.width > 0}
-              <rect
-                x={step.processBlock.x}
-                y={PROCESS_TOP}
-                width={step.processBlock.width}
-                height={BLOCK_HEIGHT}
-                stroke-width="1.5"
-                class="fill-map-process-fill stroke-map-process-outline"
-                data-testid="ladder-process-block"
-              />
-            {/if}
-            {#if step.outsideText}
-              <rect
-                x={step.x}
-                y={WAIT_TOP}
-                width={step.boxWidth}
-                height={COLUMN_BOTTOM - WAIT_TOP}
-                fill="url(#ladder-hatch)"
-                data-testid="ladder-hatched"
-              />
-            {/if}
-            <rect
-              x={step.x}
-              y={OUTLINE_TOP}
-              width={step.boxWidth}
-              height={OUTLINE_HEIGHT}
-              fill="none"
-              {...outlineAttrs[step.outline]}
-              data-testid="ladder-box"
-            />
-            <line
-              x1={step.x + 2}
-              y1={OUTLINE_TOP + OUTLINE_HEIGHT}
-              x2={step.x + 2}
-              y2={laneTop}
-              stroke-width="1"
-              class="stroke-map-track"
-            />
-            <text
-              x={step.x + LABEL_INSET}
-              y={laneTop + LABEL_BASELINE}
-              font-size={LABEL_FONT_SIZE}
-            >
-              {#each lines as line, lineIndex (lineIndex)}
-                <tspan
-                  x={step.x + LABEL_INSET}
-                  dy={lineIndex === 0 ? 0 : LINE_HEIGHT}
-                  class={line.tone
-                    ? TONE_CLASS[line.tone]
-                    : 'fill-map-text font-semibold'}
-                >
-                  {line.text}
-                </tspan>
-              {/each}
-            </text>
-          </g>
+          <LadderStep {step} {lines} {laneTop} hatchId={HATCH_ID} />
         {/each}
       </g>
     </svg>
