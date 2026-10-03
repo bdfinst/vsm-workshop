@@ -24,9 +24,9 @@ import {
 } from '../../utils/validation/v2/editRules.js'
 import { copyMapVersion } from '../../models/v2/mapVersion.js'
 import {
-  STAGE_NAMES,
   STEP_KIND,
   VERSION_KIND,
+  stageName,
 } from '../../models/v2/constants.js'
 import { TIME_FIELDS, createStep, timeFieldsOf } from '../../models/v2/step.js'
 import {
@@ -85,7 +85,7 @@ const announce = ({ verb, stage, currentStage, label, versionName }) => {
   if (label) parts.push(label)
   else if (versionName || otherStage) parts.push('change')
   if (versionName) parts.push(`in ${versionName}`)
-  if (otherStage) parts.push(`on the ${STAGE_NAMES[stage - 1]} stage`)
+  if (otherStage) parts.push(`on the ${stageName(stage)} stage`)
   return parts.length ? `${verb}: ${parts.join(' ')}` : verb
 }
 

@@ -35,6 +35,25 @@ export const STAGE_NAMES = Object.freeze([
   'Future',
 ])
 
+/**
+ * A stage number from a file, which can hold anything: kept when it is a whole
+ * number in range, pulled to the nearest end when it is a whole number past
+ * one, and the first stage when it is not a whole number at all.
+ * @param {*} stage - A stage number as stored
+ * @returns {number} A stage number from 1 to the last stage
+ */
+export const clampStage = (stage) =>
+  Number.isInteger(stage) ? Math.min(Math.max(stage, 1), STAGE_NAMES.length) : 1
+
+/**
+ * The one place a stage number becomes its name, for the rail, the headings,
+ * the cards and the announcements. A number out of range or not a whole number
+ * still gives a name (see `clampStage`), so nothing shows "undefined".
+ * @param {*} stage - A stage number
+ * @returns {string} The stage's name
+ */
+export const stageName = (stage) => STAGE_NAMES[clampStage(stage) - 1]
+
 /** Each stage's number, 1-based: `STAGE_NAMES[STAGE_NUMBER.STEPS - 1]` is 'Steps'. */
 export const STAGE_NUMBER = Object.freeze({
   SCOPE: 1,

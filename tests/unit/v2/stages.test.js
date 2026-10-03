@@ -1,5 +1,9 @@
 import { describe, it, expect } from 'vitest'
-import { STAGE_NUMBER } from '../../../src/models/v2/constants.js'
+import {
+  STAGE_NUMBER,
+  clampStage,
+  stageName,
+} from '../../../src/models/v2/constants.js'
 import { createValueStream } from '../../../src/models/v2/valueStream.js'
 import {
   STAGES,
@@ -24,6 +28,50 @@ const streamAt = (activeStage, furthestStage, fields = {}) =>
     session: { activeStage, furthestStage },
     ...fields,
   })
+
+describe('stageName', () => {
+  it.each([
+    [1, 'Scope'],
+    [2, 'Steps'],
+    [3, 'Time'],
+    [4, 'Quality'],
+    [5, 'Rework'],
+    [6, 'Review'],
+    [7, 'Future'],
+  ])('names stage %i %s', (stage, name) => {
+    expect(stageName(stage)).toBe(name)
+  })
+
+  // A stage number from a file can hold anything; a name is always given.
+  it.each([
+    [8, 'Future'],
+    [99, 'Future'],
+    [0, 'Scope'],
+    [-2, 'Scope'],
+    [2.5, 'Scope'],
+    ['3', 'Scope'],
+    [undefined, 'Scope'],
+    [null, 'Scope'],
+  ])('names stage %j as %s, the nearest stage', (stage, name) => {
+    expect(stageName(stage)).toBe(name)
+  })
+})
+
+describe('clampStage', () => {
+  it.each([
+    [1, 1],
+    [4, 4],
+    [7, 7],
+    [8, 7],
+    [0, 1],
+    [-3, 1],
+    [2.5, 1],
+    ['3', 1],
+    [undefined, 1],
+  ])('turns %j into stage %i', (stage, expected) => {
+    expect(clampStage(stage)).toBe(expected)
+  })
+})
 
 describe('STAGES', () => {
   it('lists the seven stages in order, numbered from 1', () => {

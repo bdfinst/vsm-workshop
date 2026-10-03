@@ -1,6 +1,10 @@
 <script>
   import { workspaceStore } from '../../stores/v2/workspaceStore.svelte.js'
-  import { STAGE_NAMES, STAGE_NUMBER } from '../../models/v2/constants.js'
+  import {
+    STAGE_NAMES,
+    STAGE_NUMBER,
+    stageName,
+  } from '../../models/v2/constants.js'
   import { isTextEntry, shortcutFor } from '../../utils/ui/keymap.js'
   import PlaceholderStage from './stages/PlaceholderStage.svelte'
   import { stageStatus } from '../../utils/session/stages.js'
@@ -30,7 +34,7 @@
   let stream = $derived(store?.stream)
   let streamId = $derived(stream?.id)
   let stage = $derived(stream?.session.activeStage ?? STAGE_NUMBER.SCOPE)
-  let stageName = $derived(STAGE_NAMES[stage - 1])
+  let currentStageName = $derived(stageName(stage))
   let statuses = $derived(stream ? stageStatus(stream) : [])
   let showMap = $derived(Boolean(store) && stage >= STAGE_NUMBER.STEPS)
   let StageComponent = $derived(
@@ -124,7 +128,7 @@
         {#key streamId}
           <StageComponent
             {store}
-            name={stageName}
+            name={currentStageName}
             onnext={stage < STAGE_NAMES.length ? handleNext : null}
             onannounce={announce}
           />

@@ -1,4 +1,4 @@
-import { STAGE_NAMES } from '../../models/v2/constants.js'
+import { stageName } from '../../models/v2/constants.js'
 import {
   activeVersionOf,
   displayName,
@@ -11,14 +11,6 @@ import {
 
 const withPrefix = (prefix, text) =>
   text === null ? null : `${prefix} ${text}`
-
-// The name of a stage number from the file, which can hold anything: a number
-// past either end stays in range and anything that is not a whole number reads
-// as the first stage, so a card never shows "undefined".
-const stageName = (stage) => {
-  if (!Number.isInteger(stage)) return STAGE_NAMES[0]
-  return STAGE_NAMES[Math.min(Math.max(stage, 1), STAGE_NAMES.length) - 1]
-}
 
 /**
  * What a value stream's card on the home screen shows. Pure: the same stream
