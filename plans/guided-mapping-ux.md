@@ -1475,7 +1475,7 @@ Feature: Live time-ladder map
   Scenario: Outside encoding
     Given an outside step "Security review" with elapsed time 1440 minutes after "Code review"
     Then "Security review" is a hatched block with a dashed outline labelled "elapsed · split unknown"
-    And "Security review" shows the text "outside"
+    And "Security review" shows the texts "outside" and "handoff"
     And the summary strip shows flow efficiency "8.3%–22.1%"
 
   Scenario: Summary strip leads with flow efficiency
@@ -1483,7 +1483,7 @@ Feature: Live time-ladder map
     And then lead time "18.8 days", process time "1.8 days", rolled %C/A "100.0%" and handoffs "0"
 
   Scenario: Long streams scroll with the strip pinned
-    Given the map has 41 steps
+    Given the map has 41 steps in Equal width
     Then the ladder scrolls horizontally
     And the summary strip stays visible
 
@@ -1497,6 +1497,20 @@ Feature: Live time-ladder map
     Then the map shows "Intake" with a dashed outline
     And the summary strip shows "incomplete"
 ```
+
+**Decisions (settled at the build gate):**
+
+- **Dark tokens.** Light is the default. A dark palette for the map and strip tokens is defined under `:root[data-theme="dark"]` and contrast-tested, but nothing applies it until a theme toggle exists. The app has no dark mode today; this slice does not add one.
+- **Map pane placement.** The map pane is a full-width band under the stage content, with horizontal scroll and zoom to fit, and the summary strip pinned below it. The empty 320px side `aside` in `SessionShell` is removed. The map shows on stages 2–7 (Steps to Future), as in Step 10.2.
+- **Rail status deferred to Slice 11.** The Steps and Time rail statuses (`stepsReason` / `STAGE_REASONS`) stay deferred; no Slice 10 scenario needs them.
+- **Flags.** The ladder and the strip both read `metrics.flags` (`topWaits[0]` for the largest wait, `lowestCA` for the lowest %C/A); neither recomputes them.
+- **No flag when nothing is low.** `lowestCA` returns null when the lowest entered %C/A is 100, so a clean map flags no step as "lowest %C/A" (it used to flag the first step on a tie at 100). The first-step-on-a-tie rule stays for ties below 100.
+- **Flag tie rules.** When steps tie for the largest wait, or for the same lowest %C/A below 100, the first of them in map order gets the flag. The ladder and the strip agree because both read `metrics.flags`. An outside step cannot earn "largest wait" (`topWaits` skips outside steps) or "lowest %C/A" (`lowestCA` skips them too). Unit tests in `flaggedSteps.test.js` pin the first-in-order tie and that an outside step is never flagged.
+- **The strip stays pinned on short windows.** It is about 100px tall (101px measured), roughly 14% of a 720px window. Revisit un-pinning it, or collapsing it by window height, after the early facilitated dry run. Until then the page keeps the strip's height clear when it scrolls (`scroll-padding-bottom`), and two e2e guards at 1280x720 hold the line: the work region keeps at least half the window above the strip, and Tab through a tall Steps list never leaves the focused field under it. The move up and move down buttons and Alt+Arrow are the non-drag ways to reorder, so a short window never makes a drag the only path.
+- **Ladder geometry (Step 10.1).** `pixelsPerMinute` (called `scale` when the step was written) is pixels per minute. In scaled mode a box is the wait plus the process time, side by side with no gaps, so the total width is the lead time to scale; equal mode gives every box the same width. Layout never shrinks to fit: fit and zoom belong to `LadderMap`.
+- **Equal width is local state, by design.** The To scale / Equal width choice lives in `LadderMap` component state until Slice 14. `sessionUIStore.ladderScale` is reserved for Slice 14 and is not used by Slice 10.
+- **Outside steps are handoffs on the ladder.** An outside step carries the text "handoff" as well as "outside" and "elapsed · split unknown", and keeps its hatched dashed block. `handoffCount` already counts outside steps.
+- **Tokens live in `src/index.css`** (`@theme` and `:root`), not `tailwind.config.js`, which Tailwind v4 ignores.
 
 **Steps:**
 
@@ -2221,6 +2235,10 @@ Feature: Table and canvas views
     Then I can still draw a connection between two steps on the existing canvas
 ```
 
+**Notes carried from the Slice 10 review:**
+
+- `ViewSwitch` ships with only a `map` view id. Slice 13 adds `'map'` to `sessionUIStore`'s `VIEW_MODES` (and makes it the default), and drives `ViewSwitch` from `sessionUIStore.viewMode` and `setViewMode` instead of its own props defaults.
+
 **Steps:**
 
 #### Step 13.1: StepTable
@@ -2349,6 +2367,11 @@ Feature: Review the current state and draw a future state
     When I compare the current state with "Draft"
     Then the lead time delta reads "incomplete" naming "Deploy"
 ```
+
+**Notes carried from the Slice 10 review:**
+
+- `VersionCompare` needs `LadderMap` to take optional `pixelsPerMinute` and `mode` props (so two maps share one scale), a per-instance radio `name` and per-instance SVG pattern, title and description ids (they are fixed today, so two maps on a page collide), and a way to turn the mode toggle off.
+- It also needs a per-version ladder model without recomputing flags: the store derives `ladder` for the active version only, so a comparison builds the other version's model with `ladderModel(version, flags)` from that version's own metrics.
 
 **Steps:**
 
@@ -2910,11 +2933,11 @@ See each step's **Complexity** line. The `complex` steps are 3.1 (migration), 4.
 
 #### Wave 7
 
-- [ ] Slice 10: Time ladder, map pane, summary strip
-  - [ ] Step 10.1: Pure ladder layout
-  - [ ] Step 10.2: LadderMap and the map pane in the shell
-  - [ ] Step 10.3: SummaryStrip
-  - [ ] Step 10.4: Recalculation budget
+- [x] Slice 10: Time ladder, map pane, summary strip (slice review done, findings fixed; 1854 unit tests, 238 guided e2e)
+  - [x] Step 10.1: Pure ladder layout
+  - [x] Step 10.2: LadderMap and the map pane in the shell
+  - [x] Step 10.3: SummaryStrip
+  - [x] Step 10.4: Recalculation budget (built; ladder model derived in the store, 1775 unit tests, 227 guided e2e)
   - [ ] Early dry run on the standalone file (non-gating, findings in `docs/ux/pilot-results.md`)
 
 #### Wave 8

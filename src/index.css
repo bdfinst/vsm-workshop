@@ -7,14 +7,78 @@
   --font-mono: 'IBM Plex Mono', ui-monospace, SFMono-Regular, Menlo, monospace;
 }
 
-/* The hatch that marks work done outside the team; one token, used wherever
-   an outside step is drawn. */
+/* Map and strip colour tokens. Light is the default; the dark palette below is
+   defined and contrast-tested (tests/unit/v2/contrast.test.js) but nothing sets
+   data-theme="dark" until a theme toggle exists. Only the *-text tokens are used
+   for text colour; the rest are fills and strokes. A new token needs a pair in
+   the contrast test. */
 :root {
+  --map-bg: #ffffff;
+
+  --map-text: #111827;
+  --muted-text: #4b5563;
+  --good-text: #166534;
+  --warn-text: #92400e;
+  --crit-text: #b91c1c;
+  --handoff-text: #6b21a8;
+
+  --map-track: #374151;
+  --map-wait-fill: #fef3c7;
+  --map-wait-outline: #b45309;
+  --map-process-fill: #dbeafe;
+  --map-process-outline: #1d4ed8;
+  --map-handoff-outline: #7e22ce;
+  --map-dashed-outline: #4b5563;
+
+  /* The hatch that marks work done outside the team; one token, used wherever
+     an outside step is drawn. */
+  --hatch-outside-color: #6b7280;
   --hatch-outside: repeating-linear-gradient(
     45deg,
-    #9ca3af 0 2px,
+    var(--hatch-outside-color) 0 2px,
     transparent 2px 8px
   );
+}
+
+:root[data-theme='dark'] {
+  --map-bg: #111827;
+
+  --map-text: #f3f4f6;
+  --muted-text: #9ca3af;
+  --good-text: #86efac;
+  --warn-text: #fcd34d;
+  --crit-text: #fca5a5;
+  --handoff-text: #d8b4fe;
+
+  --map-track: #d1d5db;
+  --map-wait-fill: #78350f;
+  --map-wait-outline: #fbbf24;
+  --map-process-fill: #1e3a8a;
+  --map-process-outline: #93c5fd;
+  --map-handoff-outline: #c084fc;
+  --map-dashed-outline: #9ca3af;
+
+  --hatch-outside-color: #9ca3af;
+}
+
+/* The tokens as Tailwind colours (bg-map-bg, text-warn-text, fill-map-wait-fill,
+   stroke-map-track), kept as live variables so a theme switch needs no rebuild. */
+@theme inline {
+  --color-map-bg: var(--map-bg);
+  --color-map-text: var(--map-text);
+  --color-muted-text: var(--muted-text);
+  --color-good-text: var(--good-text);
+  --color-warn-text: var(--warn-text);
+  --color-crit-text: var(--crit-text);
+  --color-handoff-text: var(--handoff-text);
+  --color-map-track: var(--map-track);
+  --color-map-wait-fill: var(--map-wait-fill);
+  --color-map-wait-outline: var(--map-wait-outline);
+  --color-map-process-fill: var(--map-process-fill);
+  --color-map-process-outline: var(--map-process-outline);
+  --color-map-handoff-outline: var(--map-handoff-outline);
+  --color-map-dashed-outline: var(--map-dashed-outline);
+  --color-hatch-outside: var(--hatch-outside-color);
 }
 
 .hatch-outside {

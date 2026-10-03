@@ -397,6 +397,16 @@ describe('Flags', () => {
     })
   })
 
+  it('has no lowest %C/A when the lowest entered %C/A is 100', () => {
+    expect(lowestCA(referenceSteps())).toBeNull()
+  })
+
+  it('has no lowest %C/A when only 100s are entered', () => {
+    const steps = withStep(referenceSteps(), 'Deploy', { pctCA: null })
+
+    expect(lowestCA(steps)).toBeNull()
+  })
+
   it('has no lowest %C/A when none is entered', () => {
     const steps = referenceSteps().map((step) => ({ ...step, pctCA: null }))
 

@@ -795,3 +795,83 @@ describe('valueStreamStore: drag a step', () => {
     expect(persist).not.toHaveBeenCalled()
   })
 })
+
+describe('valueStreamStore: derived ladder and metrics', () => {
+  const ladderStep = (store, name) =>
+    store.ladder.steps.find((step) => step.name === name)
+  const deployProcess = (store) => ladderStep(store, 'Deploy').minutes.process
+  const longerDeploy = (store) =>
+    store.updateStep(stepNamed(store, 'Deploy').id, {
+      processTime: { typ: 90 },
+    })
+
+  it('exposes one ladder step per step of the active version', () => {
+    const { store } = openStream(referenceReworkStream())
+
+    expect(store.ladder.steps.map((step) => step.name)).toEqual(
+      stepNames(store)
+    )
+    expect(deployProcess(store)).toBe(30)
+  })
+
+  it('flags on the ladder the steps that metrics.flags names', () => {
+    const { store } = openStream(referenceReworkStream())
+    const codeReviewId = stepNamed(store, 'Code review').id
+
+    expect(store.metrics.flags.topWaits[0].stepId).toBe(codeReviewId)
+    expect(store.metrics.flags.lowestCA.stepId).toBe(codeReviewId)
+    expect(
+      ladderStep(store, 'Code review').flags.map(({ label }) => label)
+    ).toEqual(['largest wait', 'lowest %C/A'])
+    expect(ladderStep(store, 'Development').flags).toEqual([])
+  })
+
+  it('refreshes the ladder and the metrics after an edit', () => {
+    const { store } = openStream(referenceStream())
+    const processBefore = deployProcess(store)
+    const metricsBefore = store.metrics.totals.processTime.typ
+    expect(processBefore).toBe(30)
+
+    longerDeploy(store)
+    flushSync()
+
+    expect(deployProcess(store)).toBe(90)
+    expect(store.metrics.totals.processTime.typ).toBe(metricsBefore + 60)
+  })
+
+  it('refreshes the ladder and the metrics after an undo', () => {
+    const { store } = openStream(referenceStream())
+    const processBefore = deployProcess(store)
+    const metricsBefore = store.metrics.totals.processTime.typ
+    longerDeploy(store)
+    flushSync()
+    expect(deployProcess(store)).toBe(90)
+    expect(store.metrics.totals.processTime.typ).toBe(metricsBefore + 60)
+
+    store.undo()
+    flushSync()
+
+    expect(deployProcess(store)).toBe(processBefore)
+    expect(store.metrics.totals.processTime.typ).toBe(metricsBefore)
+  })
+
+  it('shows the future version while it is active and the current one after a switch back', () => {
+    const { store } = openStream(referenceStream())
+    const currentId = store.stream.activeVersionId
+    const processBefore = deployProcess(store)
+    const metricsBefore = store.metrics.totals.processTime.typ
+    store.createFutureVersion('Target')
+    longerDeploy(store)
+    flushSync()
+
+    expect(store.stream.activeVersionId).not.toBe(currentId)
+    expect(deployProcess(store)).toBe(90)
+    expect(store.metrics.totals.processTime.typ).toBe(metricsBefore + 60)
+
+    store.setActiveVersion(currentId)
+    flushSync()
+
+    expect(deployProcess(store)).toBe(processBefore)
+    expect(store.metrics.totals.processTime.typ).toBe(metricsBefore)
+  })
+})
