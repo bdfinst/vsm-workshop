@@ -305,11 +305,14 @@ describe('validateStep', () => {
     ).toHaveProperty('elapsedTime')
   })
 
-  it('applies min/max ordering to elapsed time', () => {
-    expect(
-      validateStep(outside({ elapsedTime: { typ: 100, min: 200 } })).errors
-    ).toHaveProperty('elapsedTime')
-  })
+  it.each([{ min: 50 }, { max: 200 }, { min: 50, max: 200 }])(
+    "rejects a range on an outside step's elapsed time: %j",
+    (bounds) => {
+      expect(
+        validateStep(outside({ elapsedTime: { typ: 100, ...bounds } })).errors
+      ).toEqual({ elapsedTime: 'Elapsed time has one value, not a range' })
+    }
+  )
 
   it.each(['processTime', 'waitTime'])(
     'rejects %s on an outside step',

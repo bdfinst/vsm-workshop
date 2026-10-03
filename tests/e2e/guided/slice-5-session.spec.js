@@ -1,4 +1,5 @@
 import { readFile } from 'node:fs/promises'
+import { STAGE_NAMES, STAGE_NUMBER } from '../../../src/models/v2/constants.js'
 import { createValueStream } from '../../../src/models/v2/valueStream.js'
 import { exportValueStream } from '../../../src/persistence/v2/valueStreamJson.js'
 import {
@@ -29,14 +30,21 @@ test.describe('Session shell (step 5.1)', () => {
     page,
     seed,
   }) => {
-    await seed(workspaceAtStage(3))
+    // Review is the last stage that is both a placeholder and has a stage after
+    // it; when it gets its own component, move this to the one that still has none.
+    const stage = STAGE_NUMBER.REVIEW
+    await seed(workspaceAtStage(stage))
 
-    await expect(page.getByRole('heading', { name: 'Time' })).toBeVisible()
-    await expect(page.getByText('This stage is not built yet')).toBeVisible()
+    await expect(page.getByTestId('placeholder-stage')).toBeVisible()
+    await expect(
+      page.getByRole('heading', { name: STAGE_NAMES[stage - 1] })
+    ).toBeVisible()
     await expect(page.getByRole('button', { name: 'Next' })).toBeEnabled()
 
     await page.getByRole('button', { name: 'Next' }).click()
-    await expect(page.getByRole('heading', { name: 'Quality' })).toBeVisible()
+    await expect(
+      page.getByRole('heading', { name: STAGE_NAMES[stage] })
+    ).toBeVisible()
   })
 
   test('the shell has no accessibility violations', async ({ page, axe }) => {
@@ -379,6 +387,10 @@ test.describe('Stage rail and header scenarios (step 5.4)', () => {
     await seed(workspaceAtStage(7))
     const timerWords = /timer|timebox|time left|countdown/i
 
+    // Wait for every stage to be listed, so the loop below cannot run empty.
+    await expect(rail(page).getByRole('listitem')).toHaveCount(
+      STAGE_NAMES.length
+    )
     for (const status of await rail(page).getByRole('listitem').all()) {
       const stage = status.getByRole('button')
       await stage.click()

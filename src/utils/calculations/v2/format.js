@@ -1,6 +1,18 @@
+import { DURATION_UNIT } from '../../../models/v2/constants.js'
+import {
+  boundError,
+  rangeOrderErrors,
+} from '../../validation/v2/timeRangeValidator.js'
+
 const MINUTES_PER_HOUR = 60
 const EN_DASH = '–'
-const NOT_A_NUMBER = Object.freeze({ error: 'Enter a number' })
+const NOT_A_NUMBER_RESULT = Object.freeze({ error: 'Enter a number' })
+
+// Places shown when a duration is formatted for reading.
+const DURATION_DISPLAY_DECIMALS = 1
+// Places a field shows, fine enough that its text converts back to the same
+// whole minutes (see `fromMinutes`).
+const FIELD_ROUND_TRIP_DECIMALS = 4
 
 /**
  * The one place a number is rounded: half up (away from zero), to `decimals`
@@ -26,7 +38,8 @@ const assertFiniteNumber = (value) => {
   return value
 }
 
-const fixed = (value, decimals) => roundTo(value, decimals).toFixed(decimals)
+const toRoundedFixed = (value, decimals) =>
+  roundTo(value, decimals).toFixed(decimals)
 
 const workdayMinutes = (workdayHours) => {
   if (!Number.isFinite(workdayHours) || workdayHours <= 0) {
@@ -38,23 +51,29 @@ const workdayMinutes = (workdayHours) => {
 }
 
 const minutesPerUnit = (unit, workdayHours) => {
-  if (unit === 'minutes') return 1
-  if (unit === 'hours') return MINUTES_PER_HOUR
-  if (unit === 'days') return workdayMinutes(workdayHours)
+  if (unit === DURATION_UNIT.MINUTES) return 1
+  if (unit === DURATION_UNIT.HOURS) return MINUTES_PER_HOUR
+  if (unit === DURATION_UNIT.DAYS) return workdayMinutes(workdayHours)
   throw new RangeError(`Unknown duration unit: ${unit}`)
 }
 
 // Under one working day shows hours, from one working day shows days.
 const durationParts = (minutes, workdayHours) => {
   assertFiniteNumber(minutes)
-  const unit = minutes < workdayMinutes(workdayHours) ? 'hours' : 'days'
+  const unit =
+    minutes < workdayMinutes(workdayHours)
+      ? DURATION_UNIT.HOURS
+      : DURATION_UNIT.DAYS
   return {
     unit,
-    amount: fixed(minutes / minutesPerUnit(unit, workdayHours), 1),
+    amountText: toRoundedFixed(
+      minutes / minutesPerUnit(unit, workdayHours),
+      DURATION_DISPLAY_DECIMALS
+    ),
   }
 }
 
-const partsText = ({ amount, unit }) => `${amount} ${unit}`
+const partsText = ({ amountText, unit }) => `${amountText} ${unit}`
 
 /**
  * Format minutes as hours (under one working day) or working days.
@@ -83,7 +102,7 @@ export const formatDurationRange = ({ low, high }, workdayHours) => {
   )
   if (partsText(lowEnd) === partsText(highEnd)) return partsText(lowEnd)
   return lowEnd.unit === highEnd.unit
-    ? `${lowEnd.amount}${EN_DASH}${highEnd.amount} ${lowEnd.unit}`
+    ? `${lowEnd.amountText}${EN_DASH}${highEnd.amountText} ${lowEnd.unit}`
     : `${partsText(lowEnd)}${EN_DASH}${partsText(highEnd)}`
 }
 
@@ -108,7 +127,7 @@ export const formatPercent = (
   }
   assertFiniteNumber(value)
   const percentage = scale === 'ratio' ? value * 100 : value
-  return `${fixed(percentage, decimals)}%`
+  return `${toRoundedFixed(percentage, decimals)}%`
 }
 
 /**
@@ -125,18 +144,25 @@ export const formatPercentRange = ({ low, high }, options) => {
   return lowText === highText ? lowText : `${lowText}${EN_DASH}${highText}`
 }
 
+// Plain decimals only: Number() would also read "1e3" and "0x10" as numbers.
+// The digit runs never overlap ("\d+" then an optional "." and "\d*"), so a
+// long run of digits that fails at the end is rejected in linear time.
+const PLAIN_DECIMAL = /^[+-]?(\d+(\.\d*)?|\.\d+)$/
+
 const parseNumber = (value) => {
   if (typeof value === 'number') return value
-  if (typeof value === 'string' && value.trim() !== '') return Number(value)
-  return NaN
+  if (typeof value !== 'string') return NaN
+  const text = value.trim()
+  return PLAIN_DECIMAL.test(text) ? Number(text) : NaN
 }
 
 /**
  * Convert a typed duration to whole minutes.
- * Decimals round to the nearest minute. Empty or non-numeric input gives an
- * error result rather than throwing, so a field can show it inline.
+ * Decimals round to the nearest minute. Empty or non-numeric input (including
+ * exponent, hexadecimal and comma forms) gives an error result rather than
+ * throwing, so a field can show it inline.
  * @param {number|string} value - The amount typed
- * @param {'minutes'|'hours'|'days'} unit - "days" are working days
+ * @param {'minutes'|'hours'|'days'} unit - A `DURATION_UNIT`; "days" are working days
  * @param {number} workdayHours - Length of a working day in hours
  * @returns {{minutes: number}|{error: string}}
  * @throws {RangeError} On an unknown unit, or a "days" unit with no valid workdayHours
@@ -144,19 +170,100 @@ const parseNumber = (value) => {
 export const toMinutes = (value, unit, workdayHours) => {
   const perUnit = minutesPerUnit(unit, workdayHours)
   const amount = parseNumber(value)
-  return Number.isFinite(amount)
-    ? { minutes: roundTo(amount * perUnit, 0) }
-    : NOT_A_NUMBER
+  if (!Number.isFinite(amount)) return NOT_A_NUMBER_RESULT
+  // A figure too large to scale overflows to Infinity, which is not minutes.
+  const minutes = roundTo(amount * perUnit, 0)
+  return Number.isFinite(minutes) ? { minutes } : NOT_A_NUMBER_RESULT
 }
 
 /**
- * Convert minutes to the amount a field shows in `unit`, rounded to 4 decimals.
+ * Convert minutes to the amount a field shows in `unit`, rounded to `FIELD_ROUND_TRIP_DECIMALS` (4) places.
  * Four decimals is fine enough that `toMinutes(fromMinutes(m))` returns `m`
  * for working days up to 166 hours, so re-saving an unedited field changes nothing.
  * @param {number} minutes - Duration in minutes
- * @param {'minutes'|'hours'|'days'} unit - "days" are working days
+ * @param {'minutes'|'hours'|'days'} unit - A `DURATION_UNIT`; "days" are working days
  * @param {number} workdayHours - Length of a working day in hours
  * @returns {number}
  */
 export const fromMinutes = (minutes, unit, workdayHours) =>
-  roundTo(minutes / minutesPerUnit(unit, workdayHours), 4)
+  roundTo(
+    minutes / minutesPerUnit(unit, workdayHours),
+    FIELD_ROUND_TRIP_DECIMALS
+  )
+
+const isNotEntered = (text) => text == null || String(text).trim() === ''
+
+// A blank field is "not entered", which is a stage status, not an error.
+const parseField = (text, unit, workdayHours) =>
+  isNotEntered(text) ? { minutes: null } : toMinutes(text, unit, workdayHours)
+
+const RANGE_FIELDS = Object.freeze(['typ', 'min', 'max'])
+
+/**
+ * Parse the typed typical, min and max of one duration into whole minutes.
+ * A blank field is not entered: typ becomes null, and a blank min or max is left
+ * out of the range. Errors are keyed by the field they belong to.
+ * @param {{typ?: number|string, min?: number|string, max?: number|string}} texts - What each field holds
+ * @param {'minutes'|'hours'|'days'} unit - A `DURATION_UNIT`; "days" are working days
+ * @param {number} workdayHours - Length of a working day in hours
+ * @param {Object} options
+ * @param {string} options.label - Name used in messages ("Process time")
+ * @param {boolean} [options.mustBePositive=false] - Require more than 0 instead of 0 or more
+ * @returns {{range: {typ: number|null, min?: number, max?: number}}|{errors: {typ?: string, min?: string, max?: string}}}
+ * @throws {RangeError} On an unknown unit, or a "days" unit with no valid workdayHours
+ */
+export const parseDurationRange = (
+  texts,
+  unit,
+  workdayHours,
+  { label, mustBePositive = false }
+) => {
+  const names = { typ: label, min: `${label} min`, max: `${label} max` }
+  const minutesByField = {}
+  const fieldErrors = {}
+
+  RANGE_FIELDS.forEach((field) => {
+    const parsed = parseField(texts[field], unit, workdayHours)
+    minutesByField[field] = parsed.minutes ?? null
+    const error =
+      parsed.error ??
+      (minutesByField[field] === null
+        ? null
+        : boundError(names[field], minutesByField[field], mustBePositive))
+    if (error) fieldErrors[field] = error
+  })
+
+  // A field that already shows an error is left out of the comparison.
+  const compared = Object.fromEntries(
+    RANGE_FIELDS.map((field) => [
+      field,
+      fieldErrors[field] ? null : minutesByField[field],
+    ])
+  )
+  const errors = { ...fieldErrors, ...rangeOrderErrors(compared) }
+
+  if (Object.keys(errors).length > 0) return { errors }
+
+  const { typ, min, max } = minutesByField
+  return {
+    range: {
+      typ,
+      ...(min !== null && { min }),
+      ...(max !== null && { max }),
+    },
+  }
+}
+
+/**
+ * The unit a field first shows a stored duration in: the one `formatDuration`
+ * reads it in, so a saved 2 working days reopens as "2 days", not "16 hours".
+ * Hours when nothing is entered yet.
+ * @param {number|null|undefined} minutes - The stored duration, if any
+ * @param {number} workdayHours - Length of a working day in hours
+ * @returns {'hours'|'days'}
+ * @throws {RangeError} When workdayHours is not a positive number
+ */
+export const durationUnitOf = (minutes, workdayHours) =>
+  Number.isFinite(minutes)
+    ? durationParts(minutes, workdayHours).unit
+    : DURATION_UNIT.HOURS
