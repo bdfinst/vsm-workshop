@@ -74,11 +74,10 @@
   }
 
   function handleNewValueStream() {
-    const created = workspaceStore.create({})
+    const created = workspaceStore.startNew()
     menuOpen = false
-    if (created.ok) workspaceStore.open(created.streamId)
     // On failure the menu item is gone, so focus goes back to what opened it.
-    else fileButton?.focus()
+    if (!created.ok) fileButton?.focus()
   }
 
   // The file picker takes focus, so the menu closes first and "File" gets it back.

@@ -1,4 +1,4 @@
-import { STEP_KIND, TIME_SOURCE, isOutside } from './constants.js'
+import { FULL_PCT_CA, STEP_KIND, TIME_SOURCE, isOutside } from './constants.js'
 
 const TEAM_TIME_FIELDS = Object.freeze(['processTime', 'waitTime'])
 const OUTSIDE_TIME_FIELDS = Object.freeze(['elapsedTime'])
@@ -8,6 +8,16 @@ export const TIME_FIELDS = Object.freeze([
   ...TEAM_TIME_FIELDS,
   ...OUTSIDE_TIME_FIELDS,
 ])
+
+/**
+ * How each time field is named in a sentence: the one place the nouns live, for
+ * the stage reasons and the ladder.
+ */
+export const TIME_FIELD_NOUNS = Object.freeze({
+  processTime: 'process time',
+  waitTime: 'wait time',
+  elapsedTime: 'elapsed time',
+})
 
 /**
  * The time fields a step of this kind holds.
@@ -48,3 +58,31 @@ export const createStep = (overrides = {}) => {
     ...(outside && { isHandoff: true }),
   }
 }
+
+/**
+ * Whether a step passes less than all its work on as complete and accurate: its
+ * %C/A is entered and below 100, so some of what it passes on comes back. A
+ * step with no %C/A entered has no known rejects, and a step at 100 has none.
+ * NaN counts as "no rejects" (validation refuses NaN, so a saved step has none).
+ * @param {{pctCA: ?number}} step - A v2 step
+ * @returns {boolean}
+ */
+export const hasRejects = (step) =>
+  typeof step.pctCA === 'number' && step.pctCA < FULL_PCT_CA
+
+/**
+ * Whether a step's %C/A is entered and exactly 100, so no rework path may start
+ * at it. This is not `!hasRejects(step)`: a step with no %C/A entered has no
+ * known rejects yet is not full, and can still start a rework path.
+ * @param {?{pctCA: ?number}} step - A v2 step; a missing step is not full
+ * @returns {boolean}
+ */
+export const isFullCA = (step) => step?.pctCA === FULL_PCT_CA
+
+/**
+ * The typical times a step still needs, by field. Zero counts as entered.
+ * @param {{kind: string}} step - A v2 step, or a row with the same time fields
+ * @returns {string[]} Field names, in the order a step of its kind holds them
+ */
+export const missingTimesOf = (step) =>
+  timeFieldsOf(step.kind).filter((field) => step[field]?.typ == null)

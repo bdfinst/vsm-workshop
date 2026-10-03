@@ -1,9 +1,9 @@
-import { isOutside } from '../../../models/v2/constants.js'
+import { FULL_PCT_CA, isOutside } from '../../../models/v2/constants.js'
 import { incomplete, sumRanges } from './range.js'
 import { leadTimeOf } from './totals.js'
 
 /**
- * Reject rate of a step, as a percentage (0-100): 100 - %C/A.
+ * Reject rate of a step, as a percentage (0-100): full %C/A (100) minus its %C/A.
  * An outside step with no %C/A has none to show (null), since its quality is
  * not part of the team's own figures; a rework loop can still start there once
  * a %C/A is entered.
@@ -11,7 +11,7 @@ import { leadTimeOf } from './totals.js'
  * @returns {number|null|{incomplete: true, stepName: string}} Incomplete when a team step's %C/A is missing
  */
 export const rejectRate = (step) => {
-  if (step.pctCA != null) return 100 - step.pctCA
+  if (step.pctCA != null) return FULL_PCT_CA - step.pctCA
   return isOutside(step) ? null : incomplete(step.name)
 }
 
@@ -25,7 +25,10 @@ export const rolledCA = (steps) => {
   const teamSteps = steps.filter((step) => !isOutside(step))
   const missing = teamSteps.find((step) => step.pctCA == null)
   if (missing) return incomplete(missing.name)
-  return teamSteps.reduce((rolled, step) => (rolled * step.pctCA) / 100, 100)
+  return teamSteps.reduce(
+    (rolled, step) => (rolled * step.pctCA) / 100,
+    FULL_PCT_CA
+  )
 }
 
 const mapRange = (range, fn) => ({
@@ -67,9 +70,9 @@ const addedTimeFor = (steps, gap, shareOfItems, reworkTime) =>
     ? mapRange(reworkTime, (minutes) => (shareOfItems * minutes) / 100)
     : incomplete(steps[gap].name)
 
-const analyzePath = (steps, path) => {
-  const fromIndex = steps.findIndex((step) => step.id === path.fromStepId)
-  const toIndex = steps.findIndex((step) => step.id === path.toStepId)
+const analyzePath = (steps, indexOfStep, path) => {
+  const fromIndex = indexOfStep(path.fromStepId)
+  const toIndex = indexOfStep(path.toStepId)
   const gap = findGap(steps, toIndex, fromIndex)
   const shareOfItems = shareOfItemsFor(steps[fromIndex], path)
   const reworkTime = reworkTimeFor(steps, path, toIndex, fromIndex)
@@ -102,7 +105,16 @@ const analyzePath = (steps, path) => {
  * @returns {{paths: Object[], timeOnRework: {typ: number, low: number, high: number}|{incomplete: true, stepName: string}}}
  */
 export const calculateRework = (steps, reworkPaths) => {
-  const analyses = reworkPaths.map((path) => analyzePath(steps, path))
+  // Built once: each path looks up two steps, and a version holds many paths.
+  // A repeated id keeps its first index, as `findIndex` would.
+  const indexById = new Map()
+  steps.forEach((step, index) => {
+    if (!indexById.has(step.id)) indexById.set(step.id, index)
+  })
+  const indexOfStep = (id) => indexById.get(id) ?? -1
+  const analyses = reworkPaths.map((path) =>
+    analyzePath(steps, indexOfStep, path)
+  )
   const gaps = analyses.map(({ gap }) => gap).filter((gap) => gap != null)
 
   return {

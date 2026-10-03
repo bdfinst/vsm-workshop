@@ -2,6 +2,7 @@ import { describe, it, expect } from 'vitest'
 import { calculateMetrics } from '../../../src/utils/calculations/v2/index.js'
 import {
   topWaits,
+  largestWait,
   topPaths,
   lowestCA,
 } from '../../../src/utils/calculations/v2/flags.js'
@@ -129,6 +130,27 @@ describe('Rework', () => {
     expect(timeOnRework.typ).toBe(216)
   })
 
+  it("keeps each path's row in path order, whichever steps the paths join", () => {
+    const steps = withStep(
+      withStep(reworkSteps(), 'Development', { pctCA: 90 }),
+      'Code review',
+      { pctCA: 80 }
+    )
+    const paths = [
+      pathBetween(steps, 'Code review', 'Intake', { shareOfRejects: 50 }),
+      pathBetween(steps, 'Development', 'Refinement'),
+      pathBetween(steps, 'Code review', 'Development', { shareOfRejects: 50 }),
+    ]
+    const { paths: rows, timeOnRework } = calculateRework(steps, paths)
+
+    expect(rows.map((row) => row.id)).toEqual(paths.map((path) => path.id))
+    expect(rows.map((row) => row.depth)).toEqual([3, 1, 1])
+    expect(rows.map((row) => row.shareOfItems)).toEqual([10, 10, 10])
+    expect(rows.map((row) => row.reworkTime.typ)).toEqual([4620, 720, 1440])
+    expect(rows.map((row) => row.addedTime.typ)).toEqual([462, 72, 144])
+    expect(timeOnRework.typ).toBe(678)
+  })
+
   it('Outside step inside a rework loop', () => {
     const steps = withStep(
       insertAfter(
@@ -219,6 +241,60 @@ describe('Rework', () => {
   })
 })
 
+describe('Rework paths that end at a step that is not there', () => {
+  it('a path to a missing step adds no time', () => {
+    const steps = reworkSteps()
+    const path = {
+      ...pathBetween(steps, 'Code review', 'Intake'),
+      toStepId: 'gone',
+    }
+
+    const { paths: rows, timeOnRework } = calculateRework(steps, [path])
+
+    expect(rows[0].reworkTime).toEqual({ typ: 0, low: 0, high: 0 })
+    expect(rows[0].addedTime).toEqual({ typ: 0, low: 0, high: 0 })
+    expect(timeOnRework).toEqual({ typ: 0, low: 0, high: 0 })
+  })
+
+  it('a path from a missing step throws: the caller validates the version first', () => {
+    const steps = reworkSteps()
+    const path = {
+      ...pathBetween(steps, 'Code review', 'Intake'),
+      fromStepId: 'gone',
+    }
+
+    expect(() => calculateRework(steps, [path])).toThrow(TypeError)
+  })
+})
+
+describe('Rework paths over a repeated step id', () => {
+  const repeated = (steps, at, source) =>
+    steps.map((step, index) =>
+      index === at ? { ...step, id: steps[source].id } : step
+    )
+
+  it('a path to the repeated id goes to its first step', () => {
+    const steps = repeated(reworkSteps(), 1, 0)
+    const path = {
+      ...pathBetween(steps, 'Code review', 'Intake'),
+      toStepId: steps[0].id,
+    }
+
+    expect(calculateRework(steps, [path]).paths[0].depth).toBe(3)
+  })
+
+  it('a path from the repeated id starts at its first step', () => {
+    const steps = repeated(reworkSteps(), 3, 1)
+    const path = {
+      ...pathBetween(steps, 'Intake', 'Intake'),
+      fromStepId: steps[1].id,
+      toStepId: steps[0].id,
+    }
+
+    expect(calculateRework(steps, [path]).paths[0].depth).toBe(1)
+  })
+})
+
 describe('Steps without a time object inside a loop', () => {
   it('a team step with no process or wait time object makes the loop incomplete', () => {
     const steps = withStep(reworkSteps(), 'Development', {
@@ -306,6 +382,15 @@ describe('Flags', () => {
       'Deploy',
       'Development',
     ])
+  })
+
+  it('names the largest wait as the first of the top waits, or none when every wait is 0', () => {
+    const steps = referenceSteps()
+
+    expect(largestWait(steps)).toEqual(topWaits(steps)[0])
+    expect(
+      largestWait([team('Intake', 10, 0), team('Deploy', 10, 0)])
+    ).toBeNull()
   })
 
   it('skips steps with no wait time object', () => {

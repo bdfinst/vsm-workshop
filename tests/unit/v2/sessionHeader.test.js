@@ -1,14 +1,13 @@
 import { describe, it, expect, vi, afterEach } from 'vitest'
-import { mount, unmount, flushSync } from 'svelte'
+import { mount, unmount, flushSync, tick } from 'svelte'
 import { createValueStream } from '../../../src/models/v2/valueStream.js'
 import { createValueStreamStore } from '../../../src/stores/v2/valueStreamStore.svelte.js'
 import SessionHeader from '../../../src/components/session/SessionHeader.svelte'
-import { refused } from './fixtures.js'
 
 const workspaceStore = vi.hoisted(() => ({
-  create: vi.fn(),
-  open: vi.fn(),
+  startNew: vi.fn(),
 }))
+// double-waiver: B1 - the workspaceStore singleton can only become ready through init() against IndexedDB, and SessionHeader imports it directly (no injection seam)
 vi.mock('../../../src/stores/v2/workspaceStore.svelte.js', () => ({
   workspaceStore,
 }))
@@ -40,7 +39,7 @@ afterEach(() => {
 
 describe('SessionHeader File menu', () => {
   it('returns focus to File when New value stream fails', async () => {
-    workspaceStore.create.mockReturnValue(refused)
+    workspaceStore.startNew.mockReturnValue({ ok: false, error: 'Not ready' })
     const { file, item } = render()
     file.click()
     await vi.waitFor(() => expect(item()).toHaveFocus())
@@ -48,6 +47,24 @@ describe('SessionHeader File menu', () => {
     item().click()
 
     await vi.waitFor(() => expect(file).toHaveFocus())
-    expect(workspaceStore.open).not.toHaveBeenCalled()
+    expect(workspaceStore.startNew).toHaveBeenCalledOnce()
+  })
+
+  it('closes the menu and leaves focus alone when New value stream works', async () => {
+    workspaceStore.startNew.mockReturnValue({
+      ok: true,
+      streamId: 's',
+      name: 'Untitled value stream',
+    })
+    const { file, item } = render()
+    file.click()
+    await vi.waitFor(() => expect(item()).toHaveFocus())
+
+    item().click()
+
+    await vi.waitFor(() => expect(item()).toBeNull())
+    await tick()
+    expect(file).not.toHaveFocus()
+    expect(workspaceStore.startNew).toHaveBeenCalledOnce()
   })
 })

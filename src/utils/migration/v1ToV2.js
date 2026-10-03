@@ -1,4 +1,4 @@
-import { INTAKE_NAME } from '../../models/v2/constants.js'
+import { FULL_PCT_CA, INTAKE_NAME } from '../../models/v2/constants.js'
 import { createMapVersion } from '../../models/v2/mapVersion.js'
 import { createReworkPath } from '../../models/v2/reworkPath.js'
 import { createStep } from '../../models/v2/step.js'
@@ -110,8 +110,8 @@ const isWaitClamped = (v1Step) => toMinutes(v1Step.leadTime) < processOf(v1Step)
 
 const qualityOf = (v1Step) =>
   Number.isFinite(v1Step.percentCompleteAccurate)
-    ? clamp(Math.round(v1Step.percentCompleteAccurate), 0, 100)
-    : 100
+    ? clamp(Math.round(v1Step.percentCompleteAccurate), 0, FULL_PCT_CA)
+    : FULL_PCT_CA
 
 const mapStep = (v1Step, pctCA) =>
   createStep({
@@ -150,7 +150,7 @@ const newIntake = () =>
     name: INTAKE_NAME,
     processTime: { typ: 0 },
     waitTime: { typ: 0 },
-    pctCA: 100,
+    pctCA: FULL_PCT_CA,
   })
 
 // Intake first, before rework direction is judged: rename and move the v1 step
@@ -199,7 +199,11 @@ const rateOf = (connection) => Number(connection.reworkRate)
 // The lower of the step's own %C/A and 100 minus its rework rate, kept inside
 // 1 to 99 so a step with paths is never at 100 and never at 0.
 const pctCAWithRework = (v1Step, totalRate) =>
-  clamp(Math.floor(Math.min(qualityOf(v1Step), 100 - totalRate)), 1, 99)
+  clamp(
+    Math.floor(Math.min(qualityOf(v1Step), FULL_PCT_CA - totalRate)),
+    1,
+    FULL_PCT_CA - 1
+  )
 
 /**
  * Turn v1 rework connections into v2 rework paths over the ordered steps.

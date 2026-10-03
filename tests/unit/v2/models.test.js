@@ -2,18 +2,25 @@ import { describe, it, expect } from 'vitest'
 import {
   TIME_FIELDS,
   createStep,
+  hasRejects,
+  isFullCA,
+  missingTimesOf,
+  TIME_FIELD_NOUNS,
   timeFieldsOf,
 } from '../../../src/models/v2/step.js'
+import { FULL_PCT_CA } from '../../../src/models/v2/constants.js'
 import {
   createReworkPath,
   pathTouchesStep,
 } from '../../../src/models/v2/reworkPath.js'
 import { createMapVersion } from '../../../src/models/v2/mapVersion.js'
 import {
+  activeVersionOf,
   BLANK_NAME_MESSAGE,
   createValueStream,
   displayName,
   isBlankName,
+  isUnnamed,
   nameEdit,
   nameOrUntitled,
   normalizeName,
@@ -73,6 +80,124 @@ describe('createStep', () => {
 
     expect(step.processTime).toEqual({ typ: 60 })
     expect(step.pctCA).toBe(80)
+  })
+})
+
+describe('hasRejects', () => {
+  it('names full complete-and-accurate as 100', () => {
+    expect(FULL_PCT_CA).toBe(100)
+  })
+
+  it.each([0, 1, 80, 99, 99.5, 99.99])(
+    'is true for a step at %C/A %s',
+    (pctCA) => {
+      expect(hasRejects({ pctCA })).toBe(true)
+    }
+  )
+
+  it.each([
+    ['100', 100],
+    ['null', null],
+    ['undefined', undefined],
+    ['the text "80"', '80'],
+    ['NaN', NaN],
+  ])(
+    'is false for a step at %C/A %s: nothing is known to be rejected',
+    (_label, pctCA) => {
+      expect(hasRejects({ pctCA })).toBe(false)
+    }
+  )
+})
+
+describe('isFullCA', () => {
+  it('is true for a step at exactly 100', () => {
+    expect(isFullCA({ pctCA: FULL_PCT_CA })).toBe(true)
+  })
+
+  it.each([
+    ['0', 0],
+    ['80', 80],
+    ['99', 99],
+    ['99.99', 99.99],
+    ['100.5', 100.5],
+    ['101', 101],
+    ['null', null],
+    ['undefined', undefined],
+    ['the text "100"', '100'],
+    ['NaN', NaN],
+  ])('is false for a step at %C/A %s', (_label, pctCA) => {
+    expect(isFullCA({ pctCA })).toBe(false)
+  })
+
+  it('is false for a missing step', () => {
+    expect(isFullCA(undefined)).toBe(false)
+  })
+
+  it('is not the same as having no rejects: a step with no %C/A has none known and is still not full', () => {
+    const unentered = { pctCA: null }
+
+    expect(hasRejects(unentered)).toBe(false)
+    expect(isFullCA(unentered)).toBe(false)
+  })
+})
+
+describe('TIME_FIELD_NOUNS', () => {
+  it('names every time field a step can hold', () => {
+    expect(TIME_FIELD_NOUNS).toEqual({
+      processTime: 'process time',
+      waitTime: 'wait time',
+      elapsedTime: 'elapsed time',
+    })
+    expect(Object.keys(TIME_FIELD_NOUNS)).toEqual([...TIME_FIELDS])
+  })
+})
+
+describe('missingTimesOf', () => {
+  it('is empty for a team step with its process and wait time', () => {
+    expect(
+      missingTimesOf(
+        createStep({ processTime: { typ: 5 }, waitTime: { typ: 6 } })
+      )
+    ).toEqual([])
+  })
+
+  it("names a team step's missing times, process before wait", () => {
+    expect(missingTimesOf(createStep())).toEqual(['processTime', 'waitTime'])
+    expect(missingTimesOf(createStep({ processTime: { typ: 5 } }))).toEqual([
+      'waitTime',
+    ])
+    expect(missingTimesOf(createStep({ waitTime: { typ: 5 } }))).toEqual([
+      'processTime',
+    ])
+  })
+
+  it('counts zero as entered', () => {
+    expect(
+      missingTimesOf(
+        createStep({ processTime: { typ: 0 }, waitTime: { typ: 0 } })
+      )
+    ).toEqual([])
+  })
+
+  it('names only the elapsed time for an outside step', () => {
+    expect(missingTimesOf(createStep({ kind: 'outside' }))).toEqual([
+      'elapsedTime',
+    ])
+    expect(
+      missingTimesOf(
+        createStep({ kind: 'outside', elapsedTime: { typ: 1440 } })
+      )
+    ).toEqual([])
+  })
+
+  it('names the elapsed time of a bare outside step', () => {
+    expect(missingTimesOf({ kind: 'outside' })).toEqual(['elapsedTime'])
+  })
+
+  it('reads a time that is missing its object as not entered', () => {
+    expect(missingTimesOf({ kind: 'team', processTime: { typ: 1 } })).toEqual([
+      'waitTime',
+    ])
   })
 })
 
@@ -452,6 +577,21 @@ describe('validateReworkPath', () => {
   })
 })
 
+describe('validateReworkPath from a step whose %C/A is not entered', () => {
+  const steps = ['Intake', 'Code review'].map((name) =>
+    createStep({ id: name, name, pctCA: null })
+  )
+
+  it('accepts a path, as it does below 100%', () => {
+    const path = createReworkPath({
+      fromStepId: 'Code review',
+      toStepId: 'Intake',
+    })
+
+    expect(validateReworkPath(path, steps).valid).toBe(true)
+  })
+})
+
 describe('validateReworkShares', () => {
   const steps = ['Intake', 'Development', 'Code review'].map((name) =>
     createStep({ id: name, name, pctCA: 100 })
@@ -705,6 +845,24 @@ describe('copyValueStream', () => {
   })
 })
 
+describe('activeVersionOf', () => {
+  it('is the version the stream is being edited in', () => {
+    const stream = withFutureState(referenceStream())
+    const [current, future] = stream.versions
+
+    expect(activeVersionOf(stream)).toBe(current)
+    expect(activeVersionOf({ ...stream, activeVersionId: future.id })).toBe(
+      future
+    )
+  })
+
+  it('is undefined when the stream names a version it does not have', () => {
+    expect(
+      activeVersionOf({ ...referenceStream(), activeVersionId: 'gone' })
+    ).toBeUndefined()
+  })
+})
+
 describe('displayName', () => {
   it('lists a named stream by its trimmed name', () => {
     expect(displayName({ name: '  Onboarding ' })).toBe('Onboarding')
@@ -746,6 +904,24 @@ describe('the value stream name rule', () => {
   it('names the untitled value stream as the cards and files show it', () => {
     expect(UNTITLED_NAME).toBe('Untitled value stream')
     expect(nameOrUntitled('')).toBe(UNTITLED_NAME)
+  })
+})
+
+describe('isUnnamed', () => {
+  it.each(['', '   ', '\t\n', undefined, null, 5])(
+    'calls a stream whose name is %j unnamed',
+    (name) => {
+      expect(isUnnamed({ name })).toBe(true)
+    }
+  )
+
+  it.each(['a', ' a ', '0'])('calls a stream named %j named', (name) => {
+    expect(isUnnamed({ name })).toBe(false)
+  })
+
+  it('is the stream a new value stream starts as, until it is named', () => {
+    expect(isUnnamed(createValueStream())).toBe(true)
+    expect(isUnnamed(createValueStream({ name: 'Onboarding' }))).toBe(false)
   })
 })
 

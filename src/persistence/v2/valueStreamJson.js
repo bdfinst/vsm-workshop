@@ -1,5 +1,5 @@
 import { isRecord } from '../../utils/validation/v2/result.js'
-import { STAGE_NAMES } from '../../models/v2/constants.js'
+import { clampStage } from '../../models/v2/constants.js'
 import { refuse } from '../../models/v2/result.js'
 import { normalizeName } from '../../models/v2/valueStream.js'
 import { migrateV1Safely } from '../../utils/migration/migrateV1Safely.js'
@@ -53,12 +53,6 @@ const readV1 = (file) => {
   return migrated.ok ? migrated : refuse(NOT_A_VALUE_STREAM_MESSAGE)
 }
 
-// A stage number from a file, which can hold anything: kept when it is a whole
-// number in range, pulled to the nearest end when it is a number past one, and
-// the first stage when it is not a whole number at all.
-const inRangeStage = (stage) =>
-  Number.isInteger(stage) ? Math.min(Math.max(stage, 1), STAGE_NAMES.length) : 1
-
 const readableTime = (time, fallback) =>
   typeof time === 'string' && !Number.isNaN(Date.parse(time)) ? time : fallback
 
@@ -67,9 +61,9 @@ const readableTime = (time, fallback) =>
 // Time that cannot be read becomes the time of the import. The name is
 // normalized, as it is for a value stream made in the app.
 const withReadableFields = (stream) => {
-  const activeStage = inRangeStage(stream.session.activeStage)
+  const activeStage = clampStage(stream.session.activeStage)
   const furthestStage = Math.max(
-    inRangeStage(stream.session.furthestStage),
+    clampStage(stream.session.furthestStage),
     activeStage
   )
   const now = new Date().toISOString()

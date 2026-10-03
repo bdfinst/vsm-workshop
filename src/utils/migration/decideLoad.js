@@ -1,4 +1,4 @@
-import { STAGE_NAMES } from '../../models/v2/constants.js'
+import { LAST_STAGE, STAGE_NUMBER } from '../../models/v2/constants.js'
 import { createWorkspace } from '../../models/v2/workspace.js'
 import { isRecord } from '../validation/v2/result.js'
 import { parseWorkspace } from '../../persistence/v2/workspaceCodec.js'
@@ -22,8 +22,8 @@ const hasV1Steps = (v1) =>
 
 // A migrated map is already built, so it opens on Review with every stage reached.
 const MIGRATED_SESSION = {
-  activeStage: STAGE_NAMES.indexOf('Review') + 1,
-  furthestStage: STAGE_NAMES.length,
+  activeStage: STAGE_NUMBER.REVIEW,
+  furthestStage: LAST_STAGE,
 }
 
 // A v1 map that cannot be migrated is treated as nothing saved: the app opens

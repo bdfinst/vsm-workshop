@@ -54,6 +54,14 @@ export const normalizeName = (name) =>
 export const isBlankName = (name) => normalizeName(name) === ''
 
 /**
+ * Whether a value stream has no name, once normalized. The one answer to "is
+ * this stream unnamed", so a screen asks it of the stream, not of a name.
+ * @param {{name: *}} stream - A value stream, or anything with a `name`
+ * @returns {boolean} True when the stream has no name
+ */
+export const isUnnamed = (stream) => isBlankName(stream.name)
+
+/**
  * The one name-edit operation, for the home rename and the header field alike.
  * Typing a blank name is refused, even over an unnamed stream; surrounding
  * space does not count as a change.
@@ -81,3 +89,11 @@ export const nameOrUntitled = (name) => normalizeName(name) || UNTITLED_NAME
  * @returns {string} The trimmed name, or "Untitled value stream" when blank
  */
 export const displayName = (stream) => nameOrUntitled(stream.name)
+
+/**
+ * The version the user is working on: the one `activeVersionId` names.
+ * @param {{versions: Object[], activeVersionId: string}} stream - A value stream, or a copy of one
+ * @returns {Object|undefined} The map version, or undefined when the stream names one it does not have
+ */
+export const activeVersionOf = (stream) =>
+  stream.versions.find((version) => version.id === stream.activeVersionId)

@@ -1,4 +1,5 @@
 import { rejectRate } from '../calculations/v2/rework.js'
+import { flagsOf } from './flaggedSteps.js'
 
 const copyRange = (range) => (range ? { ...range } : null)
 
@@ -18,10 +19,7 @@ const stepRow = (step, { flags }) => ({
   pctCA: step.pctCA,
   rejectRate: rejectRate(step),
   notes: step.notes,
-  flags: [
-    ...flagIf(flags.topWaits[0]?.stepId === step.id, 'top-wait'),
-    ...flagIf(flags.lowestCA?.stepId === step.id, 'lowest-ca'),
-  ],
+  flags: flagsOf(flags, step.id).map(({ kind }) => kind),
 })
 
 // A path or step id that no longer exists gives a null name, not a throw.
@@ -50,8 +48,8 @@ const indexById = (items) => new Map(items.map((item) => [item.id, item]))
  * value is `{ incomplete: true, stepName }`, as in the metrics. An entered value
  * that is not set is `null`, and a time that does not apply to the step's kind
  * (elapsed for team steps, process and wait for outside steps) is `null`.
- * Flags are strings: "top-wait" (the largest wait) and "lowest-ca" on steps,
- * "top-path" on paths.
+ * Flags are strings: a step's are the `FLAG_KIND` values ("largest-wait",
+ * "lowest-ca") for the flags `metrics.flags` puts on it; a path's is "top-path".
  * @param {Object} version - A v2 map version ({ steps, reworkPaths })
  * @param {Object} metrics - `calculateMetrics(version)`
  * @returns {{steps: Object[], paths: Object[]}} Step rows in step order, path rows in path order

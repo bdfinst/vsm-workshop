@@ -5,6 +5,13 @@
  * working copy. Value stream stores never write storage; they call back here.
  * The file queue belongs to the save composition (11.1), which hooks in through
  * `snapshot`, `revision`, `savedRevision` and `subscribeCommit`.
+ *
+ * Every action answers with one result shape: `{ ok: false, error }` when it is
+ * refused, else `{ ok: true }` plus what it made or found. An action that
+ * makes, restores, copies, reads or exports a stream (`create`, `startNew`,
+ * `restoreLast`, `duplicate`, `importStream`, `exportStream`) adds
+ * `streamId` and `name`, the name as the stream is listed (`displayName`);
+ * `importStream` adds `changes` and `exportStream` adds `text`.
  * @file This file uses Svelte 5 runes ($state)
  */
 
@@ -252,7 +259,7 @@ export const createWorkspaceStore = ({
     } else {
       commit()
     }
-    return { ok: true, streamId: stream.id }
+    return { ok: true, streamId: stream.id, name: displayName(stream) }
   })
 
   const open = whenReady((id) => {
@@ -261,6 +268,14 @@ export const createWorkspaceStore = ({
     showActive()
     enqueueSave()
     return { ok: true }
+  })
+
+  // "New value stream": a stream with no name, opened at once. The one action
+  // behind the home button and the File menu.
+  const startNew = whenReady(() => {
+    const created = create()
+    if (created.ok) open(created.streamId)
+    return created
   })
 
   const goHome = whenReady(() => {
@@ -297,7 +312,7 @@ export const createWorkspaceStore = ({
       ...streams.slice(index + 1),
     ]
     commit()
-    return { ok: true, streamId: copy.id }
+    return { ok: true, streamId: copy.id, name: displayName(copy) }
   })
 
   const remove = whenReady((id) => {
@@ -333,7 +348,11 @@ export const createWorkspaceStore = ({
       buildActiveStore()
     }
     commit()
-    return { ok: true, streamId: token.stream.id }
+    return {
+      ok: true,
+      streamId: token.stream.id,
+      name: displayName(token.stream),
+    }
   })
 
   const importStream = whenReady((text) => {
@@ -344,7 +363,12 @@ export const createWorkspaceStore = ({
     if (!result.ok) return refuse(result.error)
     streams = [...streams, result.stream]
     commit()
-    return { ok: true, streamId: result.stream.id, changes: result.changes }
+    return {
+      ok: true,
+      streamId: result.stream.id,
+      name: displayName(result.stream),
+      changes: result.changes,
+    }
   })
 
   // The upgrade notice shows what an import applied, in place of what was shown.
@@ -355,7 +379,12 @@ export const createWorkspaceStore = ({
   const exportStream = whenReady((id) => {
     const stream = streams.find((s) => s.id === id)
     return stream
-      ? { ok: true, text: exportValueStream(stream) }
+      ? {
+          ok: true,
+          streamId: id,
+          name: displayName(stream),
+          text: exportValueStream(stream),
+        }
       : refuse(STREAM_MISSING_MESSAGE)
   })
 
@@ -432,6 +461,7 @@ export const createWorkspaceStore = ({
     init,
     create,
     open,
+    startNew,
     goHome,
     rename,
     duplicate,

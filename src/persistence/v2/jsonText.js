@@ -4,6 +4,8 @@
  * the user sees, so both file kinds refuse with the same words.
  */
 
+import { refuse } from '../../models/v2/result.js'
+
 export const INVALID_JSON_MESSAGE = "This file isn't valid JSON"
 export const NEWER_VERSION_MESSAGE =
   'This file was made by a newer version of the app'
@@ -14,12 +16,11 @@ export const NEWER_VERSION_MESSAGE =
  * @returns {{ok: true, value: *} | {ok: false, error: string}}
  */
 export const parseJsonText = (text) => {
-  if (typeof text !== 'string')
-    return { ok: false, error: INVALID_JSON_MESSAGE }
+  if (typeof text !== 'string') return refuse(INVALID_JSON_MESSAGE)
   try {
     return { ok: true, value: JSON.parse(text) }
   } catch {
-    return { ok: false, error: INVALID_JSON_MESSAGE }
+    return refuse(INVALID_JSON_MESSAGE)
   }
 }
 

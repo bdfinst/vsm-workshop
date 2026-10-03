@@ -27,6 +27,7 @@ describe('streamSummary', () => {
       id: expect.any(String),
       name: 'Checkout delivery',
       rawName: 'Checkout delivery',
+      unnamed: false,
       steps: '5 steps',
       furthestStage: 'Review',
       updated: 'Updated 2 days ago',
@@ -95,6 +96,14 @@ describe('streamSummary', () => {
       'Created 3 Mar',
       'Created 5 Mar',
     ])
+  })
+
+  it.each([
+    ['blank', '', true],
+    ['spaces only', '   ', true],
+    ['named', 'Checkout delivery', false],
+  ])('says whether the stream is unnamed (%s)', (_, name, unnamed) => {
+    expect(streamSummary(reviewStream({ name }), NOW).unnamed).toBe(unnamed)
   })
 
   it('keeps the stored name as it is, apart from the name shown', () => {

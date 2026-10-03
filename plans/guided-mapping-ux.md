@@ -1387,6 +1387,7 @@ Feature: Several value streams in one workspace
 - Deleting every stream shows "No value streams yet". A reload with an empty workspace then creates a stream at Scope.
 - `exportFileName` replaces each of `\ / : * ? " < > |` with "-", with no collapsing or trimming.
 - An imported stream is appended at the end. Duplicate names are allowed and a clashing id is replaced. Tests tell identical names apart by position.
+- `workspaceStore.startNew()` is the one "new value stream" action (a stream with no name, opened at once) for the home button and the File menu. Create, start-new, restore, duplicate, import and export answer with `{ ok, streamId, name }`, where `name` is the name the stream is listed by, so callers never look it up by id.
 
 **Steps:**
 
@@ -1692,7 +1693,7 @@ Feature: Live time-ladder map
 - **Dark tokens.** Light is the default. A dark palette for the map and strip tokens is defined under `:root[data-theme="dark"]` and contrast-tested, but nothing applies it until a theme toggle exists. The app has no dark mode today; this slice does not add one.
 - **Map pane placement.** The map pane is a full-width band under the stage content, with horizontal scroll and zoom to fit, and the summary strip pinned below it. The empty 320px side `aside` in `SessionShell` is removed. The map shows on stages 2–7 (Steps to Future), as in Step 10.2.
 - **Rail status deferred to Slice 11.** The Steps and Time rail statuses (`stepsReason` / `STAGE_REASONS`) stay deferred; no Slice 10 scenario needs them.
-- **Flags.** The ladder and the strip both read `metrics.flags` (`topWaits[0]` for the largest wait, `lowestCA` for the lowest %C/A); neither recomputes them.
+- **Flags.** The ladder and the strip both read `metrics.flags` (`largestWait` for the largest wait, `lowestCA` for the lowest %C/A); neither recomputes them.
 - **No flag when nothing is low.** `lowestCA` returns null when the lowest entered %C/A is 100, so a clean map flags no step as "lowest %C/A" (it used to flag the first step on a tie at 100). The first-step-on-a-tie rule stays for ties below 100.
 - **Flag tie rules.** When steps tie for the largest wait, or for the same lowest %C/A below 100, the first of them in map order gets the flag. The ladder and the strip agree because both read `metrics.flags`. An outside step cannot earn "largest wait" (`topWaits` skips outside steps) or "lowest %C/A" (`lowestCA` skips them too). Unit tests in `flaggedSteps.test.js` pin the first-in-order tie and that an outside step is never flagged.
 - **The strip stays pinned on short windows.** It is about 100px tall (101px measured), roughly 14% of a 720px window. Revisit un-pinning it, or collapsing it by window height, after the early facilitated dry run. Until then the page keeps the strip's height clear when it scrolls (`scroll-padding-bottom`), and two e2e guards at 1280x720 hold the line: the work region keeps at least half the window above the strip, and Tab through a tall Steps list never leaves the focused field under it. The move up and move down buttons and Alt+Arrow are the non-drag ways to reorder, so a short window never makes a drag the only path.

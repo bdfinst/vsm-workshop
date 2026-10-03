@@ -1,7 +1,7 @@
 <script>
   import PromptCard from '../PromptCard.svelte'
   import { STAGE_NUMBER, UNIT_OF_WORK } from '../../../models/v2/constants.js'
-  import { isBlankName } from '../../../models/v2/valueStream.js'
+  import { isUnnamed } from '../../../models/v2/valueStream.js'
   import {
     STAGES,
     missingScopeFields,
@@ -80,7 +80,7 @@
   nextReason={reason}
   {onnext}
 >
-  {#if isBlankName(stream.name)}
+  {#if isUnnamed(stream)}
     <p class="mb-4 text-gray-700" data-testid="scope-name-hint">
       Name this value stream in the header.
     </p>
