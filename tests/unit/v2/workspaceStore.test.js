@@ -838,7 +838,7 @@ describe('workspaceStore: create and rename', () => {
       return { stream, repository, store, listener }
     }
 
-    it.each(['', '   ', '\t\n'])(
+    it.each(['', '   ', '\t\n', undefined, 5])(
       'refuses %j: "Add a name", and nothing else happens',
       async (blank) => {
         const { stream, repository, store, listener } = await openedWithEdit()
@@ -882,6 +882,22 @@ describe('workspaceStore: create and rename', () => {
         expect(saved).not.toHaveBeenCalled()
       }
     )
+
+    it('refuses to rename a stream that is not in the workspace', async () => {
+      const { repository, store, listener } = await openedWithEdit()
+      const { revision, activeStore } = store
+      const names = store.streams.map((s) => s.name)
+      const saved = vi.spyOn(repository, 'save')
+
+      expect(store.rename('nope', 'Payments')).toEqual(refused)
+      await store.flushSaves()
+
+      expect(store.streams.map((s) => s.name)).toEqual(names)
+      expect(store.revision).toBe(revision)
+      expect(listener).not.toHaveBeenCalled()
+      expect(store.activeStore).toBe(activeStore)
+      expect(saved).not.toHaveBeenCalled()
+    })
 
     it('refuses a blank name for a stream that has none, which stays unnamed', async () => {
       const unnamed = referenceStream({ name: '' })
@@ -1230,6 +1246,13 @@ describe('workspaceStore: the last removal', () => {
       ['a duplicate', (store, { b }) => store.duplicate(b.id)],
       ['a rename', (store, { b }) => store.rename(b.id, 'Renamed')],
       ['a refused rename', (store, { b }) => store.rename(b.id, '  ')],
+      [
+        'an edit made inside the open stream',
+        (store, { b }) => {
+          store.open(b.id)
+          store.activeStore.addStep({ name: 'One' })
+        },
+      ],
     ])('survives %s', async (_what, act) => {
       const removed = await removedFirst()
 

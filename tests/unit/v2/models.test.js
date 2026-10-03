@@ -785,7 +785,7 @@ describe('nameEdit', () => {
     ['Onboarding', '  Onboarding '],
     ['  Onboarding ', 'Onboarding'],
   ])(
-    'says nothing changed when %j is typed over %j once trimmed',
+    'says nothing changed when %j is edited to %j, once trimmed',
     (current, typed) => {
       expect(nameEdit(current, typed)).toEqual({
         ok: true,

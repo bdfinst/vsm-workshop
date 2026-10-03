@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { createStep as createV1Step } from '../../../src/models/StepFactory.js'
 import {
   exportValueStream,
@@ -164,32 +164,36 @@ describe('importValueStream', () => {
       expect(session).toEqual({ activeStage: 3, furthestStage: 6 })
     })
 
-    it.each(['createdAt', 'updatedAt'])(
-      'replaces an unreadable %s with the time of the import',
-      (field) => {
-        const before = Date.now()
+    describe('a time that cannot be read', () => {
+      const IMPORT_TIME = '2026-04-01T12:30:00.000Z'
 
-        const stream = importWith({ [field]: 'last Tuesday' })
+      beforeEach(() => {
+        vi.useFakeTimers()
+        vi.setSystemTime(new Date(IMPORT_TIME))
+      })
 
-        const stamped = Date.parse(stream[field])
-        expect(stamped).toBeGreaterThanOrEqual(before)
-        expect(stamped).toBeLessThanOrEqual(Date.now())
-      }
-    )
+      afterEach(() => {
+        vi.useRealTimers()
+      })
 
-    it.each([undefined, null, 20260310, ''])(
-      'replaces a createdAt of %j that is not a time',
-      (value) => {
-        const before = Date.now()
+      it.each(['createdAt', 'updatedAt'])(
+        'replaces an unreadable %s with the time of the import',
+        (field) => {
+          const stream = importWith({ [field]: 'last Tuesday' })
 
-        const stream = importWith({ createdAt: value })
+          expect(stream[field]).toBe(IMPORT_TIME)
+        }
+      )
 
-        expect(typeof stream.createdAt).toBe('string')
-        const stamped = Date.parse(stream.createdAt)
-        expect(stamped).toBeGreaterThanOrEqual(before)
-        expect(stamped).toBeLessThanOrEqual(Date.now())
-      }
-    )
+      it.each([undefined, null, 20260310, ''])(
+        'replaces a createdAt of %j that is not a time',
+        (value) => {
+          const stream = importWith({ createdAt: value })
+
+          expect(stream.createdAt).toBe(IMPORT_TIME)
+        }
+      )
+    })
 
     it('keeps timestamps that can be read', () => {
       const stream = importWith({

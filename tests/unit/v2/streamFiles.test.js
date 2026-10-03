@@ -25,8 +25,13 @@ const fakeStore = ({ streams = [], importResult, exportResult } = {}) => ({
 
 describe('importStreamFile', () => {
   it('hands the file text to the store and names the stream it added', async () => {
+    // The imported stream is found by id, whatever is listed before or after it.
     const store = fakeStore({
-      streams: [{ id: 'new-id', name: '  Checkout  ' }],
+      streams: [
+        { id: 'before', name: 'Before' },
+        { id: 'new-id', name: '  Checkout  ' },
+        { id: 'after', name: 'After' },
+      ],
       importResult: { ok: true, streamId: 'new-id', changes: [] },
     })
 
