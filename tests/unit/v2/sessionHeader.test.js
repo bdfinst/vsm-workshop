@@ -4,6 +4,7 @@ import { createValueStream } from '../../../src/models/v2/valueStream.js'
 import { createValueStreamStore } from '../../../src/stores/v2/valueStreamStore.svelte.js'
 import SessionHeader from '../../../src/components/session/SessionHeader.svelte'
 
+// double-waiver: B1 - the workspaceStore singleton opens the IndexedDB working copy at import
 const workspaceStore = vi.hoisted(() => ({
   startNew: vi.fn(),
 }))
@@ -46,6 +47,24 @@ describe('SessionHeader File menu', () => {
     item().click()
 
     await vi.waitFor(() => expect(file).toHaveFocus())
+    expect(workspaceStore.startNew).toHaveBeenCalledOnce()
+  })
+
+  it('closes the menu and leaves focus alone when New value stream works', async () => {
+    workspaceStore.startNew.mockReturnValue({
+      ok: true,
+      streamId: 's',
+      name: 'Untitled value stream',
+    })
+    const { file, item } = render()
+    file.click()
+    await vi.waitFor(() => expect(item()).toHaveFocus())
+
+    item().click()
+
+    await vi.waitFor(() => expect(item()).toBeNull())
+    await new Promise((resolve) => setTimeout(resolve))
+    expect(file).not.toHaveFocus()
     expect(workspaceStore.startNew).toHaveBeenCalledOnce()
   })
 })
