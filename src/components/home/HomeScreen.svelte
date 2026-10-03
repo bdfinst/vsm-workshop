@@ -1,11 +1,15 @@
 <script>
   import { onMount, tick } from 'svelte'
   import { workspaceStore } from '../../stores/v2/workspaceStore.svelte.js'
-  import { toastStore } from '../../stores/toastStore.svelte.js'
+  import { toastStore, TOAST_TYPE } from '../../stores/toastStore.svelte.js'
   import { createDeleteUndo } from '../../utils/session/deleteUndo.js'
   import { indexAfterDelete } from '../../utils/ui/focusAfterDelete.js'
   import { isTextEntry, shortcutFor } from '../../utils/ui/keymap.js'
   import { streamSummary } from '../../utils/ui/streamSummary.js'
+import {
+    exportStreamFile,
+    importStreamFile,
+  } from '../../utils/ui/streamFiles.js'
   import StreamCard from './StreamCard.svelte'
 
   // One reading of the clock per visit, so "Updated 2 days ago" is the same for
@@ -18,6 +22,8 @@
   let heading = $state()
   let listElement = $state()
   let newButton = $state()
+  let importInput = $state()
+  let importError = $state('')
 
   onMount(() => heading?.focus())
 
@@ -93,6 +99,30 @@
     else newButton?.focus()
   }
 
+  function handleImportClick() {
+    importInput?.click()
+  }
+
+  // The workspace stays as it is when the file is refused; the user stays here
+  // either way and sees the result.
+  async function handleImportChosen(event) {
+    const input = event.currentTarget
+    const file = input.files[0]
+    input.value = ''
+    if (!file) return
+    const result = await importStreamFile(file, workspaceStore)
+    importError = result.ok ? '' : result.error
+    if (result.ok) {
+      toastStore.add(`${result.name} imported`, TOAST_TYPE.INFO)
+      await tick()
+      focusCardLink(result.streamId)
+    }
+  }
+
+  function handleExport(summary) {
+    exportStreamFile(workspaceStore, summary.id, summary.name)
+  }
+
   function handleNewValueStream() {
     const created = workspaceStore.create({})
     if (created.ok) workspaceStore.open(created.streamId)
@@ -125,6 +155,27 @@
     >
       New value stream
     </button>
+    <button
+      type="button"
+      class="ml-2 px-4 py-2 bg-white text-gray-700 border border-gray-300 rounded-md hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
+      data-testid="import-value-stream-button"
+      onclick={handleImportClick}
+    >
+      Import value stream
+    </button>
+    <input
+      type="file"
+      accept=".json,application/json"
+      hidden
+      bind:this={importInput}
+      onchange={handleImportChosen}
+      data-testid="import-value-stream-input"
+    />
+    {#if importError}
+      <p class="mt-2 text-red-700" role="alert" data-testid="import-error">
+        {importError}
+      </p>
+    {/if}
   </div>
 
   {#if summaries.length > 0}
@@ -140,6 +191,7 @@
           onrename={(name) => handleRename(summary.id, name)}
           onduplicate={() => handleDuplicate(summary)}
           ondelete={() => handleDelete(summary)}
+          onexport={() => handleExport(summary)}
         />
       {/each}
     </ul>

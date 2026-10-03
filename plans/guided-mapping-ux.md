@@ -2906,7 +2906,7 @@ See each step's **Complexity** line. The `complex` steps are 3.1 (migration), 4.
 - [ ] Slice 9: Workspace home screen
   - [x] Step 9.1: HomeScreen, launch and screen
   - [x] Step 9.2: Card menu, rename, duplicate and delete with undo
-  - [ ] Step 9.3: Import and export one value stream
+  - [x] Step 9.3: Import and export one value stream
 
 #### Wave 7
 

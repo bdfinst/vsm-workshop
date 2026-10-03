@@ -5,9 +5,8 @@
   import ConfirmPopover from '../ui/ConfirmPopover.svelte'
 
   // StreamMenu props: name (the stream's display name), onrename() to start
-  // renaming it in place, onduplicate(), and ondelete(), called once the
-  // delete is confirmed. onexport() is optional: without it the Export item
-  // is shown but inert (single-stream export arrives with 9.3).
+  // renaming it in place, onduplicate(), onexport() and ondelete(), called once
+  // the delete is confirmed.
   let { name, onrename, onduplicate, ondelete, onexport } = $props()
 
   let open = $state(false)
@@ -17,7 +16,7 @@
   let menu = $state()
 
   const itemClass =
-    'block w-full text-left px-3 py-2 text-sm text-gray-700 hover:bg-gray-100 focus:outline-none focus:bg-gray-100 focus:ring-2 focus:ring-inset focus:ring-blue-500 aria-disabled:opacity-50 aria-disabled:cursor-not-allowed'
+    'block w-full text-left px-3 py-2 text-sm text-gray-700 hover:bg-gray-100 focus:outline-none focus:bg-gray-100 focus:ring-2 focus:ring-inset focus:ring-blue-500'
 
   const items = () => [...(menu?.querySelectorAll('[role="menuitem"]') ?? [])]
 
@@ -80,7 +79,6 @@
   }
 
   function chooseExport() {
-    if (!onexport) return
     open = false
     onexport()
     focusButton()
@@ -135,7 +133,6 @@
           role="menuitem"
           tabindex="-1"
           class={itemClass}
-          aria-disabled={onexport ? undefined : 'true'}
           onclick={chooseExport}>Export value stream</button
         >
       </li>

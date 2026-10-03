@@ -1,6 +1,10 @@
+import { readFile } from 'node:fs/promises'
+import { createStep as createV1Step } from '../../../src/models/StepFactory.js'
 import { createMapVersion } from '../../../src/models/v2/mapVersion.js'
 import { createStep } from '../../../src/models/v2/step.js'
+import { createReworkPath } from '../../../src/models/v2/reworkPath.js'
 import { createValueStream } from '../../../src/models/v2/valueStream.js'
+import { exportValueStream } from '../../../src/persistence/v2/valueStreamJson.js'
 import { createWorkspace } from '../../../src/models/v2/workspace.js'
 import { STAGE_NUMBER } from '../../../src/models/v2/constants.js'
 import { test, expect, savedWorkspace } from './fixtures.js'
@@ -512,6 +516,287 @@ test.describe('Manage value streams from the home screen (slice 9.2)', () => {
     // while the pointer is on it.
     await toast(page).hover()
     await page.clock.resume()
+    await axe()
+  })
+})
+
+// A v1 file as the old app wrote it: one step, "Dev", lead 240 and process 60.
+const v1FileWithDev = () =>
+  JSON.stringify({
+    id: 'v1-map',
+    name: 'Imported v1 map',
+    description: '',
+    steps: [
+      createV1Step('Dev', {
+        leadTime: 240,
+        processTime: 60,
+        position: { x: 0, y: 0 },
+      }),
+    ],
+    connections: [],
+    createdAt: '2024-01-15T10:00:00.000Z',
+    updatedAt: '2024-01-16T10:00:00.000Z',
+  })
+
+const importInput = (page) => page.getByTestId('import-value-stream-input')
+const importError = (page) => page.getByTestId('import-error')
+
+const importFile = (page, name, text) =>
+  importInput(page).setInputFiles({
+    name,
+    mimeType: 'application/json',
+    buffer: Buffer.from(text),
+  })
+
+// Waits for a download; returns its file name and the text it holds.
+const downloadedFile = async (page, trigger) => {
+  const download = page.waitForEvent('download')
+  await trigger()
+  const file = await download
+  return {
+    name: file.suggestedFilename(),
+    text: await readFile(await file.path(), 'utf8'),
+  }
+}
+
+const fileMenuItem = async (page, name) => {
+  await page.getByRole('button', { name: 'File', exact: true }).click()
+  return menuItem(page, name)
+}
+
+const openLastStream = (page) => cardLinks(page).last().click()
+
+const savedStreams = async (page) => (await savedWorkspace(page)).streams
+
+// A stream as the user sees it: steps, times and rework paths, with no ids.
+const withoutIds = (stream) => {
+  const version = stream.versions.find((v) => v.id === stream.activeVersionId)
+  const nameOf = (id) => version.steps.find((step) => step.id === id).name
+  return {
+    steps: version.steps.map(
+      ({ id: _id, originStepId: _origin, ...step }) => step
+    ),
+    reworkPaths: version.reworkPaths.map(
+      ({ id: _id, fromStepId, toStepId, ...path }) => ({
+        ...path,
+        from: nameOf(fromStepId),
+        to: nameOf(toStepId),
+      })
+    ),
+  }
+}
+
+// The reference map with times and a rework path from Deploy back to Development.
+const checkoutWithTimesAndRework = () => {
+  const steps = REFERENCE_STEPS.map((name, index) =>
+    createStep({
+      name,
+      performedBy: 'Delivery team',
+      processTime: { typ: 30 + index },
+      waitTime: { typ: 60 * (index + 1) },
+    })
+  )
+  const byName = (name) => steps.find((step) => step.name === name).id
+  return checkoutDelivery({
+    versions: [
+      createMapVersion({
+        steps,
+        reworkPaths: [
+          createReworkPath({
+            fromStepId: byName('Deploy'),
+            toStepId: byName('Development'),
+            shareOfRejects: 20,
+          }),
+        ],
+      }),
+    ],
+  })
+}
+
+test.describe('Import and export one value stream (slice 9.3)', () => {
+  test('Import a value stream', async ({ page, seed }) => {
+    await startOnHome(page, seed)
+
+    await importFile(page, 'old-map.json', v1FileWithDev())
+
+    await expect(cardLinks(page)).toHaveCount(3)
+    // The upgraded map has not reached Steps yet, so its steps are read from
+    // the saved workspace rather than from the Steps stage.
+    await expect
+      .poll(async () =>
+        withoutIds((await savedStreams(page))[2]).steps.map((s) => s.name)
+      )
+      .toEqual(['Intake', 'Dev'])
+    await openStream(page, 'Checkout delivery')
+    await stageButton(page, 'Steps').click()
+    await expect.poll(() => stepNames(page)).toEqual(REFERENCE_STEPS)
+  })
+
+  test('Importing a value stream that is already in the workspace adds a copy', async ({
+    page,
+    seed,
+  }) => {
+    await startOnHome(page, seed)
+    const { text } = await downloadedFile(page, () =>
+      chooseFromMenu(page, 'Onboarding', 'Export value stream')
+    )
+
+    await importFile(page, 'Onboarding.json', text)
+
+    await expectValueStreams(page, [
+      'Checkout delivery',
+      'Onboarding',
+      'Onboarding',
+    ])
+    await openLastStream(page)
+    await stageButton(page, 'Steps').click()
+    await page.getByRole('button', { name: 'Delete Training' }).click()
+    await confirmDialog(page)
+      .getByRole('button', { name: 'Delete', exact: true })
+      .click()
+    await expect.poll(() => stepNames(page)).not.toContain('Training')
+    await openAllValueStreams(page)
+    await cardLinks(page).nth(1).click()
+    await stageButton(page, 'Steps').click()
+    await expect.poll(() => stepNames(page)).toEqual(ONBOARDING_STEPS)
+  })
+
+  test('A malformed import leaves the workspace unchanged', async ({
+    page,
+    seed,
+  }) => {
+    await startOnHome(page, seed)
+    const before = await savedStreams(page)
+
+    await importFile(page, 'broken.json', 'this is { not json')
+
+    await expect(importError(page)).toHaveText("This file isn't valid JSON")
+    await expect(cardLinks(page)).toHaveCount(2)
+    expect(await savedStreams(page)).toEqual(before)
+  })
+
+  test('Export one value stream', async ({ page, seed }) => {
+    const checkout = checkoutWithTimesAndRework()
+    await openBackground(page, seed, {
+      streams: [checkout, onboarding()],
+      active: checkout,
+    })
+    await openAllValueStreams(page)
+
+    const file = await downloadedFile(page, () =>
+      chooseFromMenu(page, 'Checkout delivery', 'Export value stream')
+    )
+    expect(file.name).toBe('Checkout delivery.json')
+    await importFile(page, file.name, file.text)
+
+    await expect(cardLinks(page)).toHaveCount(3)
+    const streams = await savedStreams(page)
+    expect(streams[2].id).not.toBe(streams[0].id)
+    expect(streams[2].name).toBe('Checkout delivery')
+    expect(withoutIds(streams[2])).toEqual(withoutIds(streams[0]))
+    expect(withoutIds(streams[2]).reworkPaths).toHaveLength(1)
+  })
+
+  test("Export file names replace characters files can't use", async ({
+    page,
+    seed,
+  }) => {
+    await startOnHome(page, seed)
+    await renameStream(page, 'Onboarding', 'Q3: build/test?')
+
+    const file = await downloadedFile(page, () =>
+      chooseFromMenu(page, 'Q3: build/test?', 'Export value stream')
+    )
+
+    expect(file.name).toBe('Q3- build-test-.json')
+  })
+
+  test('Export from the File menu saves the open value stream', async ({
+    page,
+    seed,
+  }) => {
+    await openBackground(page, seed)
+
+    const file = await downloadedFile(page, async () => {
+      await (await fileMenuItem(page, 'Export value stream')).click()
+    })
+
+    expect(file.name).toBe('Checkout delivery.json')
+    expect(JSON.parse(file.text).name).toBe('Checkout delivery')
+    await expect(
+      page.getByRole('button', { name: 'File', exact: true })
+    ).toBeFocused()
+  })
+
+  test('Import from the File menu keeps the user on the open value stream', async ({
+    page,
+    seed,
+  }) => {
+    await openBackground(page, seed)
+    await (await fileMenuItem(page, 'Import value stream')).click()
+
+    await importFile(page, 'onboarding.json', exportValueStream(onboarding()))
+
+    await expect(toast(page)).toContainText('Onboarding imported')
+    await expect(mapName(page)).toHaveValue('Checkout delivery')
+    await openAllValueStreams(page)
+    await expectValueStreams(page, [
+      'Checkout delivery',
+      'Onboarding',
+      'Onboarding',
+    ])
+  })
+
+  test('A malformed import from the File menu shows the error and changes nothing', async ({
+    page,
+    seed,
+  }) => {
+    await openBackground(page, seed)
+    await (await fileMenuItem(page, 'Import value stream')).click()
+
+    await importFile(page, 'broken.json', 'this is { not json')
+
+    await expect(importError(page)).toHaveText("This file isn't valid JSON")
+    await expect(mapName(page)).toHaveValue('Checkout delivery')
+    await openAllValueStreams(page)
+    await expectValueStreams(page, ['Checkout delivery', 'Onboarding'])
+  })
+
+  test('The File menu items have no accessibility violations', async ({
+    page,
+    seed,
+    axe,
+  }) => {
+    await openBackground(page, seed)
+    await page.clock.resume()
+
+    const item = await fileMenuItem(page, 'Import value stream')
+    await expect(item).toBeVisible()
+    await expect(item).toHaveAccessibleDescription(/file to this workspace/)
+    await expect(
+      menuItem(page, 'Export value stream')
+    ).toHaveAccessibleDescription(/Save this value stream/)
+    await axe()
+
+    await page.keyboard.press('Escape')
+    await importFile(page, 'broken.json', 'this is { not json')
+    await expect(importError(page)).toBeVisible()
+    await axe()
+  })
+
+  test('The home import button and its error have no accessibility violations', async ({
+    page,
+    seed,
+    axe,
+  }) => {
+    await startOnHome(page, seed)
+    await page.clock.resume()
+
+    await importFile(page, 'broken.json', 'this is { not json')
+    await expect(importError(page)).toBeVisible()
+    await expect(
+      page.getByRole('button', { name: 'Import value stream', exact: true })
+    ).toBeVisible()
     await axe()
   })
 })
