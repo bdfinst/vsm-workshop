@@ -659,16 +659,16 @@ The v1 undo tests stay green. The undo scenarios are written as tests in 4.3.
   - `open`.
   - `rename`; a blank name is refused with "Add a name".
   - `duplicate` inserts the copy after its source, named "(copy)" then "(copy 2)", with new ids.
-  - `remove` returns a restore token, and `restore` uses it.
+  - `remove` keeps the removal as the last one (`lastRemoval`), and `restoreLast` restores it. There is no token to hold.
   - `importStream(text)` appends, with a new id on collision.
   - `exportStream(id)`.
-  - `replaceWorkspace(workspace)` sets `savedRevision = revision`, fires no `subscribeCommit`, and invalidates restore tokens.
+  - `replaceWorkspace(workspace)` sets `savedRevision = revision`, fires no `subscribeCommit`, and clears the last removal.
 - **Fixtures.** Add `makeStore()` to `tests/unit/v2/fixtures.js`: a fresh store over the memory repository per test (see Conventions).
 
 **TEST**:
 
 - The editing-rule, undo, isolation and per-stream undo scenarios.
-- Unit tests: a second save waits for the first; navigation doesn't bump `revision` or fire `subscribeCommit`; `screen` is never persisted; the baseline after load, migration and auto-create; duplicate naming and placement; the import id collision; a restore token is invalid after `replaceWorkspace`; nothing is created before `ready`.
+- Unit tests: a second save waits for the first; navigation doesn't bump `revision` or fire `subscribeCommit`; `screen` is never persisted; the baseline after load, migration and auto-create; duplicate naming and placement; the import id collision; the last removal is cleared by `replaceWorkspace`; nothing is created before `ready`.
 
 **REFACTOR**: Keep stream validation in the codec; the store only orchestrates.
 **Files**: `src/stores/v2/workspaceStore.svelte.js`, `tests/unit/v2/workspaceStore.test.js`, `tests/unit/v2/fixtures.js`, `tests/unit/v2/slice-4-store.test.js`
@@ -697,29 +697,38 @@ Feature: Guided session shell
     Given I start a new guided map
     Then I see the stage rail with stages "Scope, Steps, Time, Quality, Rework, Review, Future"
     And "Scope" is the current stage
-    And "Next" is disabled with the reason "Add a name, trigger, end point and unit of work"
+    And "Next" is disabled with the reason "Add a name in the header, trigger, end point and unit of work"
 
+  # The name is edited in the header only; Scope has no name field.
   Scenario Outline: Each missing Scope field is named
     Given I start a new guided map
-    When I fill every Scope field except <field>
+    When I fill every Scope field, and name the value stream in the header, except <field>
     Then "Next" is disabled with the reason "Add <reason>"
 
     Examples:
-      | field        | reason         |
-      | name         | a name         |
-      | trigger      | a trigger      |
-      | end point    | an end point   |
-      | unit of work | a unit of work |
+      | field        | reason               |
+      | name         | a name in the header |
+      | trigger      | a trigger            |
+      | end point    | an end point         |
+      | unit of work | a unit of work       |
 
   Scenario: Several missing Scope fields are listed together
     Given I start a new guided map
     When I fill only the end point and unit of work
-    Then "Next" is disabled with the reason "Add a name and a trigger"
+    Then "Next" is disabled with the reason "Add a name in the header and a trigger"
 
   Scenario: Whitespace-only name counts as empty
     Given I start a new guided map
-    When I enter name "   " and fill the other Scope fields
-    Then "Next" is disabled with the reason "Add a name"
+    When I enter name "   " in the header and fill the other Scope fields
+    Then "Next" is disabled with the reason "Add a name in the header"
+
+  Scenario: The Scope gate names the header when the value stream is unnamed
+    Given a value stream with no name, at the "Scope" stage with the other Scope fields filled
+    Then I see "Name this value stream in the header."
+    And "Next" is disabled with the reason "Add a name in the header"
+    When I name the value stream in the header
+    Then I do not see "Name this value stream in the header."
+    And "Next" is enabled
 
   Scenario: Completing Scope moves to Steps
     Given I start a new guided map
@@ -875,7 +884,7 @@ Feature: Guided session shell
 #### Step 5.3: StageRail, PromptCard, Scope stage, Next gate
 
 **Complexity**: standard
-**IMPLEMENT**: Write `StageRail` (a `nav` with `aria-current="step"`, showing complete, needs-attention and not-selectable states), `stageStatus(stream)` (derived completion, pure), `PromptCard`, and `ScopeStage` with a unit-of-work select that has no default. The Next gate has `aria-describedby` pointing at its reason. Focus moves to the stage heading on change.
+**IMPLEMENT**: Write `StageRail` (a `nav` with `aria-current="step"`, showing complete, needs-attention and not-selectable states), `stageStatus(stream)` (derived completion, pure), `PromptCard`, and `ScopeStage` with a unit-of-work select that has no default. It has no name field: the name is edited in the header, and an unnamed stream shows a hint and a Next reason that point there. The Next gate has `aria-describedby` pointing at its reason. Focus moves to the stage heading on change.
 **TEST**: The new-map, missing-field, several-missing, whitespace and completing-Scope scenarios, plus axe.
 **REFACTOR**: Keep `STAGES` metadata in one module.
 **Files**: `src/components/session/StageRail.svelte`, `src/components/session/PromptCard.svelte`, `src/components/session/stages/ScopeStage.svelte`, `src/utils/session/stages.js`
@@ -1455,6 +1464,20 @@ Feature: One name rule and an undo that survives a visit
     Then I see "Add a name"
     And the value stream name is "Onboarding"
     And there is nothing to undo
+    And focus is in the value stream name field
+
+  Scenario: Typing a name and then clearing it on an unnamed value stream is refused
+    Given I have started a new value stream
+    When I type "Checkout" in the value stream name field, clear it and leave the field
+    Then I see "Add a name"
+    And the value stream name field is empty
+
+  Scenario: A refusal does not follow the user to a new value stream
+    Given I have opened "Onboarding"
+    And I have changed the value stream name to "   "
+    When I choose "New value stream" from the "File" menu
+    Then I do not see "Add a name"
+    And the value stream name field is empty and is not marked invalid
 
   # Refusing a whitespace-only rename from the home screen is the Slice 9 scenario
   # "A blank name is refused"; it keeps its place and its message "Add a name".
@@ -1462,7 +1485,8 @@ Feature: One name rule and an undo that survives a visit
   Scenario: Leaving a new value stream's name field alone keeps it unnamed
     When I choose "New value stream" from the "File" menu
     And I move into the value stream name field and out of it again
-    Then I do not see "Add a name"
+    Then focus has moved on from the field
+    And I do not see "Add a name"
     And the value stream name field is empty
     When I open "All value streams"
     Then I see value streams "Checkout delivery, Onboarding, Untitled value stream"
@@ -1487,18 +1511,34 @@ Feature: One name rule and an undo that survives a visit
     Examples:
       | place                       | typed |
       | the home screen             | "   " |
+      | the home screen             | ""    |
       | the value stream name field | "   " |
+      | the value stream name field | ""    |
 
-  Scenario: Undo restores a deleted value stream after a visit to another
+  Scenario: Saving the rename of an unnamed value stream without a name is refused
+    Given the value stream "Onboarding" has no name
+    And I am on the home screen
+    When I choose "Rename" for "Untitled value stream" and press Enter without typing
+    Then I see "Add a name"
+    When I press Escape
+    Then I see value streams "Checkout delivery, Untitled value stream"
+
+  Scenario Outline: Undo restores a deleted value stream after a visit to another
     Given I am on the home screen
     When I delete "Checkout delivery" and confirm
     And I open "Onboarding"
     And I open "All value streams"
     Then I do not see an Undo toast
-    When I press Ctrl+Z
+    When I press <shortcut>
     Then I see value streams "Checkout delivery, Onboarding"
     And "Checkout delivery" has 5 steps
     And "Checkout delivery restored" is announced to screen readers
+    And the saved active value stream is "Onboarding"
+
+    Examples:
+      | shortcut |
+      | Ctrl+Z   |
+      | Cmd+Z    |
 
   Scenario: A second delete replaces the first undo
     Given I am on the home screen
@@ -1524,10 +1564,15 @@ Feature: One name rule and an undo that survives a visit
 
 **Decisions** (settled with the owner):
 
-- No blank names: a value stream's name cannot be edited to blank or whitespace from the home rename, the header field or the Scope field. One rule in `models/v2/valueStream.js` (`normalizeName`, `isBlankName`, the `Add a name` message) is used by `workspaceStore.rename` and `valueStreamStore.setName`/`setScope`, and by `displayName` and `exportFileName`.
-- New value streams still start unnamed and show "Untitled value stream"; existing unnamed streams are unchanged. Only editing a name to blank is refused.
-- The header refuses a blank name with "Add a name" under the field, keeps the previous name and does not commit. The message clears on the next keystroke.
-- `workspaceStore` owns the last removal: `lastRemoval` (stream id and display name, or null) and `restoreLast()`. A new removal replaces the previous one, a failed restore clears it and opening or adopting another workspace clears it.
+- One editor per property: a value stream's name is edited only in the header and in the home card's rename. The Scope stage has no name field. Its Next gate still needs a name and says "Add a name in the header"; while the stream is unnamed Scope shows the line "Name this value stream in the header." (test id `scope-name-hint`).
+- No silent failures in any field: a refusal, revert or clamp shows a visible, announced message (`role="alert"`, with `aria-invalid` and `aria-describedby` on the field) that clears on the next edit.
+- No blank names: a value stream's name cannot be edited to blank or whitespace from the home rename or the header field. One operation in `models/v2/valueStream.js`, `nameEdit(current, typed)`, returns the refusal ("Add a name") or the normalized name and whether it changed. `workspaceStore.rename` and `valueStreamStore.setName`/`setScope` use it and compose none of the rule themselves; `displayName` and `exportFileName` use `normalizeName` and `UNTITLED_NAME`.
+- An unchanged name (once trimmed) is a no-op in both stores, before any history, `updatedAt`, revision or store rebuild; the card rename leaves that check to the store.
+- Typing a blank name is refused everywhere, even over an unnamed stream: an explicit blank entry is an edit to blank. An untouched field is not an edit, so leaving the header field alone keeps a new stream unnamed. Saving the card rename of an unnamed stream empty is an explicit blank, and is refused.
+- Names are normalized when a stream is created (`createValueStream`), imported (`withReadableFields`) or migrated from v1 (which goes through `createValueStream`). The stream a card or file name is derived from is found by id.
+- New value streams still start unnamed and show "Untitled value stream"; existing unnamed streams are unchanged. Only editing a name to blank is refused. A duplicate of an unnamed stream is named "Untitled value stream (copy)".
+- The header refuses a blank name with "Add a name" under the field, keeps the previous name, does not commit and keeps focus in the field. The message clears on the next keystroke and when another value stream is opened (the header is keyed by stream id).
+- `workspaceStore` owns the last removal: `lastRemoval` (stream id and display name, or null) and `restoreLast()`. A new removal replaces the previous one, a failed restore clears it and opening or adopting another workspace clears it. `remove` returns only `{ ok: true }`: there is no token, and `restoreLast` is the only way to restore.
 - After the home screen is left and reached again, Ctrl/Cmd+Z restores the last delete. The Undo toast does not come back; the shortcut is what works.
 - The name field is labelled "Value stream name" everywhere (test id `stream-name-input` in the header). "Map" stays for the diagram and its version.
 - Flag tie rules stay as documented.
