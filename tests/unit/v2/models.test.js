@@ -10,8 +10,12 @@ import {
 } from '../../../src/models/v2/reworkPath.js'
 import { createMapVersion } from '../../../src/models/v2/mapVersion.js'
 import {
+  BLANK_NAME_MESSAGE,
   createValueStream,
   displayName,
+  isBlankName,
+  nameOrUntitled,
+  normalizeName,
 } from '../../../src/models/v2/valueStream.js'
 import { copyValueStream } from '../../../src/models/v2/valueStreamCopy.js'
 import { referenceStream, withFutureState } from './fixtures.js'
@@ -706,5 +710,37 @@ describe('displayName', () => {
 
   it('lists a stream with a blank name as untitled', () => {
     expect(displayName({ name: '   ' })).toBe('Untitled value stream')
+  })
+})
+
+describe('the value stream name rule', () => {
+  it.each([
+    ['  Onboarding ', 'Onboarding'],
+    ['Onboarding', 'Onboarding'],
+    ['   ', ''],
+    ['', ''],
+    [undefined, ''],
+    [null, ''],
+    [5, ''],
+  ])('normalizes %j to %j', (name, expected) => {
+    expect(normalizeName(name)).toBe(expected)
+  })
+
+  it.each(['', '   ', '\t\n', undefined, null, 5])('calls %j blank', (name) => {
+    expect(isBlankName(name)).toBe(true)
+  })
+
+  it.each(['a', ' a ', '0'])('does not call %j blank', (name) => {
+    expect(isBlankName(name)).toBe(false)
+  })
+
+  it('shows a blank name as untitled and any other as its trimmed text', () => {
+    expect(nameOrUntitled('  ')).toBe('Untitled value stream')
+    expect(nameOrUntitled(undefined)).toBe('Untitled value stream')
+    expect(nameOrUntitled(' Onboarding ')).toBe('Onboarding')
+  })
+
+  it('refuses a blank name with "Add a name"', () => {
+    expect(BLANK_NAME_MESSAGE).toBe('Add a name')
   })
 })

@@ -1,4 +1,4 @@
-import { displayName } from '../../models/v2/valueStream.js'
+import { nameOrUntitled, normalizeName } from '../../models/v2/valueStream.js'
 
 // Characters Windows, macOS or Linux do not allow in a file name, and the
 // device names and trailing dots and spaces Windows treats specially. See
@@ -50,12 +50,12 @@ const isWindowsDevice = (name) =>
  * @returns {string} The name with ".json" added
  */
 export const exportFileName = (name) => {
-  const shown = displayName({
-    name: (name ?? '').replace(HIDDEN_CHARACTERS, ''),
-  })
+  const shown = nameOrUntitled(
+    normalizeName(name).replace(HIDDEN_CHARACTERS, '')
+  )
   const capped = capBytes(
     shown.replace(INVALID_FILE_NAME_CHARACTERS, '-')
   ).replace(TRAILING_DOTS_AND_SPACES, '')
-  const base = capped || displayName({ name: '' })
+  const base = capped || nameOrUntitled('')
   return `${isWindowsDevice(base) ? '_' : ''}${base}.json`
 }

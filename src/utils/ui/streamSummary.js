@@ -1,5 +1,5 @@
 import { STAGE_NAMES } from '../../models/v2/constants.js'
-import { displayName } from '../../models/v2/valueStream.js'
+import { displayName, isBlankName } from '../../models/v2/valueStream.js'
 import {
   formatDayMonth,
   formatRelativeTime,
@@ -31,7 +31,7 @@ const stageName = (stage) => {
 export const streamSummary = (stream, now) => {
   const version = stream.versions.find((v) => v.id === stream.activeVersionId)
   const stepCount = version?.steps.length ?? 0
-  const unnamed = stream.name.trim() === ''
+  const unnamed = isBlankName(stream.name)
 
   return {
     id: stream.id,
