@@ -21,15 +21,15 @@ export const stubResizeObserver = () =>
  */
 export const giveElementsClientWidth = (width) => {
   const original = Object.getOwnPropertyDescriptor(
-    HTMLElement.prototype,
+    Element.prototype,
     'clientWidth'
   )
-  Object.defineProperty(HTMLElement.prototype, 'clientWidth', {
+  Object.defineProperty(Element.prototype, 'clientWidth', {
     configurable: true,
     get: () => width,
   })
   return () =>
-    Object.defineProperty(HTMLElement.prototype, 'clientWidth', original)
+    Object.defineProperty(Element.prototype, 'clientWidth', original)
 }
 
 /**

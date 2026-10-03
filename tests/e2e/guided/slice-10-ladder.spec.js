@@ -468,7 +468,12 @@ test.describe('Live time-ladder map', () => {
     await seed(workspaceWith(referenceSteps()))
 
     const ladder = page.getByTestId('ladder-map')
-    await expect(ladder).toHaveAttribute('aria-describedby', 'ladder-desc')
+    const descriptionId = await ladder.getAttribute('aria-describedby')
+    expect(descriptionId).toBeTruthy()
+    await expect(page.getByTestId('ladder-desc')).toHaveAttribute(
+      'id',
+      descriptionId
+    )
     await expect(ladder.locator('title')).toHaveText('Time ladder, to scale')
     await expect(page.getByTestId('ladder-desc')).toContainText(
       'wait time is drawn above the track'

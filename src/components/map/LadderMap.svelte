@@ -21,10 +21,21 @@
   } from '../../utils/ui/ladderView.js'
   import LadderStep from './LadderStep.svelte'
 
-  // LadderMap props: ladderModel (`store.ladderModel`, the pane-independent
-  // model of the version being drawn). The map sizes it for its scroll region
-  // and works out neither metrics nor flags.
-  let { ladderModel } = $props()
+  // LadderMap props: ladderModel (`store.ladderModel`, or one built with
+  // `ladderModel(version, flags)`: the pane-independent model of the version
+  // being drawn; the map works out neither metrics nor flags). Optional:
+  // pixelsPerMinute (a scale to draw To scale at, so maps can share one; absent,
+  // the map fits its scroll region), mode (bindable; a LADDER_MODE, To scale
+  // unless given) and showModeToggle (false hides the mode choice). The ids the
+  // drawing needs are per map, so any number of maps can share a page.
+  let {
+    ladderModel,
+    pixelsPerMinute = undefined,
+    mode = $bindable(LADDER_MODE.SCALED),
+    showModeToggle = true,
+  } = $props()
+
+  const uid = $props.id()
 
   const MODES = [
     { value: LADDER_MODE.SCALED, label: 'To scale' },
@@ -36,15 +47,15 @@
 
   // What the drawing means, for anyone who cannot see it. Every encoding is
   // also written as text beside its step.
-  const DESC_ID = 'ladder-desc'
-  const HATCH_ID = 'ladder-hatch'
+  const DESC_ID = `ladder-${uid}-desc`
+  const HATCH_ID = `ladder-${uid}-hatch`
+  const MODE_GROUP = `ladder-${uid}-mode`
   const LADDER_DESCRIPTION =
     'Each step is a column on a track. Its wait time is drawn above the track and its process time below it. ' +
     'A solid outline is a plain step, a thick outline a handoff, and a dashed outline a step with a time not yet entered or one done outside the team. ' +
     'A hatched block is an outside step. ' +
     'Handoffs, outside steps, missing times and the largest wait and lowest percent complete and accurate are also written as text under each step.'
 
-  let mode = $state(LADDER_MODE.SCALED)
   let scrollerWidth = $state(0)
   let modeLabel = $derived(MODES.find(({ value }) => value === mode).label)
 
@@ -65,7 +76,8 @@
       mode === LADDER_MODE.SCALED
         ? {
             mode,
-            pixelsPerMinute: pixelsPerMinuteToFit(ladderModel, available),
+            pixelsPerMinute:
+              pixelsPerMinute ?? pixelsPerMinuteToFit(ladderModel, available),
           }
         : {
             mode,
@@ -86,31 +98,35 @@
 </script>
 
 <div data-testid="ladder-pane">
-  <fieldset
-    class="flex flex-wrap items-center gap-2 mb-2 border-0 p-0 m-0"
-    data-testid="ladder-mode"
-  >
-    <legend class="sr-only">Ladder width</legend>
-    <div class="inline-flex rounded-md border border-gray-300 overflow-hidden">
-      {#each MODES as option (option.value)}
-        <label class="relative cursor-pointer">
-          <input
-            type="radio"
-            name="ladder-mode"
-            value={option.value}
-            bind:group={mode}
-            class="peer absolute inset-0 h-full w-full cursor-pointer opacity-0"
-            data-testid="ladder-mode-{option.value}"
-          />
-          <span
-            class="block px-3 py-1 bg-white text-gray-800 hover:bg-gray-50 peer-checked:bg-blue-600 peer-checked:text-white peer-focus-visible:ring-2 peer-focus-visible:ring-inset peer-focus-visible:ring-blue-500"
-          >
-            {option.label}
-          </span>
-        </label>
-      {/each}
-    </div>
-  </fieldset>
+  {#if showModeToggle}
+    <fieldset
+      class="flex flex-wrap items-center gap-2 mb-2 border-0 p-0 m-0"
+      data-testid="ladder-mode"
+    >
+      <legend class="sr-only">Ladder width</legend>
+      <div
+        class="inline-flex rounded-md border border-gray-300 overflow-hidden"
+      >
+        {#each MODES as option (option.value)}
+          <label class="relative cursor-pointer">
+            <input
+              type="radio"
+              name={MODE_GROUP}
+              value={option.value}
+              bind:group={mode}
+              class="peer absolute inset-0 h-full w-full cursor-pointer opacity-0"
+              data-testid="ladder-mode-{option.value}"
+            />
+            <span
+              class="block px-3 py-1 bg-white text-gray-800 hover:bg-gray-50 peer-checked:bg-blue-600 peer-checked:text-white peer-focus-visible:ring-2 peer-focus-visible:ring-inset peer-focus-visible:ring-blue-500"
+            >
+              {option.label}
+            </span>
+          </label>
+        {/each}
+      </div>
+    </fieldset>
+  {/if}
 
   <!-- svelte-ignore a11y_no_noninteractive_tabindex -->
   <div
