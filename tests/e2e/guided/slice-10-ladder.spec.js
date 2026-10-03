@@ -162,25 +162,34 @@ const pageScrollsHorizontally = (page) =>
       document.documentElement.clientWidth
   )
 
-const LABEL_FONT = '600 12px "IBM Plex Sans"'
+// Name lines are drawn at 600, annotation lines at the inherited 400.
+const LABEL_WEIGHTS = ['400', '600']
 
 // The label font is loaded, not the system fallback the estimate was not
 // probed in. `document.fonts.check` is true for a family that was never
 // declared, so ask for the font and look for a loaded face of it.
 const labelFontIsLoaded = (page) =>
-  page.evaluate(async (font) => {
-    await document.fonts.load(font)
-    return [...document.fonts].some(
-      (face) =>
-        face.family.replaceAll(/["']/g, '') === 'IBM Plex Sans' &&
-        face.weight === '600' &&
-        face.status === 'loaded'
+  page.evaluate(async (weights) => {
+    await Promise.all(
+      weights.map((weight) =>
+        document.fonts.load(`${weight} 12px "IBM Plex Sans"`)
+      )
     )
-  }, LABEL_FONT)
+    return weights.every((weight) =>
+      [...document.fonts].some(
+        (face) =>
+          face.family.replaceAll(/["']/g, '') === 'IBM Plex Sans' &&
+          face.weight === weight &&
+          face.status === 'loaded'
+      )
+    )
+  }, LABEL_WEIGHTS)
 
 const expectLabelFontLoaded = (page) =>
   expect
-    .poll(() => labelFontIsLoaded(page), { message: 'IBM Plex Sans 600 loads' })
+    .poll(() => labelFontIsLoaded(page), {
+      message: 'IBM Plex Sans 400 and 600 load',
+    })
     .toBe(true)
 
 const svgWidthOf = (page) =>

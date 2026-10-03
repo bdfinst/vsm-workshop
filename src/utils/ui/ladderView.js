@@ -207,7 +207,9 @@ const widthOfGrapheme = (grapheme) => {
  * and w at 0.9 em, and every other character at LABEL_CHAR_WIDTH. An accent
  * does not change the class: Ŵ is a W. It is pure, so it cannot read font
  * metrics: it measures by class, from widths probed in the label font, and
- * errs on the wide side so labels never overlap or clip. Without
+ * errs on the wide side so labels never overlap or clip in the scripts that
+ * were probed (Latin, CJK, emoji). Not covered: Æ, æ, ß, wide Cyrillic and
+ * Greek letters, flag tag sequences and a lone skin-tone modifier. Without
  * Intl.Segmenter it counts code points, which is wider still.
  * @param {string} text
  * @returns {number} Pixels
