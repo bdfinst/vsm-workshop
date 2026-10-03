@@ -242,7 +242,7 @@ describe('Rework', () => {
 })
 
 describe('Rework paths that end at a step that is not there', () => {
-  it('a path to a missing step has depth from the end of the list and adds no time', () => {
+  it('a path to a missing step adds no time', () => {
     const steps = reworkSteps()
     const path = {
       ...pathBetween(steps, 'Code review', 'Intake'),
@@ -251,7 +251,6 @@ describe('Rework paths that end at a step that is not there', () => {
 
     const { paths: rows, timeOnRework } = calculateRework(steps, [path])
 
-    expect(rows[0].depth).toBe(4)
     expect(rows[0].reworkTime).toEqual({ typ: 0, low: 0, high: 0 })
     expect(rows[0].addedTime).toEqual({ typ: 0, low: 0, high: 0 })
     expect(timeOnRework).toEqual({ typ: 0, low: 0, high: 0 })

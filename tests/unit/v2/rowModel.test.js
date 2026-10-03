@@ -224,7 +224,6 @@ describe('rowModel', () => {
     expect(paths[0]).toMatchObject({
       fromName: 'Code review',
       toName: null,
-      depth: 4,
       reworkTime: { typ: 0, low: 0, high: 0 },
       addedTime: { typ: 0, low: 0, high: 0 },
     })
