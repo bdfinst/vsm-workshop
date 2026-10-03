@@ -6,7 +6,11 @@ import { createValueStreamStore } from '../../../src/stores/v2/valueStreamStore.
 import { createWorkspaceStore } from '../../../src/stores/v2/workspaceStore.svelte.js'
 import { createMemoryWorkspaceRepository } from '../../../src/persistence/v2/memoryWorkspaceRepository.js'
 import { serializeWorkspace } from '../../../src/persistence/v2/workspaceCodec.js'
-import { referenceSteps, withStep } from './stepFixtures.js'
+import {
+  REFERENCE_WORKDAY_HOURS,
+  referenceSteps,
+  withStep,
+} from './stepFixtures.js'
 
 /**
  * Shared fixtures for the v2 tests. "The reference map" and its variants are
@@ -15,8 +19,6 @@ import { referenceSteps, withStep } from './stepFixtures.js'
  * and the step readers look inside one, so tests share them without leaking
  * state. Times are in minutes.
  */
-
-export const REFERENCE_WORKDAY_HOURS = 8
 
 /**
  * What a refused edit looks like: not ok, with some non-empty explanation. Tests
@@ -28,6 +30,7 @@ export const refused = { ok: false, error: expect.stringMatching(/\S/) }
 export const anyReason = { reason: expect.stringMatching(/\S/) }
 
 export {
+  REFERENCE_WORKDAY_HOURS,
   insertAfter,
   outsideStep,
   referenceSteps,

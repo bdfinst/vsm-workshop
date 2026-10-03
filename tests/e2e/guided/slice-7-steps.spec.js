@@ -389,6 +389,10 @@ test('Alt+Down moves a step down, and stops at the ends', async ({
 })
 
 test('Reorder a step: drag and drop', async ({ page, seed }) => {
+  // Tall enough for both rows to show above the pinned summary strip. The page
+  // keeps the strip's height clear when it scrolls, so a drag that had to scroll
+  // between its two ends would move the page under the pointer.
+  await page.setViewportSize({ width: 1280, height: 1000 })
   await seed(workspaceWithSteps(['Deploy', 'Development']))
 
   await row(page, 3).getByTestId('drag-handle').dragTo(row(page, 2))

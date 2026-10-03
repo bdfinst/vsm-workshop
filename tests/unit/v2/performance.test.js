@@ -2,6 +2,7 @@ import { describe, it, expect } from 'vitest'
 import { flushSync } from 'svelte'
 import { performance } from 'node:perf_hooks'
 import { calculateMetrics } from '../../../src/utils/calculations/v2/index.js'
+import { validateVersion } from '../../../src/utils/validation/v2/versionValidator.js'
 import {
   LADDER_MODE,
   ladderModel,
@@ -71,7 +72,8 @@ const medianMs = (work) => {
 
 describe('recalculation budget', () => {
   it('the fixture is 40 steps with 80 backward rework paths', () => {
-    const { steps, reworkPaths } = bigVersion()
+    const version = bigVersion()
+    const { steps, reworkPaths } = version
     const indexOf = (id) => steps.findIndex((step) => step.id === id)
 
     expect(steps).toHaveLength(STEP_COUNT)
@@ -82,12 +84,13 @@ describe('recalculation budget', () => {
       )
     }
     expect(steps.every((step) => step.pctCA < 100)).toBe(true)
+    expect(validateVersion(version).valid).toBe(true)
   })
 
   it('metrics plus layout take under 200 ms (median of 20 runs)', () => {
     const version = bigVersion()
 
-    const median = medianMs(() => {
+    const typicalMs = medianMs(() => {
       const { flags } = calculateMetrics(version)
       sizeLadder(ladderModel(version, flags), {
         mode: LADDER_MODE.SCALED,
@@ -95,8 +98,7 @@ describe('recalculation budget', () => {
       })
     })
 
-    console.log(`metrics + layout: median ${median.toFixed(2)} ms`)
-    expect(median).toBeLessThan(BUDGET_MS)
+    expect(typicalMs).toBeLessThan(BUDGET_MS)
   })
 
   it('an edit through the store refreshes the ladder and metrics under 200 ms (median of 20 runs)', () => {
@@ -104,15 +106,14 @@ describe('recalculation budget', () => {
     const target = store.activeVersion.steps[STEP_COUNT - 1]
     let minutes = target.processTime.typ
 
-    const median = medianMs(() => {
+    const typicalMs = medianMs(() => {
       minutes += 1
       store.updateStep(target.id, { processTime: { typ: minutes } })
       flushSync()
       void [store.metrics.flags, store.ladder.steps]
     })
 
-    console.log(`store edit + metrics + ladder: median ${median.toFixed(2)} ms`)
     expect(store.ladder.steps[STEP_COUNT - 1].minutes.process).toBe(minutes)
-    expect(median).toBeLessThan(BUDGET_MS)
+    expect(typicalMs).toBeLessThan(BUDGET_MS)
   })
 })

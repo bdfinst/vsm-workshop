@@ -6,6 +6,9 @@ import { createStep } from '../../../src/models/v2/step.js'
  * Times are in minutes.
  */
 
+/** The working day, in hours, of the streams the tests build. */
+export const REFERENCE_WORKDAY_HOURS = 8
+
 /** A team step with %C/A 100 unless given. */
 export const team = (name, process, wait, pctCA = 100) =>
   createStep({
@@ -31,8 +34,21 @@ export const referenceSteps = () => [
 export const reworkSteps = () =>
   withStep(referenceSteps(), 'Code review', { pctCA: 80 })
 
-export const withStep = (steps, name, patch) =>
-  steps.map((step) => (step.name === name ? { ...step, ...patch } : step))
+// The position of the first step called `name`, or an error: a fixture that
+// edits a step that is not there would otherwise change nothing and let the
+// test pass for the wrong reason.
+const positionOf = (steps, name) => {
+  const at = steps.findIndex((step) => step.name === name)
+  if (at === -1) throw new Error(`No step named ${name}`)
+  return at
+}
+
+export const withStep = (steps, name, patch) => {
+  positionOf(steps, name)
+  return steps.map((step) =>
+    step.name === name ? { ...step, ...patch } : step
+  )
+}
 
 export const withWait = (steps, name, waitTime) =>
   withStep(steps, name, { waitTime })
@@ -41,6 +57,6 @@ export const withoutWait = (steps, ...names) =>
   names.reduce((acc, name) => withWait(acc, name, { typ: null }), steps)
 
 export const insertAfter = (steps, name, step) => {
-  const at = steps.findIndex((s) => s.name === name) + 1
+  const at = positionOf(steps, name) + 1
   return [...steps.slice(0, at), step, ...steps.slice(at)]
 }

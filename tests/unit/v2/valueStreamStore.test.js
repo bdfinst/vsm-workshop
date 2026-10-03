@@ -828,41 +828,50 @@ describe('valueStreamStore: derived ladder and metrics', () => {
 
   it('refreshes the ladder and the metrics after an edit', () => {
     const { store } = openStream(referenceStream())
-    const before = store.metrics.totals.processTime.typ
+    const processBefore = deployProcess(store)
+    const metricsBefore = store.metrics.totals.processTime.typ
+    expect(processBefore).toBe(30)
 
     longerDeploy(store)
     flushSync()
 
     expect(deployProcess(store)).toBe(90)
-    expect(store.metrics.totals.processTime.typ).toBe(before + 60)
+    expect(store.metrics.totals.processTime.typ).toBe(metricsBefore + 60)
   })
 
   it('refreshes the ladder and the metrics after an undo', () => {
     const { store } = openStream(referenceStream())
-    const before = store.metrics.totals.processTime.typ
+    const processBefore = deployProcess(store)
+    const metricsBefore = store.metrics.totals.processTime.typ
     longerDeploy(store)
     flushSync()
+    expect(deployProcess(store)).toBe(90)
+    expect(store.metrics.totals.processTime.typ).toBe(metricsBefore + 60)
 
     store.undo()
     flushSync()
 
-    expect(deployProcess(store)).toBe(30)
-    expect(store.metrics.totals.processTime.typ).toBe(before)
+    expect(deployProcess(store)).toBe(processBefore)
+    expect(store.metrics.totals.processTime.typ).toBe(metricsBefore)
   })
 
-  it('refreshes the ladder and the metrics after a version switch', () => {
+  it('shows the future version while it is active and the current one after a switch back', () => {
     const { store } = openStream(referenceStream())
     const currentId = store.stream.activeVersionId
-    const before = store.metrics.totals.processTime.typ
+    const processBefore = deployProcess(store)
+    const metricsBefore = store.metrics.totals.processTime.typ
     store.createFutureVersion('Target')
     longerDeploy(store)
     flushSync()
+
+    expect(store.stream.activeVersionId).not.toBe(currentId)
     expect(deployProcess(store)).toBe(90)
+    expect(store.metrics.totals.processTime.typ).toBe(metricsBefore + 60)
 
     store.setActiveVersion(currentId)
     flushSync()
 
-    expect(deployProcess(store)).toBe(30)
-    expect(store.metrics.totals.processTime.typ).toBe(before)
+    expect(deployProcess(store)).toBe(processBefore)
+    expect(store.metrics.totals.processTime.typ).toBe(metricsBefore)
   })
 })

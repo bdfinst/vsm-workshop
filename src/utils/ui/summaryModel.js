@@ -52,8 +52,9 @@ const flowEfficiencyFigure = (flowEfficiency) => {
  * }} `hero` is flow efficiency: a range when any time is a range or outside the
  *   team, "not available" when the lead time is 0. `rows` are lead time,
  *   process time, rolled %C/A and handoffs, in that order. `note` names the
- *   step an incomplete figure needs a value from ("an unnamed step" when blank). `flagged` are the flagged steps (a
- *   `tone` each), with no entry for a flag that has no step.
+ *   step an incomplete figure needs a value from ("an unnamed step" when
+ *   blank). `flagged` are the flagged steps (a `tone` each), with no entry for
+ *   a flag that has no step.
  */
 export const summaryModel = (metrics, workdayHours) => {
   const duration = (range) => formatDurationRange(range, workdayHours)

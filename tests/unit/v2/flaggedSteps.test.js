@@ -103,6 +103,25 @@ describe('flaggedSteps with two distinct steps', () => {
   })
 })
 
+describe('flaggedSteps at the edges of %C/A', () => {
+  const lowestFlag = (pctCA) => {
+    const steps = withStep(referenceSteps(), 'Development', { pctCA })
+    const { flags } = calculateMetrics(versionOf(steps))
+    return flaggedSteps(flags).find(({ kind }) => kind === FLAG_KIND.LOWEST_CA)
+  }
+
+  it.each([0, 99])('flags a step at %C/A %i as the lowest', (pctCA) => {
+    expect(lowestFlag(pctCA)).toMatchObject({
+      name: 'Development',
+      tone: TONE.CRIT,
+    })
+  })
+
+  it('flags no step at %C/A 100', () => {
+    expect(lowestFlag(100)).toBeUndefined()
+  })
+})
+
 describe('displayNameOf', () => {
   it.each([
     ['a name', 'Deploy', 'Deploy'],

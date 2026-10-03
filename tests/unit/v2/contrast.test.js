@@ -1,8 +1,11 @@
+// @vitest-environment node
 import { readFileSync } from 'node:fs'
-import { resolve } from 'node:path'
 import { describe, it, expect } from 'vitest'
 
-const css = readFileSync(resolve(process.cwd(), 'src/index.css'), 'utf8')
+const css = readFileSync(
+  new URL('../../../src/index.css', import.meta.url),
+  'utf8'
+).replace(/\/\*[\s\S]*?\*\//g, '')
 
 const TEXT_MIN = 4.5
 const GRAPHIC_MIN = 3
@@ -15,16 +18,32 @@ const blockOf = (selectorPattern) => {
   return match[1]
 }
 
+const declarationsIn = (block) =>
+  [...block.matchAll(/(--[\w-]+)\s*:\s*([^;]+);/g)].map(([, name, value]) => [
+    name,
+    value.trim(),
+  ])
+
+const HEX_COLOUR = /^#(?:[0-9a-fA-F]{3}){1,2}$/
+
+// Tokens that hold something other than one hex colour, so are not contrast
+// checked as colours: --hatch-outside is a gradient built from
+// --hatch-outside-color, which is checked.
+const NON_COLOUR_TOKENS = ['--hatch-outside']
+
 const hexTokensIn = (block) =>
   Object.fromEntries(
-    [...block.matchAll(/(--[\w-]+)\s*:\s*(#[0-9a-fA-F]{3,6})\s*;/g)].map(
-      ([, name, hex]) => [name, hex]
-    )
+    declarationsIn(block).filter(([, value]) => HEX_COLOUR.test(value))
   )
 
+const BLOCKS = {
+  light: blockOf(':root(?!\\[)'),
+  dark: blockOf(`:root\\[data-theme=["']dark["']\\]`),
+}
+
 const MODES = {
-  light: hexTokensIn(blockOf(':root(?!\\[)')),
-  dark: hexTokensIn(blockOf(`:root\\[data-theme=["']dark["']\\]`)),
+  light: hexTokensIn(BLOCKS.light),
+  dark: hexTokensIn(BLOCKS.dark),
 }
 
 const channel = (hex, at) => {
@@ -94,7 +113,53 @@ const PAIRS = [
   { token: '--hatch-outside-color', on: ['--map-bg'], min: GRAPHIC_MIN },
 ]
 
+describe('the contrast helper', () => {
+  it('rates black on white at 21:1', () => {
+    expect(contrast('#000000', '#ffffff')).toBeCloseTo(21, 5)
+  })
+
+  it('rates a colour on itself at 1:1', () => {
+    expect(contrast('#ffffff', '#ffffff')).toBeCloseTo(1, 5)
+  })
+
+  it('rates #767676 on white just above the 4.5:1 text minimum', () => {
+    const ratio = contrast('#767676', '#ffffff')
+
+    expect(ratio).toBeGreaterThan(TEXT_MIN)
+    expect(ratio).toBeLessThan(4.6)
+  })
+
+  it('reads three-digit hex like six-digit hex', () => {
+    expect(contrast('#000', '#fff')).toBeCloseTo(21, 5)
+  })
+
+  it('does not take #777 on white as text-safe (4.48:1)', () => {
+    expect(contrast('#777777', '#ffffff')).toBeLessThan(TEXT_MIN)
+  })
+})
+
 describe('colour tokens', () => {
+  it.each(Object.entries(BLOCKS))(
+    'every declaration in the %s block is a hex colour or a named non-colour token',
+    (_mode, block) => {
+      const notHex = declarationsIn(block)
+        .filter(([, value]) => !HEX_COLOUR.test(value))
+        .map(([name]) => name)
+
+      expect(
+        notHex.filter((name) => !NON_COLOUR_TOKENS.includes(name))
+      ).toEqual([])
+    }
+  )
+
+  it('every named non-colour token is declared in the light block', () => {
+    const declared = declarationsIn(BLOCKS.light).map(([name]) => name)
+
+    expect(
+      NON_COLOUR_TOKENS.filter((name) => !declared.includes(name))
+    ).toEqual([])
+  })
+
   it('the dark palette declares exactly the tokens the light one does', () => {
     expect(Object.keys(MODES.dark).sort()).toEqual(
       Object.keys(MODES.light).sort()

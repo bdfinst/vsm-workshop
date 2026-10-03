@@ -1506,6 +1506,8 @@ Feature: Live time-ladder map
 - **Flags.** The ladder and the strip both read `metrics.flags` (`topWaits[0]` for the largest wait, `lowestCA` for the lowest %C/A); neither recomputes them.
 - **No flag when nothing is low.** `lowestCA` returns null when the lowest entered %C/A is 100, so a clean map flags no step as "lowest %C/A" (it used to flag the first step on a tie at 100). The first-step-on-a-tie rule stays for ties below 100.
 - **Ladder geometry (Step 10.1).** `pixelsPerMinute` (called `scale` when the step was written) is pixels per minute. In scaled mode a box is the wait plus the process time, side by side with no gaps, so the total width is the lead time to scale; equal mode gives every box the same width. Layout never shrinks to fit: fit and zoom belong to `LadderMap`.
+- **Equal width is local state, by design.** The To scale / Equal width choice lives in `LadderMap` component state until Slice 14. `sessionUIStore.ladderScale` is reserved for Slice 14 and is not used by Slice 10.
+- **Outside steps are handoffs on the ladder.** An outside step carries the text "handoff" as well as "outside" and "elapsed · split unknown", and keeps its hatched dashed block. `handoffCount` already counts outside steps.
 - **Tokens live in `src/index.css`** (`@theme` and `:root`), not `tailwind.config.js`, which Tailwind v4 ignores.
 
 **Steps:**
@@ -2231,6 +2233,10 @@ Feature: Table and canvas views
     Then I can still draw a connection between two steps on the existing canvas
 ```
 
+**Notes carried from the Slice 10 review:**
+
+- `ViewSwitch` ships with only a `map` view id. Slice 13 adds `'map'` to `sessionUIStore`'s `VIEW_MODES` (and makes it the default), and drives `ViewSwitch` from `sessionUIStore.viewMode` and `setViewMode` instead of its own props defaults.
+
 **Steps:**
 
 #### Step 13.1: StepTable
@@ -2359,6 +2365,11 @@ Feature: Review the current state and draw a future state
     When I compare the current state with "Draft"
     Then the lead time delta reads "incomplete" naming "Deploy"
 ```
+
+**Notes carried from the Slice 10 review:**
+
+- `VersionCompare` needs `LadderMap` to take optional `pixelsPerMinute` and `mode` props (so two maps share one scale), a per-instance radio `name` and per-instance SVG pattern, title and description ids (they are fixed today, so two maps on a page collide), and a way to turn the mode toggle off.
+- It also needs a per-version ladder model without recomputing flags: the store derives `ladder` for the active version only, so a comparison builds the other version's model with `ladderModel(version, flags)` from that version's own metrics.
 
 **Steps:**
 

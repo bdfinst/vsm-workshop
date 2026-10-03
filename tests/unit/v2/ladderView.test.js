@@ -105,6 +105,43 @@ describe('pixelsPerMinuteToFit', () => {
   })
 })
 
+describe('pixelsPerMinuteToFit before the pane is measured', () => {
+  it('gives the minimum pixels per minute for a pane of width 0', () => {
+    expect(pixelsPerMinuteToFit(modelOf(referenceSteps()), 0)).toBe(
+      MIN_PIXELS_PER_MINUTE
+    )
+  })
+
+  it('gives the maximum for a pane of width 0 when no time is entered', () => {
+    const steps = [createStep({ name: 'Intake' })]
+
+    expect(pixelsPerMinuteToFit(modelOf(steps), 0)).toBe(MAX_PIXELS_PER_MINUTE)
+  })
+})
+
+describe('a long stream on a narrow pane', () => {
+  const PANE = 400
+  const fortyOne = () =>
+    Array.from({ length: 41 }, (_, index) => team(`Step ${index}`, 60, 120))
+
+  it('is wider than the pane to scale, so the pane scrolls', () => {
+    const pixelsPerMinute = pixelsPerMinuteToFit(modelOf(fortyOne()), PANE)
+
+    expect(
+      scaledLayout(fortyOne(), pixelsPerMinute).totalWidth
+    ).toBeGreaterThan(PANE)
+  })
+
+  it('is wider than the pane in equal width, so the pane scrolls', () => {
+    const width = equalWidthFor(41, PANE)
+
+    expect(
+      sizeLadder(modelOf(fortyOne()), { mode: LADDER_MODE.EQUAL, width })
+        .totalWidth
+    ).toBeGreaterThan(PANE)
+  })
+})
+
 describe('pixelsPerMinuteToFit with short steps', () => {
   it('keeps the ladder inside the pane although short steps are drawn at the minimum box width', () => {
     const steps = [

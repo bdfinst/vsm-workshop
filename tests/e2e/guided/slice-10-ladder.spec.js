@@ -2,6 +2,7 @@ import { createMapVersion } from '../../../src/models/v2/mapVersion.js'
 import { createStep } from '../../../src/models/v2/step.js'
 import { STAGE_NAMES, STAGE_NUMBER } from '../../../src/models/v2/constants.js'
 import {
+  REFERENCE_WORKDAY_HOURS,
   insertAfter,
   outsideStep,
   referenceSteps,
@@ -19,7 +20,8 @@ const SIX_TIMES = 6 // Code review's wait (2880) over Refinement's (480)
 const STEP_COUNT_OF_A_LONG_STREAM = 41
 
 const NARROW_VIEWPORT = { width: 400, height: 800 }
-const NORMAL_VIEWPORT_HEIGHT = 720 // playwright.config.js
+const DASHED_STROKE_DASH = '6px, 4px' // the computed form of the "6 4" dash pattern
+const SM_BREAKPOINT = 640 // Tailwind `sm`: the strip collapses below it
 
 /** A workspace on `stage` whose map has these steps. */
 const workspaceWith = (
@@ -28,7 +30,7 @@ const workspaceWith = (
   furthestStage = stage
 ) =>
   workspaceAtStage(stage, {
-    workdayHours: 8,
+    workdayHours: REFERENCE_WORKDAY_HOURS,
     versions: [createMapVersion({ steps })],
     session: { activeStage: stage, furthestStage },
   })
@@ -53,14 +55,43 @@ const box = async (locator) => {
   return bounds
 }
 
-// The drawn (not stroked) width of Code review's wait over Refinement's.
-const waitWidthRatio = async (page) => {
+// The drawn (not stroked) width of one step's wait over another's. The ladder
+// refits the pane after an edit, so widths are only compared as a ratio.
+const waitRatio = async (page, over, under) => {
   const widthOf = async (name) =>
     Number(
       await stepOf(page, name).getByTestId('ladder-wait').getAttribute('width')
     )
-  return (await widthOf('Code review')) / (await widthOf('Refinement'))
+  return (await widthOf(over)) / (await widthOf(under))
 }
+
+const waitWidthRatio = (page) => waitRatio(page, 'Code review', 'Refinement')
+
+// Development's wait goes from 16 hours (960 minutes) to 3 days (1440 minutes).
+const setDevelopmentWaitToThreeDays = async (page) => {
+  const development = page
+    .getByTestId('time-row')
+    .filter({ has: page.getByRole('heading', { name: 'Development' }) })
+  await development.getByTestId('wait-time-unit-select').selectOption('days')
+  await development.getByTestId('wait-time-input').fill('3')
+  await development.getByTestId('wait-time-input').press('Tab')
+}
+
+// A colour token of the page (a custom property on :root) as the browser
+// resolves colours, e.g. '#7e22ce' -> 'rgb(126, 34, 206)', so it can be compared
+// with a computed style.
+const tokenColour = (page, token) =>
+  page.evaluate((name) => {
+    const value = getComputedStyle(document.documentElement)
+      .getPropertyValue(name)
+      .trim()
+    const probe = document.createElement('span')
+    probe.style.color = value
+    document.body.append(probe)
+    const resolved = getComputedStyle(probe).color
+    probe.remove()
+    return resolved
+  }, token)
 
 const strokeOf = (locator) =>
   locator.evaluate((element) => {
@@ -84,6 +115,18 @@ const expectInsideTheMap = async (page, text) => {
   expect(scrollWidth).toBeGreaterThanOrEqual(Math.floor(ladder.width))
 }
 
+// Once the ladder has been fitted to the pane (it fills most of it) it is not
+// wider than the pane, so the pane has nothing to scroll.
+const expectFittedWithoutScrolling = async (page) => {
+  const scroller = page.getByTestId('ladder-scroll')
+  await expect
+    .poll(async () => (await box(page.getByTestId('ladder-map'))).width)
+    .toBeGreaterThan((await box(scroller)).width * 0.9)
+  expect(
+    await scroller.evaluate((el) => el.scrollWidth <= el.clientWidth)
+  ).toBe(true)
+}
+
 const pageScrollsHorizontally = (page) =>
   page.evaluate(
     () =>
@@ -97,6 +140,7 @@ test.describe('Live time-ladder map', () => {
     seed,
   }) => {
     await seed(workspaceWith(referenceSteps()))
+    await expect(page.getByTestId('ladder-map')).toBeVisible()
 
     const track = await box(page.getByTestId('ladder-track'))
     for (const name of [
@@ -120,24 +164,26 @@ test.describe('Live time-ladder map', () => {
       ).toBeGreaterThanOrEqual(track.y + track.height)
     }
 
-    expect(await waitWidthRatio(page)).toBeCloseTo(SIX_TIMES, 5)
+    await expect.poll(() => waitWidthRatio(page)).toBeCloseTo(SIX_TIMES, 5)
   })
 
   test('Equal width', async ({ page, seed }) => {
     await seed(workspaceWith(referenceSteps()))
+    await expect(page.getByTestId('ladder-map')).toBeVisible()
     const widthsOf = async () =>
       Promise.all(
         (await page.getByTestId('ladder-box').all()).map(
           async (outline) => (await box(outline)).width
         )
       )
-    expect(new Set((await widthsOf()).map(Math.round)).size).toBeGreaterThan(1)
+    const distinctWidths = async () =>
+      new Set((await widthsOf()).map(Math.round)).size
+    await expect.poll(distinctWidths).toBeGreaterThan(1)
 
     await page.getByRole('radio', { name: 'Equal width' }).check()
 
-    const widths = await widthsOf()
-    expect(widths).toHaveLength(5)
-    expect(new Set(widths.map((width) => Math.round(width))).size).toBe(1)
+    await expect.poll(distinctWidths).toBe(1)
+    expect(await widthsOf()).toHaveLength(5)
   })
 
   test('the ladder switches back to scale', async ({ page, seed }) => {
@@ -147,7 +193,7 @@ test.describe('Live time-ladder map', () => {
     await page.getByRole('radio', { name: 'Equal width' }).check()
     await page.getByRole('radio', { name: 'To scale' }).check()
 
-    expect(await waitWidthRatio(page)).toBeCloseTo(SIX_TIMES, 5)
+    await expect.poll(() => waitWidthRatio(page)).toBeCloseTo(SIX_TIMES, 5)
   })
 
   test('Handoff encoding', async ({ page, seed }) => {
@@ -159,11 +205,15 @@ test.describe('Live time-ladder map', () => {
     await expect(deploy).toHaveAttribute('data-outline', 'handoff')
     await expect(deploy.getByText('handoff', { exact: true })).toBeVisible()
     const handoffStroke = await strokeOf(deploy.getByTestId('ladder-box'))
+    expect(handoffStroke).toEqual({
+      color: await tokenColour(page, '--map-handoff-outline'),
+      width: '3px',
+      dash: 'none',
+    })
     const planStroke = await strokeOf(
       stepOf(page, 'Development').getByTestId('ladder-box')
     )
-    expect(handoffStroke.color).not.toBe(planStroke.color)
-    expect(handoffStroke.dash).toBe('none')
+    expect(planStroke.width).toBe('0px')
     await expect(stepOf(page, 'Development').getByText('handoff')).toHaveCount(
       0
     )
@@ -174,9 +224,11 @@ test.describe('Live time-ladder map', () => {
 
     const deploy = stepOf(page, 'Deploy')
     await expect(deploy).toHaveAttribute('data-outline', 'dashed')
-    expect((await strokeOf(deploy.getByTestId('ladder-box'))).dash).not.toBe(
-      'none'
-    )
+    expect(await strokeOf(deploy.getByTestId('ladder-box'))).toEqual({
+      color: await tokenColour(page, '--map-dashed-outline'),
+      width: '2px',
+      dash: DASHED_STROKE_DASH,
+    })
     await expect(deploy.getByText('needs wait time')).toBeVisible()
     await expect(deploy.getByTestId('ladder-wait')).toHaveCount(0)
   })
@@ -192,9 +244,11 @@ test.describe('Live time-ladder map', () => {
     const security = stepOf(page, 'Security review')
     await expect(security.getByTestId('ladder-hatched')).toBeVisible()
     await expect(security).toHaveAttribute('data-outline', 'dashed')
-    expect((await strokeOf(security.getByTestId('ladder-box'))).dash).not.toBe(
-      'none'
-    )
+    expect(await strokeOf(security.getByTestId('ladder-box'))).toEqual({
+      color: await tokenColour(page, '--map-dashed-outline'),
+      width: '2px',
+      dash: DASHED_STROKE_DASH,
+    })
     await expect(security.getByText('elapsed · split unknown')).toBeVisible()
     await expect(security.getByText('outside', { exact: true })).toBeVisible()
     await expect(security.getByText('handoff', { exact: true })).toBeVisible()
@@ -270,6 +324,28 @@ test.describe('Live time-ladder map', () => {
     )
   })
 
+  test('each flag names its own step when they differ: Development at %C/A 70, Code review the largest wait', async ({
+    page,
+    seed,
+  }) => {
+    await seed(
+      workspaceWith(withStep(referenceSteps(), 'Development', { pctCA: 70 }))
+    )
+
+    const codeReview = stepOf(page, 'Code review')
+    const development = stepOf(page, 'Development')
+    await expect(codeReview.getByText('largest wait')).toBeVisible()
+    await expect(codeReview.getByText('lowest %C/A')).toHaveCount(0)
+    await expect(development.getByText('lowest %C/A')).toBeVisible()
+    await expect(development.getByText('largest wait')).toHaveCount(0)
+    const flag = (label) =>
+      page.getByTestId('summary-flag').filter({ hasText: label })
+    await expect(flag('largest wait')).toContainText('Code review')
+    await expect(flag('largest wait')).not.toContainText('Development')
+    await expect(flag('lowest %C/A')).toContainText('Development')
+    await expect(flag('lowest %C/A')).not.toContainText('Code review')
+  })
+
   test('the reference map at %C/A 100 flags no lowest %C/A', async ({
     page,
     seed,
@@ -323,12 +399,19 @@ test.describe('Live time-ladder map', () => {
     seed,
   }) => {
     await seed(workspaceWith(referenceSteps()))
+    await expect(page.getByTestId('ladder-map')).toBeVisible()
 
-    const work = await box(page.getByTestId('work-region'))
-    const pane = await box(page.getByTestId('map-pane'))
     const shell = await box(page.getByTestId('session-shell'))
-    expect(pane.y).toBeGreaterThanOrEqual(work.y + work.height)
-    expect(pane.width).toBeGreaterThan(shell.width * 0.9)
+    await expect
+      .poll(async () => {
+        const work = await box(page.getByTestId('work-region'))
+        const pane = await box(page.getByTestId('map-pane'))
+        return pane.y - (work.y + work.height)
+      })
+      .toBeGreaterThanOrEqual(0)
+    expect((await box(page.getByTestId('map-pane'))).width).toBeGreaterThan(
+      shell.width * 0.9
+    )
   })
 
   test('the reference map fits the pane with no scrolling', async ({
@@ -338,10 +421,7 @@ test.describe('Live time-ladder map', () => {
     await seed(workspaceWith(referenceSteps()))
     await expect(page.getByTestId('ladder-map')).toBeVisible()
 
-    const scroller = page.getByTestId('ladder-scroll')
-    expect(
-      await scroller.evaluate((el) => el.scrollWidth <= el.clientWidth)
-    ).toBe(true)
+    await expectFittedWithoutScrolling(page)
     expect(await pageScrollsHorizontally(page)).toBe(false)
   })
 
@@ -358,10 +438,7 @@ test.describe('Live time-ladder map', () => {
     )
     await expect(page.getByTestId('ladder-map')).toBeVisible()
 
-    const scroller = page.getByTestId('ladder-scroll')
-    expect(
-      await scroller.evaluate((el) => el.scrollWidth <= el.clientWidth)
-    ).toBe(true)
+    await expectFittedWithoutScrolling(page)
   })
 
   test('the map has no accessibility violations', async ({
@@ -369,7 +446,6 @@ test.describe('Live time-ladder map', () => {
     seed,
     axe,
   }) => {
-    await page.clock.install({ time: 0 })
     await seed(
       workspaceWith(
         insertAfter(
@@ -380,7 +456,6 @@ test.describe('Live time-ladder map', () => {
       )
     )
     await expect(page.getByTestId('ladder-map')).toBeVisible()
-    await page.clock.resume()
 
     await axe({ include: '[data-testid="map-pane"]' })
 
@@ -463,29 +538,39 @@ test.describe('Live time-ladder map', () => {
     seed,
   }) => {
     await seed(workspaceWith(referenceSteps(), STAGE_NUMBER.TIME))
-    const waitWidthOf = async (name) =>
-      Number(
-        await stepOf(page, name)
-          .getByTestId('ladder-wait')
-          .getAttribute('width')
-      )
-    // The ladder refits the pane after an edit, so compare widths as a ratio.
-    const developmentOverRefinement = async () =>
-      (await waitWidthOf('Development')) / (await waitWidthOf('Refinement'))
-    expect(await developmentOverRefinement()).toBeCloseTo(2, 5)
+    await expect
+      .poll(() => waitRatio(page, 'Development', 'Refinement'))
+      .toBeCloseTo(2, 5)
     await expect(figureValue(page, 'flow-efficiency')).toHaveText('9.6%')
     await expect(figureValue(page, 'lead-time')).toHaveText('18.8 days')
 
-    const development = page
-      .getByTestId('time-row')
-      .filter({ has: page.getByRole('heading', { name: 'Development' }) })
-    await development.getByTestId('wait-time-unit-select').selectOption('days')
-    await development.getByTestId('wait-time-input').fill('3')
-    await development.getByTestId('wait-time-input').press('Tab')
+    await setDevelopmentWaitToThreeDays(page)
 
     await expect(figureValue(page, 'lead-time')).toHaveText('19.8 days')
     await expect(figureValue(page, 'flow-efficiency')).toHaveText('9.1%')
-    await expect.poll(developmentOverRefinement).toBeCloseTo(3, 5)
+    await expect
+      .poll(() => waitRatio(page, 'Development', 'Refinement'))
+      .toBeCloseTo(3, 5)
+  })
+
+  test('Undo of a time edit restores the map and the strip', async ({
+    page,
+    seed,
+  }) => {
+    await seed(workspaceWith(referenceSteps(), STAGE_NUMBER.TIME))
+    await setDevelopmentWaitToThreeDays(page)
+    await expect(figureValue(page, 'lead-time')).toHaveText('19.8 days')
+    await expect
+      .poll(() => waitRatio(page, 'Development', 'Refinement'))
+      .toBeCloseTo(3, 5)
+
+    await page.getByRole('button', { name: 'Undo', exact: true }).click()
+
+    await expect(figureValue(page, 'lead-time')).toHaveText('18.8 days')
+    await expect(figureValue(page, 'flow-efficiency')).toHaveText('9.6%')
+    await expect
+      .poll(() => waitRatio(page, 'Development', 'Refinement'))
+      .toBeCloseTo(2, 5)
   })
 
   test('the strip follows an edit to the steps', async ({ page, seed }) => {
@@ -531,9 +616,13 @@ test.describe('Live time-ladder map', () => {
 
   test('Long streams scroll with the strip pinned', async ({ page, seed }) => {
     await seed(workspaceWith(longStream()))
+    await expect(page.getByTestId('ladder-map')).toBeVisible()
     await page.getByRole('radio', { name: 'Equal width' }).check()
 
     const scroller = page.getByTestId('ladder-scroll')
+    await expect
+      .poll(() => scroller.evaluate((el) => el.scrollWidth > el.clientWidth))
+      .toBe(true)
     await scroller.scrollIntoViewIfNeeded()
     await scroller.evaluate((el) => {
       el.scrollLeft = el.scrollWidth
@@ -547,8 +636,12 @@ test.describe('Live time-ladder map', () => {
     await page.evaluate(() => window.scrollTo(0, 0))
     await expect(scroller).not.toBeInViewport()
     await expect(strip(page)).toBeInViewport()
-    const bounds = await box(strip(page))
-    expect(bounds.y + bounds.height).toBeCloseTo(NORMAL_VIEWPORT_HEIGHT, 0)
+    await expect
+      .poll(async () => {
+        const bounds = await box(strip(page))
+        return bounds.y + bounds.height
+      })
+      .toBeCloseTo(page.viewportSize().height, 0)
   })
 
   test('the pinned strip does not cover the element that takes focus', async ({
@@ -602,6 +695,44 @@ test.describe('Live time-ladder map', () => {
     expect(await pageScrollsHorizontally(page)).toBe(false)
   })
 
+  test('the narrow strip collapses again, hiding the figures and the flagged steps', async ({
+    page,
+    seed,
+  }) => {
+    await page.setViewportSize(NARROW_VIEWPORT)
+    await seed(workspaceWith(reworkSteps()))
+    const toggle = strip(page).getByRole('button', { name: 'Show all metrics' })
+    await toggle.click()
+    await expect(toggle).toHaveAttribute('aria-expanded', 'true')
+    await expect(page.getByTestId('summary-flag')).toHaveCount(2)
+    await expect(page.getByTestId('summary-flag').first()).toBeVisible()
+
+    await toggle.click()
+
+    await expect(toggle).toHaveAttribute('aria-expanded', 'false')
+    await expect(figure(page, 'lead-time')).toBeHidden()
+    await expect(figure(page, 'handoffs')).toBeHidden()
+    await expect(page.getByTestId('summary-flag').first()).toBeHidden()
+    await expect(figureValue(page, 'flow-efficiency')).toBeVisible()
+  })
+
+  test('the strip collapses below 640 px and shows everything from 640 px', async ({
+    page,
+    seed,
+  }) => {
+    await seed(workspaceWith(referenceSteps()))
+    const toggle = strip(page).getByRole('button', { name: 'Show all metrics' })
+
+    await page.setViewportSize({ width: SM_BREAKPOINT - 1, height: 800 })
+    await expect(toggle).toBeVisible()
+    await expect(figure(page, 'lead-time')).toBeHidden()
+
+    await page.setViewportSize({ width: SM_BREAKPOINT, height: 800 })
+    await expect(toggle).toBeHidden()
+    await expect(figure(page, 'lead-time')).toBeVisible()
+    await expect(strip(page).locator('dt:visible')).toHaveCount(5)
+  })
+
   test('the strip shows every figure and no toggle on a wide screen', async ({
     page,
     seed,
@@ -621,6 +752,7 @@ test.describe('Live time-ladder map', () => {
       'data-outline',
       'dashed'
     )
+    await expect(page.getByTestId('ladder-step')).toHaveCount(1)
     const label = stepOf(page, 'Intake').getByText('needs process time')
     await expect(label).toBeVisible()
     await expectInsideTheMap(page, label)
@@ -662,11 +794,14 @@ test.describe('Live time-ladder map', () => {
     seed,
   }) => {
     await seed(workspaceWith(referenceSteps()))
-
     const tab = page.getByRole('tab', { name: 'Map' })
     await expect(tab).toHaveAttribute('aria-selected', 'true')
-    await tab.focus()
-    await expect(tab).toBeFocused()
     await expect(page.getByRole('tabpanel', { name: 'Map' })).toBeVisible()
+
+    // The ladder's first control follows the tab, so Shift+Tab reaches it.
+    await page.getByRole('radio', { name: 'To scale' }).focus()
+    await page.keyboard.press('Shift+Tab')
+
+    await expect(tab).toBeFocused()
   })
 })
