@@ -1,4 +1,5 @@
 import { browserDownload } from '../../infrastructure/v2/browserDownload.js'
+import { refuse } from '../../models/v2/result.js'
 import { exportFileName } from './exportFileName.js'
 
 export const READ_ERROR_MESSAGE =
@@ -19,14 +20,12 @@ export const FILE_TOO_LARGE_MESSAGE =
  * @returns {Promise<{ok: true, streamId: string, name: string, changes: string[]} | {ok: false, error: string}>}
  */
 export const importStreamFile = async (file, store) => {
-  if (file.size > MAX_FILE_BYTES) {
-    return { ok: false, error: FILE_TOO_LARGE_MESSAGE }
-  }
+  if (file.size > MAX_FILE_BYTES) return refuse(FILE_TOO_LARGE_MESSAGE)
   let text
   try {
     text = await file.text()
   } catch {
-    return { ok: false, error: READ_ERROR_MESSAGE }
+    return refuse(READ_ERROR_MESSAGE)
   }
   return store.importStream(text)
 }

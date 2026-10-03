@@ -1,4 +1,5 @@
 import { VERSION_KIND } from '../../models/v2/constants.js'
+import { refuse } from '../../models/v2/result.js'
 import { isRecord } from '../../utils/validation/v2/result.js'
 import { validateVersion } from '../../utils/validation/v2/versionValidator.js'
 import {
@@ -72,16 +73,16 @@ export const parseWorkspace = (text) => {
 
   const workspace = json.value
   if (!isRecord(workspace) || workspace.format !== WORKSPACE_FORMAT) {
-    return { ok: false, error: NOT_A_WORKSPACE_MESSAGE }
+    return refuse(NOT_A_WORKSPACE_MESSAGE)
   }
   if (isNewerVersion(workspace.schemaVersion, WORKSPACE_SCHEMA_VERSION)) {
-    return { ok: false, error: NEWER_VERSION_MESSAGE }
+    return refuse(NEWER_VERSION_MESSAGE)
   }
   if (
     workspace.schemaVersion !== WORKSPACE_SCHEMA_VERSION ||
     !isValidWorkspace(workspace)
   ) {
-    return { ok: false, error: NOT_A_WORKSPACE_MESSAGE }
+    return refuse(NOT_A_WORKSPACE_MESSAGE)
   }
   return { ok: true, workspace }
 }
