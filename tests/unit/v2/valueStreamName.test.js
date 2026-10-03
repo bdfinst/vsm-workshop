@@ -1,8 +1,9 @@
 import { describe, it, expect } from 'vitest'
 import { openStream, refused } from './fixtures.js'
+import { createValueStream } from '../../../src/models/v2/valueStream.js'
 
-describe('valueStreamStore: map name', () => {
-  it('renames the map and saves once', () => {
+describe('valueStreamStore: value stream name', () => {
+  it('renames the value stream and saves once', () => {
     const { store, persist } = openStream()
 
     const result = store.setName('Checkout v2')
@@ -12,12 +13,54 @@ describe('valueStreamStore: map name', () => {
     expect(persist).toHaveBeenCalledTimes(1)
   })
 
-  it('accepts an empty name, so a new map can start without one', () => {
-    const { store } = openStream()
+  it.each(['', '   ', '\t \n'])(
+    'refuses %j as a name: "Add a name", nothing saved, nothing to undo',
+    (blank) => {
+      const { store, persist } = openStream()
 
-    expect(store.setName('')).toMatchObject({ ok: true })
+      expect(store.setName(blank)).toEqual({
+        ok: false,
+        error: 'Add a name',
+      })
+
+      expect(store.stream.name).toBe('Checkout delivery')
+      expect(store.canUndo).toBe(false)
+      expect(persist).not.toHaveBeenCalled()
+    }
+  )
+
+  it('refuses a blank name for a stream that has none yet, which stays unnamed', () => {
+    const { store, persist } = openStream(createValueStream())
+
+    expect(store.setName('  ')).toEqual({ ok: false, error: 'Add a name' })
 
     expect(store.stream.name).toBe('')
+    expect(persist).not.toHaveBeenCalled()
+  })
+
+  it('names a stream that had none', () => {
+    const { store } = openStream(createValueStream())
+
+    expect(store.setName('Onboarding')).toMatchObject({ ok: true })
+
+    expect(store.stream.name).toBe('Onboarding')
+  })
+
+  it('keeps the name trimmed, as the home rename does', () => {
+    const { store } = openStream()
+
+    store.setName('  Checkout v2  ')
+
+    expect(store.stream.name).toBe('Checkout v2')
+  })
+
+  it('leaves history and storage alone when only the space around the name changed', () => {
+    const { store, persist } = openStream()
+
+    expect(store.setName('  Checkout delivery ')).toMatchObject({ ok: true })
+
+    expect(store.canUndo).toBe(false)
+    expect(persist).not.toHaveBeenCalled()
   })
 
   it('refuses a name that is not text', () => {
@@ -61,15 +104,15 @@ describe('valueStreamStore: map name', () => {
     expect(store.canRedo).toBe(false)
   })
 
-  it('names the map in the undo and redo announcements', () => {
+  it('names the value stream name in the undo and redo announcements', () => {
     const { store } = openStream()
     store.setName('Checkout v2')
 
     const undone = store.undo().announcement
     const redone = store.redo().announcement
 
-    expect(undone).toMatch(/map name/i)
-    expect(redone).toMatch(/map name/i)
+    expect(undone).toMatch(/value stream name/i)
+    expect(redone).toMatch(/value stream name/i)
     expect(undone).not.toBe(redone)
   })
 
@@ -80,7 +123,7 @@ describe('valueStreamStore: map name', () => {
 
     const announcement = store.undo().announcement
 
-    expect(announcement).toMatch(/map name/i)
+    expect(announcement).toMatch(/value stream name/i)
     expect(announcement).toMatch(/Scope/)
   })
 })

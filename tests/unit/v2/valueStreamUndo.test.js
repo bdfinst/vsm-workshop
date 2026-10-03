@@ -276,7 +276,7 @@ describe('valueStreamStore: undo and the version being viewed', () => {
     store.setName('Checkout v2')
     store.setActiveVersion(currentId(store))
 
-    expect(store.undo().announcement).toBe('Undo: map name')
+    expect(store.undo().announcement).toBe('Undo: value stream name')
   })
 })
 

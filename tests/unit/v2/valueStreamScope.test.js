@@ -34,12 +34,24 @@ describe('valueStreamStore: scope', () => {
     expect(store.stream.name).toBe('Checkout delivery')
   })
 
-  it('keeps whitespace as typed; the gate, not the store, treats it as empty', () => {
+  it('refuses a blank name inside any scope edit, whole, as setName does', () => {
+    const { store, persist } = blankStore()
+
+    const result = store.setScope({ name: '   ', trigger: 'A customer asks' })
+
+    expect(result).toEqual({ ok: false, error: 'Add a name' })
+
+    expect(store.stream.name).toBe('')
+    expect(store.stream.trigger).toBe('')
+    expect(persist).not.toHaveBeenCalled()
+  })
+
+  it('trims a name set with the other scope fields', () => {
     const { store } = blankStore()
 
-    store.setScope({ name: '   ' })
+    store.setScope({ name: '  Checkout v2 ', trigger: 'A customer asks' })
 
-    expect(store.stream.name).toBe('   ')
+    expect(store.stream.name).toBe('Checkout v2')
   })
 
   it.each(['story', 'feature', 'defect'])(
@@ -141,7 +153,7 @@ describe('valueStreamStore: scope', () => {
   })
 
   it.each([
-    ['name', 'Checkout v2', /map name/i],
+    ['name', 'Checkout v2', /value stream name/i],
     ['trigger', 'A customer asks', /trigger/i],
     ['endPoint', 'It is live', /end point/i],
     ['unitOfWork', 'story', /unit of work/i],
