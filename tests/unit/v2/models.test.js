@@ -14,8 +14,10 @@ import {
   createValueStream,
   displayName,
   isBlankName,
+  nameEdit,
   nameOrUntitled,
   normalizeName,
+  UNTITLED_NAME,
 } from '../../../src/models/v2/valueStream.js'
 import { copyValueStream } from '../../../src/models/v2/valueStreamCopy.js'
 import { referenceStream, withFutureState } from './fixtures.js'
@@ -717,6 +719,7 @@ describe('the value stream name rule', () => {
   it.each([
     ['  Onboarding ', 'Onboarding'],
     ['Onboarding', 'Onboarding'],
+    ['  New  hire ', 'New  hire'],
     ['   ', ''],
     ['', ''],
     [undefined, ''],
@@ -740,7 +743,77 @@ describe('the value stream name rule', () => {
     expect(nameOrUntitled(' Onboarding ')).toBe('Onboarding')
   })
 
-  it('refuses a blank name with "Add a name"', () => {
-    expect(BLANK_NAME_MESSAGE).toBe('Add a name')
+  it('names the untitled value stream as the cards and files show it', () => {
+    expect(UNTITLED_NAME).toBe('Untitled value stream')
+    expect(nameOrUntitled('')).toBe(UNTITLED_NAME)
+  })
+})
+
+describe('nameEdit', () => {
+  it.each(['', '   ', '\t\n', undefined, null, 5])(
+    'refuses %j with the blank-name message, whatever the stream is called',
+    (typed) => {
+      expect(nameEdit('Onboarding', typed)).toEqual({
+        ok: false,
+        error: BLANK_NAME_MESSAGE,
+      })
+      expect(nameEdit('', typed)).toEqual({
+        ok: false,
+        error: BLANK_NAME_MESSAGE,
+      })
+    }
+  )
+
+  it('gives the trimmed name when it differs from the current one', () => {
+    expect(nameEdit('Onboarding', '  New hire onboarding ')).toEqual({
+      ok: true,
+      name: 'New hire onboarding',
+      changed: true,
+    })
+  })
+
+  it('names a stream that had no name', () => {
+    expect(nameEdit('', 'Onboarding')).toEqual({
+      ok: true,
+      name: 'Onboarding',
+      changed: true,
+    })
+  })
+
+  it.each([
+    ['Onboarding', 'Onboarding'],
+    ['Onboarding', '  Onboarding '],
+    ['  Onboarding ', 'Onboarding'],
+  ])(
+    'says nothing changed when %j is typed over %j once trimmed',
+    (current, typed) => {
+      expect(nameEdit(current, typed)).toEqual({
+        ok: true,
+        name: 'Onboarding',
+        changed: false,
+      })
+    }
+  )
+
+  it('counts a change in interior space as a change', () => {
+    expect(nameEdit('New hire', 'New  hire')).toMatchObject({
+      name: 'New  hire',
+      changed: true,
+    })
+  })
+})
+
+describe('createValueStream names', () => {
+  it('starts unnamed', () => {
+    expect(createValueStream().name).toBe('')
+  })
+
+  it.each([
+    ['  Onboarding ', 'Onboarding'],
+    ['   ', ''],
+    [undefined, ''],
+    [5, ''],
+  ])('keeps the name given as %j as %j', (given, expected) => {
+    expect(createValueStream({ name: given }).name).toBe(expected)
   })
 })

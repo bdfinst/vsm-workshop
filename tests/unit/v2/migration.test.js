@@ -281,6 +281,14 @@ describe('Saved maps upgrade without losing the original', () => {
     })
   })
 
+  it('The map name is kept trimmed, as every value stream name is', () => {
+    const { steps } = intakeDevTest()
+
+    const { stream } = migrateV1ToV2({ ...v1Map(steps), name: '  Checkout ' })
+
+    expect(stream.name).toBe('Checkout')
+  })
+
   it('A v1 map that never got an id gets one', () => {
     const { steps } = intakeDevTest()
 

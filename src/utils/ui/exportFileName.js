@@ -1,4 +1,8 @@
-import { nameOrUntitled, normalizeName } from '../../models/v2/valueStream.js'
+import {
+  UNTITLED_NAME,
+  nameOrUntitled,
+  normalizeName,
+} from '../../models/v2/valueStream.js'
 
 // Characters Windows, macOS or Linux do not allow in a file name, and the
 // device names and trailing dots and spaces Windows treats specially. See
@@ -45,7 +49,7 @@ const isWindowsDevice = (name) =>
  * characters are removed, each character a file name cannot hold becomes "-"
  * (one for one), and the name is cut to 245 UTF-8 bytes with trailing dots and
  * spaces dropped. A Windows device name gets a "_" in front. A name that is
- * blank, or nothing but dots, falls back to the card's name.
+ * blank, or nothing but dots, falls back to "Untitled value stream".
  * @param {string} [name] - The value stream's name
  * @returns {string} The name with ".json" added
  */
@@ -56,6 +60,6 @@ export const exportFileName = (name) => {
   const capped = capBytes(
     shown.replace(INVALID_FILE_NAME_CHARACTERS, '-')
   ).replace(TRAILING_DOTS_AND_SPACES, '')
-  const base = capped || nameOrUntitled('')
+  const base = capped || UNTITLED_NAME
   return `${isWindowsDevice(base) ? '_' : ''}${base}.json`
 }

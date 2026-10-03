@@ -64,6 +64,18 @@ describe('importValueStream', () => {
     })
 
     it.each([
+      ['  Onboarding ', 'Onboarding'],
+      ['   ', ''],
+    ])('reads the name %j as %j', (name, expected) => {
+      // A file can hold any text, so the name is set after the model has had its say.
+      const stream = { ...referenceStream(), name }
+
+      const result = importValueStream(exportValueStream(stream), [])
+
+      expect(result.stream.name).toBe(expected)
+    })
+
+    it.each([
       ['an array', (id) => [id]],
       ['a Set', (id) => new Set([id])],
     ])('takes existing ids as %s', (_kind, existingIds) => {
@@ -200,6 +212,12 @@ describe('importValueStream', () => {
         'Dev',
       ])
       expect(result.changes).toEqual(['Intake step added'])
+    })
+
+    it('reads the map name trimmed, like any other name', () => {
+      const result = importValueStream(v1File({ name: '  Old map ' }), [])
+
+      expect(result.stream.name).toBe('Old map')
     })
 
     it('gives a new id when the v1 map id is already in the workspace', () => {
