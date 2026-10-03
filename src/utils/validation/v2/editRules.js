@@ -1,4 +1,4 @@
-import { VERSION_KIND } from '../../../models/v2/constants.js'
+import { LAST_STAGE, VERSION_KIND } from '../../../models/v2/constants.js'
 
 /**
  * Rules for editing a v2 stream that `validateVersion` does not state as
@@ -6,9 +6,6 @@ import { VERSION_KIND } from '../../../models/v2/constants.js'
  * Each check is pure and returns an error message, or null when the edit is
  * allowed. The value stream store runs them before it validates the result.
  */
-
-/** Scope, Steps, Time, Quality, Rework, Review, Future. */
-const STAGE_COUNT = 7
 
 export const INTAKE_FIRST_MESSAGE = 'Intake is always first'
 export const INTAKE_DELETE_MESSAGE = "Intake can't be deleted"
@@ -100,7 +97,7 @@ export const checkDeleteVersion = (versions, versionId) => {
  * @returns {?string} An error message, or null
  */
 export const checkStageChange = (session, stage) => {
-  if (!Number.isInteger(stage) || stage < 1 || stage > STAGE_COUNT) {
+  if (!Number.isInteger(stage) || stage < 1 || stage > LAST_STAGE) {
     return STAGE_MISSING_MESSAGE
   }
   return stage > session.furthestStage + 1 ? STAGE_AHEAD_MESSAGE : null

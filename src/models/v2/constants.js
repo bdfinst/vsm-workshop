@@ -35,15 +35,18 @@ export const STAGE_NAMES = Object.freeze([
   'Future',
 ])
 
+/** The number of the last stage (Future). */
+export const LAST_STAGE = STAGE_NAMES.length
+
 /**
  * A stage number from a file, which can hold anything: kept when it is a whole
- * number in range, pulled to the nearest end when it is a whole number past
- * one, and the first stage when it is not a whole number at all.
+ * number in range, pulled to the nearest end when it is a whole number outside
+ * the range, and the first stage when it is not a whole number at all.
  * @param {*} stage - A stage number as stored
  * @returns {number} A stage number from 1 to the last stage
  */
 export const clampStage = (stage) =>
-  Number.isInteger(stage) ? Math.min(Math.max(stage, 1), STAGE_NAMES.length) : 1
+  Number.isInteger(stage) ? Math.min(Math.max(stage, 1), LAST_STAGE) : 1
 
 /**
  * The one place a stage number becomes its name, for the rail, the headings,

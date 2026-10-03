@@ -1,7 +1,7 @@
 <script>
   import { workspaceStore } from '../../stores/v2/workspaceStore.svelte.js'
   import {
-    STAGE_NAMES,
+    LAST_STAGE,
     STAGE_NUMBER,
     stageName,
   } from '../../models/v2/constants.js'
@@ -129,7 +129,7 @@
           <StageComponent
             {store}
             name={currentStageName}
-            onnext={stage < STAGE_NAMES.length ? handleNext : null}
+            onnext={stage < LAST_STAGE ? handleNext : null}
             onannounce={announce}
           />
         {/key}

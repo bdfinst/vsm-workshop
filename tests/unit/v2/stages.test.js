@@ -68,6 +68,10 @@ describe('clampStage', () => {
     [2.5, 1],
     ['3', 1],
     [undefined, 1],
+    [null, 1],
+    [NaN, 1],
+    [Infinity, 1],
+    [-Infinity, 1],
   ])('turns %j into stage %i', (stage, expected) => {
     expect(clampStage(stage)).toBe(expected)
   })
