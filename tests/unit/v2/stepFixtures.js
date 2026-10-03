@@ -43,10 +43,11 @@ const positionOf = (steps, name) => {
   return at
 }
 
+// Patches only the first step called `name`, as positionOf and insertAfter do.
 export const withStep = (steps, name, patch) => {
-  positionOf(steps, name)
-  return steps.map((step) =>
-    step.name === name ? { ...step, ...patch } : step
+  const at = positionOf(steps, name)
+  return steps.map((step, index) =>
+    index === at ? { ...step, ...patch } : step
   )
 }
 

@@ -12,10 +12,17 @@ const GRAPHIC_MIN = 3
 
 // The colour tokens are declared as plain hex values in two blocks of
 // src/index.css: `:root` (light, the default) and `:root[data-theme='dark']`.
+const LIGHT_SELECTOR = ':root(?!\\[)'
+const DARK_SELECTOR = `:root\\[data-theme=["']dark["']\\]`
+
+const blocksOf = (selectorPattern) => [
+  ...css.matchAll(new RegExp(`${selectorPattern}\\s*\\{([^}]*)\\}`, 'g')),
+]
+
 const blockOf = (selectorPattern) => {
-  const match = css.match(new RegExp(`${selectorPattern}\\s*\\{([^}]*)\\}`))
-  if (!match) throw new Error(`No ${selectorPattern} block in src/index.css`)
-  return match[1]
+  const [first] = blocksOf(selectorPattern)
+  if (!first) throw new Error(`No ${selectorPattern} block in src/index.css`)
+  return first[1]
 }
 
 const declarationsIn = (block) =>
@@ -37,8 +44,8 @@ const hexTokensIn = (block) =>
   )
 
 const BLOCKS = {
-  light: blockOf(':root(?!\\[)'),
-  dark: blockOf(`:root\\[data-theme=["']dark["']\\]`),
+  light: blockOf(LIGHT_SELECTOR),
+  dark: blockOf(DARK_SELECTOR),
 }
 
 const MODES = {
@@ -67,27 +74,12 @@ const contrast = (a, b) => {
   return (lighter + 0.05) / (darker + 0.05)
 }
 
-// Every colour token is listed here with what it sits on. A token that is not
-// in this table fails the "every token has a pair" test below, so a new token
-// cannot arrive without a contrast check.
-//
-// | kind    | token                  | sits on                       | minimum |
-// | ------- | ---------------------- | ----------------------------- | ------- |
-// | text    | --map-text             | --map-bg                      | 4.5     |
-// | text    | --muted-text           | --map-bg                      | 4.5     |
-// | text    | --good-text            | --map-bg                      | 4.5     |
-// | text    | --warn-text            | --map-bg                      | 4.5     |
-// | text    | --crit-text            | --map-bg                      | 4.5     |
-// | text    | --handoff-text         | --map-bg                      | 4.5     |
-// | graphic | --map-track            | --map-bg                      | 3       |
-// | graphic | --map-wait-outline     | --map-bg, --map-wait-fill     | 3       |
-// | graphic | --map-process-outline  | --map-bg, --map-process-fill  | 3       |
-// | graphic | --map-handoff-outline  | --map-bg                      | 3       |
-// | graphic | --map-dashed-outline   | --map-bg                      | 3       |
-// | graphic | --hatch-outside-color  | --map-bg                      | 3       |
+// Every colour token is listed here with what it sits on and the contrast it
+// needs. A token that is not here fails the "every token has a contrast pair"
+// test below, so a new token cannot arrive without a contrast check.
 //
 // Loop strokes and depth colours arrive with the rework loops (Slice 12); each
-// is added to this table with its token.
+// is added to PAIRS with its token.
 const PAIRS = [
   ...[
     '--map-text',
@@ -139,6 +131,15 @@ describe('the contrast helper', () => {
 })
 
 describe('colour tokens', () => {
+  // The token tests below read the first match, so a second block of the same
+  // selector would be silently ignored.
+  it.each([
+    [':root', LIGHT_SELECTOR],
+    [':root[data-theme="dark"]', DARK_SELECTOR],
+  ])('src/index.css has exactly one %s block', (_selector, pattern) => {
+    expect(blocksOf(pattern)).toHaveLength(1)
+  })
+
   it.each(Object.entries(BLOCKS))(
     'every declaration in the %s block is a hex colour or a named non-colour token',
     (_mode, block) => {

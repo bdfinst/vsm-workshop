@@ -44,6 +44,16 @@ describe('stepFixtures: known step names', () => {
     ])
   })
 
+  it('insertAfter leaves the input alone', () => {
+    const steps = referenceSteps()
+    const before = [...steps]
+
+    insertAfter(steps, 'Code review', outsideStep('Security review', 1440))
+
+    expect(steps).toEqual(before)
+    expect(steps).toHaveLength(5)
+  })
+
   it('insertAfter puts the step right after the named one', () => {
     const inserted = insertAfter(
       referenceSteps(),
@@ -59,5 +69,35 @@ describe('stepFixtures: known step names', () => {
       'Security review',
       'Deploy',
     ])
+  })
+})
+
+// Fixtures address a step by name, and positionOf finds the first one, so a
+// repeated name means the first step called that.
+describe('stepFixtures: a name used twice', () => {
+  const twins = () => [team('Twin', 10, 20), team('Twin', 30, 40)]
+
+  it('withStep patches only the first step with the name', () => {
+    const patched = withStep(twins(), 'Twin', { pctCA: 50 })
+
+    expect(patched.map((step) => step.pctCA)).toEqual([50, 100])
+  })
+
+  it('withWait changes only the first step with the name', () => {
+    const changed = withWait(twins(), 'Twin', { typ: 99 })
+
+    expect(changed.map((step) => step.waitTime.typ)).toEqual([99, 40])
+  })
+
+  it('withoutWait clears only the first step with the name', () => {
+    const cleared = withoutWait(twins(), 'Twin')
+
+    expect(cleared.map((step) => step.waitTime.typ)).toEqual([null, 40])
+  })
+
+  it('insertAfter puts the step after the first step with the name', () => {
+    const inserted = insertAfter(twins(), 'Twin', team('New', 1, 1))
+
+    expect(inserted.map((step) => step.name)).toEqual(['Twin', 'New', 'Twin'])
   })
 })

@@ -8,8 +8,11 @@ import {
   flagsOf,
 } from '../../../src/utils/ui/flaggedSteps.js'
 import {
+  insertAfter,
+  outsideStep,
   referenceSteps,
   reworkSteps,
+  team,
   versionOf,
   withStep,
   withoutWait,
@@ -119,6 +122,52 @@ describe('flaggedSteps at the edges of %C/A', () => {
 
   it('flags no step at %C/A 100', () => {
     expect(lowestFlag(100)).toBeUndefined()
+  })
+})
+
+// Ties go to the first step in map order. The ladder and the strip both read
+// these flags, so they agree on which step it is.
+describe('flaggedSteps with a tie', () => {
+  const flaggedNames = (steps) =>
+    flaggedSteps(calculateMetrics(versionOf(steps)).flags).map(
+      ({ kind, name }) => [kind, name]
+    )
+
+  it('gives the largest wait to the first of two steps with the same wait', () => {
+    const steps = [team('First', 60, 500), team('Second', 60, 500)]
+
+    expect(flaggedNames(steps)).toEqual([[FLAG_KIND.LARGEST_WAIT, 'First']])
+  })
+
+  it('gives the lowest %C/A to the first of two steps with the same %C/A', () => {
+    const steps = [team('First', 60, 0, 80), team('Second', 60, 0, 80)]
+
+    expect(flaggedNames(steps)).toEqual([[FLAG_KIND.LOWEST_CA, 'First']])
+  })
+})
+
+describe('flaggedSteps with an outside step', () => {
+  it('never gives the largest wait to an outside step, however long it takes', () => {
+    const steps = insertAfter(
+      referenceSteps(),
+      'Code review',
+      outsideStep('Security review', 100000)
+    )
+    const { flags } = calculateMetrics(versionOf(steps))
+
+    expect(flaggedSteps(flags).map(({ name }) => name)).toEqual(['Code review'])
+  })
+
+  it('never gives the lowest %C/A to an outside step', () => {
+    const steps = insertAfter(referenceSteps(), 'Code review', {
+      ...outsideStep('Security review', 1440),
+      pctCA: 10,
+    })
+    const { flags } = calculateMetrics(versionOf(steps))
+
+    expect(
+      flaggedSteps(flags).filter(({ kind }) => kind === FLAG_KIND.LOWEST_CA)
+    ).toEqual([])
   })
 })
 

@@ -24,6 +24,8 @@ describe('summaryModel', () => {
   it('leads with flow efficiency, then lead time, process time, rolled %C/A and handoffs', () => {
     const summary = summaryOf(referenceSteps())
 
+    // Process 60+240+480+60+30 = 870 min; lead 870 + waits 8160 = 9030 min.
+    // 870 / 9030 = 9.6%. 9030 / 480 (an 8-hour day) = 18.8 days; 870 / 480 = 1.8.
     expect(summary.hero).toMatchObject({
       id: 'flow-efficiency',
       label: 'Flow efficiency',
@@ -70,6 +72,9 @@ describe('summaryModel', () => {
     )
     const { hero } = summaryOf(steps)
 
+    // The outside step's 1440 min is elapsed, split unknown: lead 9030 + 1440 =
+    // 10470 min. Worst case it is all wait: 870 / 10470 = 8.3%; best case it
+    // is all process: (870 + 1440) / 10470 = 2310 / 10470 = 22.1%.
     expect(hero.text).toBe('8.3%–22.1%')
     expect(hero.context).toMatch(/range/)
   })
