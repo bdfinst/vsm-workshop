@@ -17,22 +17,21 @@ const fakeFile = (text, size = text.length) => ({
   text: vi.fn(async () => text),
 })
 
-const fakeStore = ({ streams = [], importResult, exportResult } = {}) => ({
-  streams,
+// The store answers with the name; there is no stream list to look it up in.
+const fakeStore = ({ importResult, exportResult } = {}) => ({
   importStream: vi.fn(() => importResult),
   exportStream: vi.fn(() => exportResult),
 })
 
 describe('importStreamFile', () => {
   it('hands the file text to the store and names the stream it added', async () => {
-    // The imported stream is found by id, whatever is listed before or after it.
     const store = fakeStore({
-      streams: [
-        { id: 'before', name: 'Before' },
-        { id: 'new-id', name: '  Checkout  ' },
-        { id: 'after', name: 'After' },
-      ],
-      importResult: { ok: true, streamId: 'new-id', changes: [] },
+      importResult: {
+        ok: true,
+        streamId: 'new-id',
+        name: 'Checkout',
+        changes: [],
+      },
     })
 
     const result = await importStreamFile(fakeFile('{"a":1}'), store)
@@ -48,10 +47,10 @@ describe('importStreamFile', () => {
 
   it('passes on what upgrading a v1 file changed, so the screen can say so', async () => {
     const store = fakeStore({
-      streams: [{ id: 'new-id', name: 'Old map' }],
       importResult: {
         ok: true,
         streamId: 'new-id',
+        name: 'Old map',
         changes: ['Wait time clamped for "Dev"'],
       },
     })
@@ -59,17 +58,6 @@ describe('importStreamFile', () => {
     const result = await importStreamFile(fakeFile('{}'), store)
 
     expect(result.changes).toEqual(['Wait time clamped for "Dev"'])
-  })
-
-  it('names an unnamed stream by its card name', async () => {
-    const store = fakeStore({
-      streams: [{ id: 'new-id', name: '' }],
-      importResult: { ok: true, streamId: 'new-id', changes: [] },
-    })
-
-    const result = await importStreamFile(fakeFile('{}'), store)
-
-    expect(result.name).toBe('Untitled value stream')
   })
 
   it('passes on the store refusal as it is', async () => {
@@ -115,8 +103,7 @@ describe('importStreamFile', () => {
 
     it('reads a file exactly at the limit', async () => {
       const store = fakeStore({
-        streams: [{ id: 's', name: 'A' }],
-        importResult: { ok: true, streamId: 's', changes: [] },
+        importResult: { ok: true, streamId: 's', name: 'A', changes: [] },
       })
       const file = fakeFile('{}', MAX_FILE_BYTES)
 
@@ -129,37 +116,38 @@ describe('importStreamFile', () => {
 })
 
 describe('exportStreamFile', () => {
-  it('downloads the stream text under the file name of the stream with that id', () => {
-    const store = fakeStore({
-      streams: [
-        { id: 's0', name: 'Other' },
-        { id: 's1', name: 'Q3: plan' },
-      ],
-      exportResult: { ok: true, text: '{"a":1}' },
-    })
+  it('downloads the stream text under the file name of the name the store gave', () => {
+    const exported = {
+      ok: true,
+      streamId: 's1',
+      name: 'Q3: plan',
+      text: '{"a":1}',
+    }
+    const store = fakeStore({ exportResult: exported })
     const download = vi.fn()
 
     const result = exportStreamFile(store, 's1', { download })
 
     expect(store.exportStream).toHaveBeenCalledWith('s1')
     expect(download).toHaveBeenCalledWith('Q3- plan.json', '{"a":1}')
-    expect(result).toEqual({ ok: true, text: '{"a":1}' })
+    expect(result).toEqual(exported)
   })
 
-  it.each(['', '   '])(
-    'files an unnamed stream (%j) as "Untitled value stream"',
-    (name) => {
-      const store = fakeStore({
-        streams: [{ id: 's1', name }],
-        exportResult: { ok: true, text: '{}' },
-      })
-      const download = vi.fn()
+  it('files an unnamed stream as "Untitled value stream"', () => {
+    const store = fakeStore({
+      exportResult: {
+        ok: true,
+        streamId: 's1',
+        name: 'Untitled value stream',
+        text: '{}',
+      },
+    })
+    const download = vi.fn()
 
-      exportStreamFile(store, 's1', { download })
+    exportStreamFile(store, 's1', { download })
 
-      expect(download).toHaveBeenCalledWith('Untitled value stream.json', '{}')
-    }
-  )
+    expect(download).toHaveBeenCalledWith('Untitled value stream.json', '{}')
+  })
 
   it('downloads nothing when the store refuses', () => {
     const refusal = {

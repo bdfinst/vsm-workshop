@@ -6,8 +6,7 @@ import SessionHeader from '../../../src/components/session/SessionHeader.svelte'
 import { refused } from './fixtures.js'
 
 const workspaceStore = vi.hoisted(() => ({
-  create: vi.fn(),
-  open: vi.fn(),
+  startNew: vi.fn(),
 }))
 vi.mock('../../../src/stores/v2/workspaceStore.svelte.js', () => ({
   workspaceStore,
@@ -40,7 +39,7 @@ afterEach(() => {
 
 describe('SessionHeader File menu', () => {
   it('returns focus to File when New value stream fails', async () => {
-    workspaceStore.create.mockReturnValue(refused)
+    workspaceStore.startNew.mockReturnValue(refused)
     const { file, item } = render()
     file.click()
     await vi.waitFor(() => expect(item()).toHaveFocus())
@@ -48,6 +47,6 @@ describe('SessionHeader File menu', () => {
     item().click()
 
     await vi.waitFor(() => expect(file).toHaveFocus())
-    expect(workspaceStore.open).not.toHaveBeenCalled()
+    expect(workspaceStore.startNew).toHaveBeenCalledOnce()
   })
 })

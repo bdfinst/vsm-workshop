@@ -929,6 +929,51 @@ describe('workspaceStore: create and rename', () => {
   })
 })
 
+describe('workspaceStore: start a new value stream', () => {
+  it('adds an unnamed stream and opens it, on the stream screen', async () => {
+    const [a] = [referenceStream()]
+    const store = await makeStore({ streams: [a] })
+    store.goHome()
+
+    const result = store.startNew()
+
+    expect(result).toEqual({ ok: true, streamId: expect.any(String) })
+    expect(store.streams.map((s) => s.name)).toEqual(['Checkout delivery', ''])
+    expect(store.streams[1].id).toBe(result.streamId)
+    expect(store.activeStreamId).toBe(result.streamId)
+    expect(store.screen).toBe('stream')
+    expect(store.activeStore.stream.id).toBe(result.streamId)
+    expect(store.activeStore.stream.session.activeStage).toBe(1)
+    expect(store.activeStore.canUndo).toBe(false)
+  })
+
+  it('counts as one edit and saves the new stream as the active one', async () => {
+    const repository = createMemoryWorkspaceRepository({
+      raw: rawOf([referenceStream()]),
+    })
+    const store = await makeStore({ repository })
+    const before = store.revision
+
+    const result = store.startNew()
+    await store.flushSaves()
+
+    expect(store.revision).toBe(before + 1)
+    const saved = await savedIn(repository)
+    expect(saved.streams).toHaveLength(2)
+    expect(saved.activeStreamId).toBe(result.streamId)
+  })
+
+  it('refuses until the workspace is ready, and adds nothing', () => {
+    const store = createWorkspaceStore({
+      repository: createMemoryWorkspaceRepository(),
+      v1Repository: noV1Repository,
+    })
+
+    expect(store.startNew()).toEqual(refused)
+    expect(store.streams).toEqual([])
+  })
+})
+
 describe('workspaceStore: duplicate', () => {
   it('inserts the copy right after its source, named "(copy)"', async () => {
     const [a, b] = [
@@ -942,6 +987,23 @@ describe('workspaceStore: duplicate', () => {
     expect(result.ok).toBe(true)
     expect(store.streams.map((s) => s.name)).toEqual(['A', 'A (copy)', 'B'])
     expect(store.streams[1].id).toBe(result.streamId)
+  })
+
+  it('names the copy in the result, as it is listed', async () => {
+    const [a, unnamed] = [
+      referenceStream({ name: 'A' }),
+      referenceStream({ name: '' }),
+    ]
+    const store = await makeStore({ streams: [a, unnamed] })
+
+    expect(store.duplicate(a.id)).toEqual({
+      ok: true,
+      streamId: expect.any(String),
+      name: 'A (copy)',
+    })
+    expect(store.duplicate(unnamed.id)).toMatchObject({
+      name: 'Untitled value stream (copy)',
+    })
   })
 
   it('names a second copy "(copy 2)" and a third "(copy 3)"', async () => {
@@ -1281,6 +1343,25 @@ describe('workspaceStore: import and export', () => {
     expect(store.streams[1].id).toBe(incoming.id)
   })
 
+  it('names the imported stream in the result, as it is listed', async () => {
+    const store = await makeStore({ streams: [referenceStream()] })
+
+    const named = store.importStream(
+      JSON.stringify(referenceStream({ name: '  Imported ' }))
+    )
+    const unnamed = store.importStream(
+      JSON.stringify(referenceStream({ name: '' }))
+    )
+
+    expect(named).toEqual({
+      ok: true,
+      streamId: expect.any(String),
+      name: 'Imported',
+      changes: [],
+    })
+    expect(unnamed.name).toBe('Untitled value stream')
+  })
+
   it('gives an imported stream a new id when its id is already in the workspace', async () => {
     const stream = referenceStream()
     const store = await makeStore({ streams: [stream] })
@@ -1311,6 +1392,24 @@ describe('workspaceStore: import and export', () => {
 
     expect(ok).toBe(true)
     expect(JSON.parse(text)).toEqual(stream)
+  })
+
+  it('names the exported stream in the result, as it is listed', async () => {
+    const [named, unnamed] = [
+      referenceStream({ name: 'Q3: plan' }),
+      referenceStream({ name: '' }),
+    ]
+    const store = await makeStore({ streams: [named, unnamed] })
+
+    expect(store.exportStream(named.id)).toMatchObject({
+      ok: true,
+      streamId: named.id,
+      name: 'Q3: plan',
+    })
+    expect(store.exportStream(unnamed.id)).toMatchObject({
+      streamId: unnamed.id,
+      name: 'Untitled value stream',
+    })
   })
 
   it('refuses to export a stream that is not in the workspace', async () => {

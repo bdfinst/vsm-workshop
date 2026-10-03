@@ -263,6 +263,14 @@ export const createWorkspaceStore = ({
     return { ok: true }
   })
 
+  // "New value stream": a stream with no name, opened at once. The one action
+  // behind the home button and the File menu.
+  const startNew = whenReady(() => {
+    const created = create()
+    if (created.ok) open(created.streamId)
+    return created
+  })
+
   const goHome = whenReady(() => {
     screen = 'home'
     return { ok: true }
@@ -297,7 +305,7 @@ export const createWorkspaceStore = ({
       ...streams.slice(index + 1),
     ]
     commit()
-    return { ok: true, streamId: copy.id }
+    return { ok: true, streamId: copy.id, name: displayName(copy) }
   })
 
   const remove = whenReady((id) => {
@@ -344,7 +352,12 @@ export const createWorkspaceStore = ({
     if (!result.ok) return refuse(result.error)
     streams = [...streams, result.stream]
     commit()
-    return { ok: true, streamId: result.stream.id, changes: result.changes }
+    return {
+      ok: true,
+      streamId: result.stream.id,
+      name: displayName(result.stream),
+      changes: result.changes,
+    }
   })
 
   // The upgrade notice shows what an import applied, in place of what was shown.
@@ -355,7 +368,12 @@ export const createWorkspaceStore = ({
   const exportStream = whenReady((id) => {
     const stream = streams.find((s) => s.id === id)
     return stream
-      ? { ok: true, text: exportValueStream(stream) }
+      ? {
+          ok: true,
+          streamId: id,
+          name: displayName(stream),
+          text: exportValueStream(stream),
+        }
       : refuse(STREAM_MISSING_MESSAGE)
   })
 
@@ -432,6 +450,7 @@ export const createWorkspaceStore = ({
     init,
     create,
     open,
+    startNew,
     goHome,
     rename,
     duplicate,
