@@ -5,12 +5,14 @@
 **Tests must always be written before implementation code.**
 
 When implementing any feature or bug fix:
+
 1. Write the failing test(s) first
 2. Verify the test fails for the expected reason
 3. Write the minimum code to make the test pass
 4. Refactor while keeping tests green
 
 This applies to:
+
 - **Acceptance tests** - Write Gherkin scenarios (as spec text) and get them approved before any implementation
 - **Unit tests** - Write test cases before implementing functions
 - **Integration tests** - Write tests before wiring components together
@@ -76,36 +78,32 @@ tests/
 - It blocks: Start with verb describing behavior
 
 ```javascript
-import { describe, it, expect } from 'vitest';
-import { calculateFlowEfficiency } from '../../src/utils/calculations/flowEfficiency';
+import { describe, it, expect } from 'vitest'
+import { calculateFlowEfficiency } from '../../src/utils/calculations/flowEfficiency'
 
 describe('calculateFlowEfficiency', () => {
   it('returns ratio of process time to lead time', () => {
     const result = calculateFlowEfficiency({
-      steps: [
-        { processTime: 60, leadTime: 240 }
-      ]
-    });
+      steps: [{ processTime: 60, leadTime: 240 }],
+    })
 
-    expect(result.value).toBe(0.25);
-  });
+    expect(result.value).toBe(0.25)
+  })
 
   it('handles zero lead time gracefully', () => {
     const result = calculateFlowEfficiency({
-      steps: [
-        { processTime: 60, leadTime: 0 }
-      ]
-    });
+      steps: [{ processTime: 60, leadTime: 0 }],
+    })
 
-    expect(result.value).toBe(0);
-  });
+    expect(result.value).toBe(0)
+  })
 
   it('returns null for empty VSM', () => {
-    const result = calculateFlowEfficiency({ steps: [] });
+    const result = calculateFlowEfficiency({ steps: [] })
 
-    expect(result.value).toBeNull();
-  });
-});
+    expect(result.value).toBeNull()
+  })
+})
 ```
 
 ### Testing Calculations
@@ -115,28 +113,28 @@ Test edge cases thoroughly:
 ```javascript
 describe('calculateMetrics', () => {
   it('calculates correctly for standard VSM', () => {
-    const vsm = createMockVSM({ stepCount: 5 });
-    const metrics = calculateMetrics(vsm);
+    const vsm = createMockVSM({ stepCount: 5 })
+    const metrics = calculateMetrics(vsm)
 
-    expect(metrics.totalLeadTime).toBe(240);
-    expect(metrics.flowEfficiency).toBeCloseTo(0.25, 2);
-  });
+    expect(metrics.totalLeadTime).toBe(240)
+    expect(metrics.flowEfficiency).toBeCloseTo(0.25, 2)
+  })
 
   it('handles empty VSM', () => {
-    const vsm = createMockVSM({ stepCount: 0 });
-    const metrics = calculateMetrics(vsm);
+    const vsm = createMockVSM({ stepCount: 0 })
+    const metrics = calculateMetrics(vsm)
 
-    expect(metrics.totalLeadTime).toBe(0);
-    expect(metrics.flowEfficiency).toBe(0);
-  });
+    expect(metrics.totalLeadTime).toBe(0)
+    expect(metrics.flowEfficiency).toBe(0)
+  })
 
   it('handles single step VSM', () => {
-    const vsm = createMockVSM({ stepCount: 1 });
-    const metrics = calculateMetrics(vsm);
+    const vsm = createMockVSM({ stepCount: 1 })
+    const metrics = calculateMetrics(vsm)
 
-    expect(metrics.totalLeadTime).toBeGreaterThan(0);
-  });
-});
+    expect(metrics.totalLeadTime).toBeGreaterThan(0)
+  })
+})
 ```
 
 ## Integration Tests
@@ -190,29 +188,29 @@ Simulations require deterministic testing with controlled inputs:
 ```javascript
 describe('workFlowSimulation', () => {
   it('moves work items through steps correctly', () => {
-    const vsm = createMockVSM();
-    const config = { workItemCount: 10, ticks: 100 };
+    const vsm = createMockVSM()
+    const config = { workItemCount: 10, ticks: 100 }
 
-    const result = runSimulation(vsm, config);
+    const result = runSimulation(vsm, config)
 
-    expect(result.completedItems).toBe(10);
-    expect(result.averageCycleTime).toBeGreaterThan(0);
-  });
+    expect(result.completedItems).toBe(10)
+    expect(result.averageCycleTime).toBeGreaterThan(0)
+  })
 
   it('respects queue limits', () => {
-    const vsm = createMockVSM({ queueLimit: 3 });
-    const config = { workItemCount: 10, ticks: 50 };
+    const vsm = createMockVSM({ queueLimit: 3 })
+    const config = { workItemCount: 10, ticks: 50 }
 
-    const result = runSimulation(vsm, config);
+    const result = runSimulation(vsm, config)
 
     // Check no queue exceeded limit during simulation
-    result.history.forEach(state => {
-      state.stepStates.forEach(stepState => {
-        expect(stepState.queue.length).toBeLessThanOrEqual(3);
-      });
-    });
-  });
-});
+    result.history.forEach((state) => {
+      state.stepStates.forEach((stepState) => {
+        expect(stepState.queue.length).toBeLessThanOrEqual(3)
+      })
+    })
+  })
+})
 ```
 
 ## Test Commands
@@ -264,5 +262,29 @@ npm run test:e2e:baseline   # runs --update-snapshots inside the pinned image
 Commit the updated `tests/e2e/**/*-snapshots/*.png` files. Keep the image tag in
 `test:e2e:baseline` and `.github/workflows/ci.yml` in sync with the
 `@playwright/test` version in `package.json`.
+
+**Server mode.** In CI (`CI` set) Playwright serves the production build with
+`vite preview`; without `CI` it uses the dev server, which baseline regeneration
+runs. The two rendered the same on the last check (all visual tests passed
+against the preview server with baselines made on the dev server), but nothing
+enforces that. After regenerating baselines, confirm them against the production
+build in the pinned image.
+
+On a Mac, `test:e2e:baseline` mounts the host `node_modules`, which has no Linux
+build of esbuild or rollup, so neither the dev server nor a build starts in the
+container. Work from a copy of the repo and let the container run `npm ci`. The
+image's Node (v24.13.0 at v1.58.2) matches `.nvmrc`. To regenerate, then to
+confirm against the production build:
+
+```bash
+rsync -a --exclude node_modules --exclude dist --exclude .git ./ /tmp/visualcheck/
+docker run --rm --ipc=host -v /tmp/visualcheck:/work -w /work \
+  mcr.microsoft.com/playwright:v<version>-noble sh -c \
+  'npm ci && npx playwright test visual.spec.js --update-snapshots'
+# copy the updated tests/e2e/visual.spec.js-snapshots/*.png back, then:
+docker run --rm --ipc=host -e CI=1 -v /tmp/visualcheck:/work -w /work \
+  mcr.microsoft.com/playwright:v<version>-noble sh -c \
+  'npm run build && npm run build:standalone && npx playwright test visual.spec.js'
+```
 
 Run the suite locally (against your own browsers) with `npm run test:e2e`.
