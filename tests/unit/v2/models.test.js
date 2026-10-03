@@ -10,6 +10,7 @@ import {
 } from '../../../src/models/v2/reworkPath.js'
 import { createMapVersion } from '../../../src/models/v2/mapVersion.js'
 import {
+  activeVersionOf,
   BLANK_NAME_MESSAGE,
   createValueStream,
   displayName,
@@ -703,6 +704,24 @@ describe('copyValueStream', () => {
     expect(copy.versions[0].steps.map((step) => step.originStepId)).toEqual(
       source.versions[0].steps.map(() => null)
     )
+  })
+})
+
+describe('activeVersionOf', () => {
+  it('is the version the stream is being edited in', () => {
+    const stream = withFutureState(referenceStream())
+    const [current, future] = stream.versions
+
+    expect(activeVersionOf(stream)).toBe(current)
+    expect(activeVersionOf({ ...stream, activeVersionId: future.id })).toBe(
+      future
+    )
+  })
+
+  it('is undefined when the stream names a version it does not have', () => {
+    expect(
+      activeVersionOf({ ...referenceStream(), activeVersionId: 'gone' })
+    ).toBeUndefined()
   })
 })
 

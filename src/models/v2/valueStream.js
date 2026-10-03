@@ -89,3 +89,11 @@ export const nameOrUntitled = (name) => normalizeName(name) || UNTITLED_NAME
  * @returns {string} The trimmed name, or "Untitled value stream" when blank
  */
 export const displayName = (stream) => nameOrUntitled(stream.name)
+
+/**
+ * The version the user is working on: the one `activeVersionId` names.
+ * @param {{versions: Object[], activeVersionId: string}} stream - A value stream, or a copy of one
+ * @returns {Object|undefined} The map version, or undefined when the stream names one it does not have
+ */
+export const activeVersionOf = (stream) =>
+  stream.versions.find((version) => version.id === stream.activeVersionId)

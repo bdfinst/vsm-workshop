@@ -1,5 +1,9 @@
 import { STAGE_NAMES } from '../../models/v2/constants.js'
-import { displayName, isUnnamed } from '../../models/v2/valueStream.js'
+import {
+  activeVersionOf,
+  displayName,
+  isUnnamed,
+} from '../../models/v2/valueStream.js'
 import {
   formatDayMonth,
   formatRelativeTime,
@@ -31,7 +35,7 @@ const stageName = (stage) => {
  *   be read is left out (null) rather than failing.
  */
 export const streamSummary = (stream, now) => {
-  const version = stream.versions.find((v) => v.id === stream.activeVersionId)
+  const version = activeVersionOf(stream)
   const stepCount = version?.steps.length ?? 0
   const unnamed = isUnnamed(stream)
 

@@ -34,7 +34,7 @@ import {
   pathTouchesStep,
 } from '../../models/v2/reworkPath.js'
 import { refuse } from '../../models/v2/result.js'
-import { nameEdit } from '../../models/v2/valueStream.js'
+import { activeVersionOf, nameEdit } from '../../models/v2/valueStream.js'
 
 const firstMessage = ({ errors }) => Object.values(errors)[0]
 
@@ -109,9 +109,7 @@ export const createValueStreamStore = ({ stream, persist }) => {
   // step is always a handoff), so going back to team restores it.
   const handoffBeforeOutside = {}
 
-  const activeVersion = $derived(
-    current.versions.find((version) => version.id === current.activeVersionId)
-  )
+  const activeVersion = $derived(activeVersionOf(current))
   const metrics = $derived(calculateMetrics(activeVersion))
   // What the time ladder draws that does not depend on the pane: minutes,
   // encodings and the flags already in `metrics`. Components size it for their
@@ -137,7 +135,7 @@ export const createValueStreamStore = ({ stream, persist }) => {
   // refuse, or extra fields for the result. The copy must then pass validation.
   const editVersion = (change) => {
     const draft = $state.snapshot(current)
-    const version = draft.versions.find((v) => v.id === draft.activeVersionId)
+    const version = activeVersionOf(draft)
     const outcome = change(version, draft)
     if (outcome?.error) return refuse(outcome.error)
 
@@ -335,7 +333,7 @@ export const createValueStreamStore = ({ stream, persist }) => {
   // A canvas drag: saved, but not an undo step and not an edit that counts.
   const updateStepPosition = (stepId, position) => {
     const draft = $state.snapshot(current)
-    const version = draft.versions.find((v) => v.id === draft.activeVersionId)
+    const version = activeVersionOf(draft)
     const index = indexOfStep(version, stepId)
     if (index === -1) return refuse(STEP_MISSING_MESSAGE)
     version.steps[index] = { ...version.steps[index], position }
