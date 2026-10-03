@@ -3,8 +3,14 @@ import { flushSync } from 'svelte'
 import { performance } from 'node:perf_hooks'
 import { calculateMetrics } from '../../../src/utils/calculations/v2/index.js'
 import { validateVersion } from '../../../src/utils/validation/v2/versionValidator.js'
+import { MIN_SCALED_BOX_WIDTH } from '../../../src/utils/ui/ladderGeometry.js'
 import { LADDER_MODE, sizeLadder } from '../../../src/utils/ui/ladderLayout.js'
 import { ladderModel } from '../../../src/utils/ui/ladderModel.js'
+import {
+  labelOverhangFor,
+  layoutLabels,
+  pixelsPerMinuteToFit,
+} from '../../../src/utils/ui/ladderView.js'
 import {
   openStream,
   pathBetween,
@@ -22,7 +28,7 @@ const STEP_COUNT = 40
 const PATHS_PER_STEP = 2
 const WARM_UP_RUNS = 5
 const MEASURED_RUNS = 20
-const PIXELS_PER_MINUTE = 0.1
+const SCROLLER_WIDTH = 1200 // pixels the ladder is fitted into
 
 // 40 team steps (Intake first) at %C/A 90, each with two rework paths that go backward
 // (to the step before it and to Intake; the first steps can only go back to
@@ -87,12 +93,18 @@ describe('recalculation budget', () => {
   it('metrics plus layout take under 200 ms (median of 20 runs)', () => {
     const version = bigVersion()
 
+    // Everything LadderMap derives after an edit: the model, the fit, the
+    // sized boxes and the label layout.
     const typicalMs = medianMs(() => {
       const { flags } = calculateMetrics(version)
-      sizeLadder(ladderModel(version, flags), {
+      const model = ladderModel(version, flags)
+      const availableWidth =
+        SCROLLER_WIDTH - labelOverhangFor(model.steps, MIN_SCALED_BOX_WIDTH)
+      const { steps } = sizeLadder(model, {
         mode: LADDER_MODE.SCALED,
-        pixelsPerMinute: PIXELS_PER_MINUTE,
+        pixelsPerMinute: pixelsPerMinuteToFit(model, availableWidth),
       })
+      layoutLabels(steps)
     })
 
     expect(typicalMs).toBeLessThan(BUDGET_MS)
