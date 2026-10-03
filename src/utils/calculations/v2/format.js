@@ -6,7 +6,7 @@ import {
 
 const MINUTES_PER_HOUR = 60
 const EN_DASH = '–'
-const NOT_A_NUMBER = Object.freeze({ error: 'Enter a number' })
+const NOT_A_NUMBER_RESULT = Object.freeze({ error: 'Enter a number' })
 
 // Places shown when a duration is formatted for reading.
 const DURATION_DISPLAY_DECIMALS = 1
@@ -66,14 +66,14 @@ const durationParts = (minutes, workdayHours) => {
       : DURATION_UNIT.DAYS
   return {
     unit,
-    amount: toRoundedFixed(
+    amountText: toRoundedFixed(
       minutes / minutesPerUnit(unit, workdayHours),
       DURATION_DISPLAY_DECIMALS
     ),
   }
 }
 
-const partsText = ({ amount, unit }) => `${amount} ${unit}`
+const partsText = ({ amountText, unit }) => `${amountText} ${unit}`
 
 /**
  * Format minutes as hours (under one working day) or working days.
@@ -102,7 +102,7 @@ export const formatDurationRange = ({ low, high }, workdayHours) => {
   )
   if (partsText(lowEnd) === partsText(highEnd)) return partsText(lowEnd)
   return lowEnd.unit === highEnd.unit
-    ? `${lowEnd.amount}${EN_DASH}${highEnd.amount} ${lowEnd.unit}`
+    ? `${lowEnd.amountText}${EN_DASH}${highEnd.amountText} ${lowEnd.unit}`
     : `${partsText(lowEnd)}${EN_DASH}${partsText(highEnd)}`
 }
 
@@ -170,10 +170,10 @@ const parseNumber = (value) => {
 export const toMinutes = (value, unit, workdayHours) => {
   const perUnit = minutesPerUnit(unit, workdayHours)
   const amount = parseNumber(value)
-  if (!Number.isFinite(amount)) return NOT_A_NUMBER
+  if (!Number.isFinite(amount)) return NOT_A_NUMBER_RESULT
   // A figure too large to scale overflows to Infinity, which is not minutes.
   const minutes = roundTo(amount * perUnit, 0)
-  return Number.isFinite(minutes) ? { minutes } : NOT_A_NUMBER
+  return Number.isFinite(minutes) ? { minutes } : NOT_A_NUMBER_RESULT
 }
 
 /**

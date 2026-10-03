@@ -24,13 +24,17 @@ const validateCommon = (step, { set }) => {
   }
 }
 
+const hasRange = (range) => range?.min != null || range?.max != null
+
 const validateOutsideTimes = (step, { set }) => {
   set(
     'elapsedTime',
-    validateTimeRange(step.elapsedTime, {
-      label: 'Elapsed time',
-      mustBePositive: true,
-    })
+    hasRange(step.elapsedTime)
+      ? 'Elapsed time has one value, not a range'
+      : validateTimeRange(step.elapsedTime, {
+          label: 'Elapsed time',
+          mustBePositive: true,
+        })
   )
   if (step.processTime) {
     set('processTime', 'An outside step has no process time')

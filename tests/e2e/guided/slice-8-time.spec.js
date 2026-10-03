@@ -1,13 +1,12 @@
 import { createMapVersion } from '../../../src/models/v2/mapVersion.js'
 import { createStep } from '../../../src/models/v2/step.js'
+import { STAGE_NUMBER } from '../../../src/models/v2/constants.js'
 import { test, expect, savedWorkspace, workspaceAtStage } from './fixtures.js'
-
-const TIME_STAGE = 3
 
 // "Given a working day of 8 hours": the value stream's default.
 const WORKDAY_LABEL = 'working days (8 h)'
-const HOUR = 60
-const DAY = 8 * HOUR
+const HOUR_MINUTES = 60
+const WORKDAY_MINUTES = 8 * HOUR_MINUTES
 
 // What a `timed` workspace gives each step, in minutes.
 const TYPICAL_TIMES = Object.freeze({
@@ -46,10 +45,13 @@ const workspaceOnTime = ({
       createStep({ name, kind: 'outside', ...outsideTimes, ...times[name] })
     ),
   ]
-  return workspaceAtStage(TIME_STAGE, {
+  return workspaceAtStage(STAGE_NUMBER.TIME, {
     workdayHours,
     versions: [createMapVersion({ steps })],
-    session: { activeStage: TIME_STAGE, furthestStage: TIME_STAGE },
+    session: {
+      activeStage: STAGE_NUMBER.TIME,
+      furthestStage: STAGE_NUMBER.TIME,
+    },
   })
 }
 
@@ -61,12 +63,12 @@ const savedStep = async (page, name) =>
 
 /**
  * Type a duration into one of a row's time fields, then leave the last field
- * so the edit is saved. `kind` is "process", "wait" or "elapsed"; `unit` is
+ * so the edit is saved. `timeField` is "process", "wait" or "elapsed"; `unit` is
  * "minutes", "hours" or "days"; the unit is set before the numbers, which are
  * read in it.
  */
-const enterTime = async (row, kind, { typ, min, max, unit }) => {
-  const id = `${kind}-time`
+const enterTime = async (row, timeField, { typ, min, max, unit }) => {
+  const id = `${timeField}-time`
   if (unit) await row.getByTestId(`${id}-unit-select`).selectOption(unit)
   const fields = [
     [`${id}-input`, typ],
@@ -98,7 +100,10 @@ test.describe('The Time stage', () => {
 
     await expect
       .poll(() => savedStep(page, 'Development'))
-      .toMatchObject({ processTime: { typ: DAY }, waitTime: { typ: 2 * DAY } })
+      .toMatchObject({
+        processTime: { typ: WORKDAY_MINUTES },
+        waitTime: { typ: 2 * WORKDAY_MINUTES },
+      })
     await expect(
       development.getByTestId('wait-time-unit-select').locator('option:checked')
     ).toHaveText(WORKDAY_LABEL)
@@ -119,7 +124,7 @@ test.describe('The Time stage', () => {
     ).toHaveText('working days (7.5 h)')
     await expect
       .poll(() => savedStep(page, 'Development'))
-      .toMatchObject({ waitTime: { typ: 2 * 7.5 * HOUR } })
+      .toMatchObject({ waitTime: { typ: 2 * 7.5 * HOUR_MINUTES } })
   })
 
   test("Intake's times are editable", async ({ page, seed }) => {
@@ -131,7 +136,10 @@ test.describe('The Time stage', () => {
 
     await expect
       .poll(() => savedStep(page, 'Intake'))
-      .toMatchObject({ processTime: { typ: HOUR }, waitTime: { typ: 5 * DAY } })
+      .toMatchObject({
+        processTime: { typ: HOUR_MINUTES },
+        waitTime: { typ: 5 * WORKDAY_MINUTES },
+      })
   })
 
   test('Outside step takes one elapsed time', async ({ page, seed }) => {
@@ -158,49 +166,60 @@ test.describe('The Time stage', () => {
     await expect
       .poll(() => savedStep(page, 'Code review'))
       .toMatchObject({
-        waitTime: { min: DAY, typ: 2 * DAY, max: 5 * DAY },
+        waitTime: {
+          min: WORKDAY_MINUTES,
+          typ: 2 * WORKDAY_MINUTES,
+          max: 5 * WORKDAY_MINUTES,
+        },
       })
   })
 
   const INVALID_INPUTS = [
     {
-      input: 'process time -1 minutes',
+      description: 'process time -1 minutes',
       message: "Process time can't be negative",
-      kind: 'process',
+      timeField: 'process',
       testid: 'process-time',
       entry: { typ: '-1', unit: 'minutes' },
       saved: TYPICAL_TIMES.team,
     },
     {
-      input: 'wait time "abc"',
+      description: 'wait time "abc"',
       message: 'Enter a number',
-      kind: 'wait',
+      timeField: 'wait',
       testid: 'wait-time',
       entry: { typ: 'abc' },
       saved: TYPICAL_TIMES.team,
     },
     {
-      input: 'wait time min 3 days and typical 2',
+      description: 'wait time min 3 days and typical 2',
       message: "Min can't be more than typical",
-      kind: 'wait',
+      timeField: 'wait',
       testid: 'wait-time-min',
       entry: { typ: '2', min: '3', unit: 'days' },
       // The valid typical is saved as it is left; the refused min is not.
-      saved: { ...TYPICAL_TIMES.team, waitTime: { typ: 2 * DAY } },
+      saved: { ...TYPICAL_TIMES.team, waitTime: { typ: 2 * WORKDAY_MINUTES } },
     },
     {
-      input: 'wait time typical 5 days and max 2',
+      description: 'wait time typical 5 days and max 2',
       message: "Max can't be less than typical",
-      kind: 'wait',
+      timeField: 'wait',
       testid: 'wait-time-max',
       entry: { typ: '5', max: '2', unit: 'days' },
       // The valid typical is saved as it is left; the refused max is not.
-      saved: { ...TYPICAL_TIMES.team, waitTime: { typ: 5 * DAY } },
+      saved: { ...TYPICAL_TIMES.team, waitTime: { typ: 5 * WORKDAY_MINUTES } },
     },
   ]
 
-  for (const { input, message, kind, testid, entry, saved } of INVALID_INPUTS) {
-    test(`Invalid times are refused with a reason: ${input}`, async ({
+  for (const {
+    description,
+    message,
+    timeField,
+    testid,
+    entry,
+    saved,
+  } of INVALID_INPUTS) {
+    test(`Invalid times are refused with a reason: ${description}`, async ({
       page,
       seed,
     }) => {
@@ -210,7 +229,7 @@ test.describe('The Time stage', () => {
       await expect(development).toBeVisible()
       await expect(nextButton(page)).toBeEnabled()
 
-      await enterTime(development, kind, entry)
+      await enterTime(development, timeField, entry)
 
       await expect(development.getByTestId(`${testid}-error`)).toHaveText(
         message
@@ -298,49 +317,21 @@ test.describe('The Time stage', () => {
 
     await expect
       .poll(() => savedStep(page, 'Security review'))
-      .toMatchObject({ elapsedTime: { typ: 2 * DAY } })
+      .toMatchObject({ elapsedTime: { typ: 2 * WORKDAY_MINUTES } })
   })
 
   // Wiring check, not a Gherkin scenario
-  test('A min and max stored but not shown never refuse an edit to the typical time', async ({
+  test('Stored times open in the unit they read best in', async ({
     page,
     seed,
   }) => {
     await seed(
       workspaceOnTime({
-        outside: ['Security review'],
-        timed: true,
         times: {
-          'Security review': {
-            elapsedTime: { typ: 4 * HOUR, min: 2 * HOUR, max: 8 * HOUR },
+          Development: {
+            waitTime: { typ: 2 * WORKDAY_MINUTES },
+            processTime: { typ: 1.5 * HOUR_MINUTES },
           },
-        },
-      })
-    )
-    const security = rowOf(page, 'Security review')
-    await expect(security.getByRole('textbox')).toHaveCount(1)
-
-    // Below the hidden min and, in the next edit, above the hidden max.
-    await enterTime(security, 'elapsed', { typ: '1', unit: 'hours' })
-    const savedElapsed = async () =>
-      (await savedStep(page, 'Security review'))?.elapsedTime
-    await expect.poll(savedElapsed).toEqual({ typ: HOUR })
-    await enterTime(security, 'elapsed', { typ: '10' })
-
-    await expect.poll(savedElapsed).toEqual({ typ: 10 * HOUR })
-    await expect(page.getByTestId('time-refusal')).toHaveCount(0)
-    await expect(nextButton(page)).toBeEnabled()
-  })
-
-  // Wiring check, not a Gherkin scenario
-  test('Stored times open in the unit they read best in, and a unit switch only re-reads them', async ({
-    page,
-    seed,
-  }) => {
-    await seed(
-      workspaceOnTime({
-        times: {
-          Development: { waitTime: { typ: 2 * DAY }, processTime: { typ: 90 } },
         },
       })
     )
@@ -354,13 +345,37 @@ test.describe('The Time stage', () => {
       '1.5'
     )
     await expect(selected('process-time')).toHaveText('hours')
+  })
+
+  // Wiring check, not a Gherkin scenario
+  test('A unit switch only re-reads the stored time', async ({
+    page,
+    seed,
+  }) => {
+    await seed(
+      workspaceOnTime({
+        times: { Development: { waitTime: { typ: 2 * WORKDAY_MINUTES } } },
+      })
+    )
+    const development = rowOf(page, 'Development')
 
     await development.getByTestId('wait-time-unit-select').selectOption('hours')
 
-    await expect(development.getByTestId('wait-time-input')).toHaveValue('16')
+    await expect(development.getByTestId('wait-time-input')).toHaveValue(
+      String((2 * WORKDAY_MINUTES) / HOUR_MINUTES)
+    )
+    // A later edit landing proves the app had saved by now, so "unchanged" is
+    // not just "not saved yet".
+    await enterTime(rowOf(page, 'Intake'), 'process', {
+      typ: '5',
+      unit: 'minutes',
+    })
     await expect
-      .poll(() => savedStep(page, 'Development'))
-      .toMatchObject({ waitTime: { typ: 2 * DAY } })
+      .poll(() => savedStep(page, 'Intake'))
+      .toMatchObject({ processTime: { typ: 5 } })
+    expect((await savedStep(page, 'Development')).waitTime).toEqual({
+      typ: 2 * WORKDAY_MINUTES,
+    })
   })
 
   test('Source flag per step', async ({ page, seed }) => {

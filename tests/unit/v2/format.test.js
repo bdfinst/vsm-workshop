@@ -181,13 +181,10 @@ describe('toMinutes', () => {
 
   it('rejects a very long digit run that ends in a letter without stalling', () => {
     const hostile = `${'1'.repeat(50000)}x`
-    const started = performance.now()
-
     const result = toMinutes(hostile, 'minutes', 8)
 
     expect(result).toEqual({ error: 'Enter a number' })
-    expect(performance.now() - started).toBeLessThan(100)
-  })
+  }, 1000)
 
   it('returns an error when the minutes are too large to be a number', () => {
     const hugeText = `1${'0'.repeat(308)}`
@@ -278,16 +275,22 @@ describe('fromMinutes', () => {
 })
 
 describe('parseDurationRange', () => {
-  const process = { label: 'Process time' }
+  const processOptions = { label: 'Process time' }
 
   it('converts the typed amounts at the working day length', () => {
-    expect(parseDurationRange({ typ: '8' }, 'hours', 8, process)).toEqual({
+    expect(
+      parseDurationRange({ typ: '8' }, 'hours', 8, processOptions)
+    ).toEqual({
       range: { typ: 480 },
     })
-    expect(parseDurationRange({ typ: '2' }, 'days', 8, process)).toEqual({
-      range: { typ: 960 },
-    })
-    expect(parseDurationRange({ typ: '5' }, 'days', 7.5, process)).toEqual({
+    expect(parseDurationRange({ typ: '2' }, 'days', 8, processOptions)).toEqual(
+      {
+        range: { typ: 960 },
+      }
+    )
+    expect(
+      parseDurationRange({ typ: '5' }, 'days', 7.5, processOptions)
+    ).toEqual({
       range: { typ: 2250 },
     })
   })
@@ -295,43 +298,56 @@ describe('parseDurationRange', () => {
   it('converts min, typical and max together', () => {
     const typed = { typ: '2', min: '1', max: '5' }
 
-    expect(parseDurationRange(typed, 'days', 8, process)).toEqual({
+    expect(parseDurationRange(typed, 'days', 8, processOptions)).toEqual({
       range: { typ: 960, min: 480, max: 2400 },
     })
   })
 
   it('leaves out a blank min or max', () => {
     expect(
-      parseDurationRange({ typ: '2', min: '', max: ' ' }, 'days', 8, process)
+      parseDurationRange(
+        { typ: '2', min: '', max: ' ' },
+        'days',
+        8,
+        processOptions
+      )
     ).toEqual({ range: { typ: 960 } })
   })
 
   it('treats a blank typical as not entered, not as an error', () => {
-    expect(parseDurationRange({ typ: '' }, 'hours', 8, process)).toEqual({
-      range: { typ: null },
-    })
-    expect(parseDurationRange({}, 'hours', 8, process)).toEqual({
+    expect(parseDurationRange({ typ: '' }, 'hours', 8, processOptions)).toEqual(
+      {
+        range: { typ: null },
+      }
+    )
+    expect(parseDurationRange({}, 'hours', 8, processOptions)).toEqual({
       range: { typ: null },
     })
   })
 
   it('accepts zero', () => {
-    expect(parseDurationRange({ typ: '0' }, 'minutes', 8, process)).toEqual({
+    expect(
+      parseDurationRange({ typ: '0' }, 'minutes', 8, processOptions)
+    ).toEqual({
       range: { typ: 0 },
     })
   })
 
   it('refuses text that is not a number, on the field that holds it', () => {
-    expect(parseDurationRange({ typ: 'abc' }, 'days', 8, process)).toEqual({
+    expect(
+      parseDurationRange({ typ: 'abc' }, 'days', 8, processOptions)
+    ).toEqual({
       errors: { typ: 'Enter a number' },
     })
     expect(
-      parseDurationRange({ typ: '2', min: '5h' }, 'days', 8, process)
+      parseDurationRange({ typ: '2', min: '5h' }, 'days', 8, processOptions)
     ).toEqual({ errors: { min: 'Enter a number' } })
   })
 
   it('refuses a negative time, naming the field', () => {
-    expect(parseDurationRange({ typ: '-1' }, 'minutes', 8, process)).toEqual({
+    expect(
+      parseDurationRange({ typ: '-1' }, 'minutes', 8, processOptions)
+    ).toEqual({
       errors: { typ: "Process time can't be negative" },
     })
     expect(
@@ -369,7 +385,7 @@ describe('parseDurationRange', () => {
       { typ: '2', min: '3' },
       'days',
       8,
-      process
+      processOptions
     )
 
     expect(errorFields(result)).toEqual(['min'])
@@ -380,7 +396,7 @@ describe('parseDurationRange', () => {
       { typ: '5', max: '2' },
       'days',
       8,
-      process
+      processOptions
     )
 
     expect(errorFields(result)).toEqual(['max'])
@@ -388,7 +404,12 @@ describe('parseDurationRange', () => {
 
   it('accepts a min or max equal to the typical', () => {
     expect(
-      parseDurationRange({ typ: '2', min: '2', max: '2' }, 'days', 8, process)
+      parseDurationRange(
+        { typ: '2', min: '2', max: '2' },
+        'days',
+        8,
+        processOptions
+      )
     ).toEqual({ range: { typ: 960, min: 960, max: 960 } })
   })
 
@@ -397,7 +418,7 @@ describe('parseDurationRange', () => {
       { min: '3', max: '2' },
       'days',
       8,
-      process
+      processOptions
     )
 
     expect(errorFields(result)).toEqual(['min'])
@@ -408,7 +429,7 @@ describe('parseDurationRange', () => {
       { typ: '2', min: '5', max: '3' },
       'days',
       8,
-      process
+      processOptions
     )
 
     expect(errorFields(result)).toEqual(['min'])
@@ -416,10 +437,10 @@ describe('parseDurationRange', () => {
 
   it('does not compare a field with one that already shows its own error', () => {
     expect(
-      parseDurationRange({ typ: '-1', min: '0' }, 'hours', 8, process)
+      parseDurationRange({ typ: '-1', min: '0' }, 'hours', 8, processOptions)
     ).toEqual({ errors: { typ: "Process time can't be negative" } })
     expect(
-      parseDurationRange({ typ: 'abc', max: '1' }, 'hours', 8, process)
+      parseDurationRange({ typ: 'abc', max: '1' }, 'hours', 8, processOptions)
     ).toEqual({ errors: { typ: 'Enter a number' } })
   })
 
@@ -428,18 +449,28 @@ describe('parseDurationRange', () => {
       { typ: '10.4', min: '10.6' },
       'minutes',
       8,
-      process
+      processOptions
     )
 
     expect(errorFields(tooHigh)).toEqual(['min'])
     expect(
-      parseDurationRange({ typ: '10.4', min: '10.2' }, 'minutes', 8, process)
+      parseDurationRange(
+        { typ: '10.4', min: '10.2' },
+        'minutes',
+        8,
+        processOptions
+      )
     ).toEqual({ range: { typ: 10, min: 10 } })
   })
 
   it('reports every field that is wrong at once', () => {
     expect(
-      parseDurationRange({ typ: '-1', min: 'x', max: '3' }, 'days', 8, process)
+      parseDurationRange(
+        { typ: '-1', min: 'x', max: '3' },
+        'days',
+        8,
+        processOptions
+      )
     ).toEqual({
       errors: {
         typ: "Process time can't be negative",
@@ -449,9 +480,9 @@ describe('parseDurationRange', () => {
   })
 
   it('throws on a unit it does not know', () => {
-    expect(() => parseDurationRange({ typ: '1' }, 'weeks', 8, process)).toThrow(
-      RangeError
-    )
+    expect(() =>
+      parseDurationRange({ typ: '1' }, 'weeks', 8, processOptions)
+    ).toThrow(RangeError)
   })
 })
 

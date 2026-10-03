@@ -74,6 +74,15 @@ describe('validateTimeRange values', () => {
     )
   })
 
+  it.each([NaN, Infinity, -Infinity])(
+    'asks for whole minutes when a value is %s',
+    (typ) => {
+      expect(validateTimeRange({ typ }, wait)).toBe(
+        'Wait time must be a whole number of minutes, 0 or more'
+      )
+    }
+  )
+
   it('accepts zero unless the time must be positive', () => {
     expect(validateTimeRange({ typ: 0 }, wait)).toBeNull()
   })
@@ -95,6 +104,12 @@ describe('validateTimeRange values', () => {
 
     it('asks for whole minutes when a value above zero has a fraction', () => {
       expect(validateTimeRange({ typ: 1.5 }, elapsed)).toBe(
+        'Elapsed time must be a whole number of minutes, above 0'
+      )
+    })
+
+    it('asks for whole minutes, not "more than 0", when a value is NaN', () => {
+      expect(validateTimeRange({ typ: NaN }, elapsed)).toBe(
         'Elapsed time must be a whole number of minutes, above 0'
       )
     })

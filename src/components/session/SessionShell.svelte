@@ -72,7 +72,6 @@
     shortcutActions[action]()
   }
 
-  // Later slices replace the remaining placeholders with the stages' own components.
   function handleNext() {
     store.goToStage(stage + 1)
   }

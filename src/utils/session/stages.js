@@ -131,14 +131,14 @@ const TIME_FIELD_NOUNS = {
 /**
  * The typical times still to enter. Zero counts as entered.
  * @param {{name: string, kind: string}[]} steps - Step rows in order, Intake first
- * @returns {{stepName: string, noun: string}[]} In step order, `noun` being how the gate names the time ("process time"); a team step asks for process then wait time, an outside step for elapsed time
+ * @returns {{stepLabel: string, noun: string}[]} In step order, `noun` being how the gate names the time ("process time"); a team step asks for process then wait time, an outside step for elapsed time
  */
 export const missingTimeFields = (steps) =>
   steps.flatMap((step, index) =>
     timeFieldsOf(step.kind)
       .filter((field) => step[field]?.typ == null)
       .map((field) => ({
-        stepName: stepLabelOf(step.name, index + 1),
+        stepLabel: stepLabelOf(step.name, index + 1),
         noun: TIME_FIELD_NOUNS[field],
       }))
   )
@@ -155,7 +155,7 @@ export const timeReason = (steps, hasInvalid) => {
   const missing = missingTimeFields(steps)
   if (missing.length === 0) return null
   return `Add ${joinWithAnd(
-    missing.map(({ stepName, noun }) => `the ${noun} for "${stepName}"`)
+    missing.map(({ stepLabel, noun }) => `the ${noun} for "${stepLabel}"`)
   )}`
 }
 

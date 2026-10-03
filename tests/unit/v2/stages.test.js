@@ -249,10 +249,10 @@ describe('stepsReason', () => {
 })
 
 describe('missingTimeFields', () => {
-  const team = (name, process, wait) => ({
+  const team = (name, processTypical, wait) => ({
     name,
     kind: 'team',
-    processTime: { typ: process },
+    processTime: { typ: processTypical },
     waitTime: { typ: wait },
   })
   const outside = (name, elapsed) => ({
@@ -271,21 +271,21 @@ describe('missingTimeFields', () => {
     const steps = [team('Intake', null, 5), team('Deploy', 10, null)]
 
     expect(missingTimeFields(steps)).toEqual([
-      { stepName: 'Intake', noun: 'process time' },
-      { stepName: 'Deploy', noun: 'wait time' },
+      { stepLabel: 'Intake', noun: 'process time' },
+      { stepLabel: 'Deploy', noun: 'wait time' },
     ])
   })
 
   it('asks a team step for process time then wait time', () => {
     expect(missingTimeFields([team('Build', null, null)])).toEqual([
-      { stepName: 'Build', noun: 'process time' },
-      { stepName: 'Build', noun: 'wait time' },
+      { stepLabel: 'Build', noun: 'process time' },
+      { stepLabel: 'Build', noun: 'wait time' },
     ])
   })
 
   it('asks an outside step for its elapsed time only', () => {
     expect(missingTimeFields([outside('Security review', null)])).toEqual([
-      { stepName: 'Security review', noun: 'elapsed time' },
+      { stepLabel: 'Security review', noun: 'elapsed time' },
     ])
   })
 
@@ -298,14 +298,14 @@ describe('missingTimeFields', () => {
     }
 
     expect(missingTimeFields([step])).toEqual([
-      { stepName: 'Build', noun: 'process time' },
+      { stepLabel: 'Build', noun: 'process time' },
     ])
   })
 
   it('calls a step with no name by its position', () => {
     expect(
       missingTimeFields([team('Intake', 1, 1), team(' ', null, 1)])
-    ).toEqual([{ stepName: 'step 2', noun: 'process time' }])
+    ).toEqual([{ stepLabel: 'step 2', noun: 'process time' }])
   })
 
   it.each([
@@ -321,7 +321,7 @@ describe('missingTimeFields', () => {
       }
 
       expect(missingTimeFields([step])).toEqual([
-        { stepName: 'Security review', noun: 'elapsed time' },
+        { stepLabel: 'Security review', noun: 'elapsed time' },
       ])
     }
   )
@@ -335,8 +335,8 @@ describe('missingTimeFields', () => {
     }
 
     expect(missingTimeFields([step])).toEqual([
-      { stepName: 'Build', noun: 'process time' },
-      { stepName: 'Build', noun: 'wait time' },
+      { stepLabel: 'Build', noun: 'process time' },
+      { stepLabel: 'Build', noun: 'wait time' },
     ])
   })
 

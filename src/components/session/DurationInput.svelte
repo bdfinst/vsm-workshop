@@ -6,7 +6,7 @@
     parseDurationRange,
   } from '../../utils/calculations/v2/format.js'
 
-  // DurationInput props: id (prefix for the DOM ids, unique on the page),
+  // DurationInput props: idPrefix (prefix for the DOM ids, unique on the page),
   // testid (prefix for the data-testid attributes), label (what the time is
   // called, for example "Process time"), fieldLabel (what the main field
   // shows instead of the label, when it reads better; the label still names
@@ -21,7 +21,7 @@
   // is saved on blur, Enter or a unit change, never per keystroke, so one edit
   // is one undo step. The parent decides whether the range changed.
   let {
-    id,
+    idPrefix,
     testid,
     label,
     fieldLabel = label,
@@ -106,17 +106,17 @@
 
 {#snippet fieldInput(field, labelText, testidSuffix, srPrefix = '')}
   <div>
-    <label class="block font-medium" for="{id}-{field}">
+    <label class="block font-medium" for="{idPrefix}-{field}">
       {#if srPrefix}<span class="sr-only">{srPrefix} </span>{/if}{labelText}
     </label>
     <input
-      id="{id}-{field}"
+      id="{idPrefix}-{field}"
       type="text"
       inputmode="decimal"
       class={inputClass}
       value={textOf(field)}
       aria-invalid={errors[field] ? 'true' : undefined}
-      aria-describedby={errors[field] ? `${id}-${field}-error` : undefined}
+      aria-describedby={errors[field] ? `${idPrefix}-${field}-error` : undefined}
       data-testid="{testid}{testidSuffix}-input"
       oninput={(event) => handleInput(field, event.currentTarget.value)}
       onblur={handleCommit}
@@ -124,7 +124,7 @@
     />
     {#if errors[field]}
       <p
-        id="{id}-{field}-error"
+        id="{idPrefix}-{field}-error"
         role="alert"
         class="mt-1 text-red-700"
         data-testid="{testid}{testidSuffix}-error"
@@ -142,11 +142,11 @@
     {@render fieldInput('max', 'Max', '-max', label)}
   {/if}
   <div>
-    <label class="block font-medium" for="{id}-unit">
+    <label class="block font-medium" for="{idPrefix}-unit">
       <span class="sr-only">{label} </span>Unit
     </label>
     <select
-      id="{id}-unit"
+      id="{idPrefix}-unit"
       class={inputClass}
       value={unit}
       data-testid="{testid}-unit-select"

@@ -9,6 +9,7 @@
   } from '../../../models/v2/constants.js'
   import { STAGES, timeReason } from '../../../utils/session/stages.js'
   import { stepLabelOf } from '../../../utils/session/stepData.js'
+  import { timeFieldsOf } from '../../../models/v2/step.js'
   import { rowModel } from '../../../utils/ui/rowModel.js'
 
   // TimeStage props: store (the open value stream store), onnext.
@@ -34,15 +35,38 @@
   // The fields whose typed text cannot be saved, by "stepId-field".
   const invalidFields = new SvelteSet()
 
-  // Why the store refused each field's last edit, by the same key. A refused
-  // field keeps its text, so it stays here, and holds Next, until that same
-  // field saves; another field saving does not clear it.
+  // Why the store refused each field's last edit, by the same key, as
+  // { message, holdsNext }. A refused time field keeps its text, so it stays
+  // here, and holds Next, until that same field saves; another field saving
+  // does not clear it. A refused source switch has no text to save, so it
+  // shows but never holds Next.
   const refusals = new SvelteMap()
+
+  // The keys of the fields and source buttons on show. A refusal for anything
+  // else (its step was removed, or switched to the other kind) is dropped, so
+  // it neither shows nor holds Next.
+  let shownKeys = $derived(
+    new Set(
+      rows.flatMap((row) => [
+        keyOf(row, 'timeSource'),
+        ...timeFieldsOf(row.kind).map((field) => keyOf(row, field)),
+      ])
+    )
+  )
+
+  $effect(() => {
+    for (const key of [...refusals.keys()]) {
+      if (!shownKeys.has(key)) refusals.delete(key)
+    }
+  })
 
   // Next waits for every field that cannot be saved, so a value that was
   // refused is never silently skipped.
   let nextReason = $derived(
-    timeReason(rows, invalidFields.size > 0 || refusals.size > 0)
+    timeReason(
+      rows,
+      invalidFields.size > 0 || [...refusals.values()].some((r) => r.holdsNext)
+    )
   )
 
   const createValidityHandler = (key) => (isValid) => {
@@ -50,14 +74,18 @@
     else invalidFields.add(key)
   }
 
-  const isSameRange = (a, b) =>
-    a?.typ === b.typ && a?.min === b.min && a?.max === b.max
+  // A value that was never entered is the same whether stored as a missing
+  // field, null or undefined.
+  const isSameRange = (stored, entered) =>
+    ['typ', 'min', 'max'].every(
+      (field) => (stored?.[field] ?? null) === (entered[field] ?? null)
+    )
 
   // Show why a refused edit was refused, until that field is saved. Returns the
   // result, so the field knows whether to keep its text.
-  function showRefusal(key, result) {
+  function showRefusal(key, result, holdsNext = true) {
     if (result.ok) refusals.delete(key)
-    else refusals.set(key, result.error)
+    else refusals.set(key, { message: result.error, holdsNext })
     return result
   }
 
@@ -76,14 +104,15 @@
   function handleSourceToggle(row) {
     showRefusal(
       keyOf(row, 'timeSource'),
-      store.updateStep(row.id, { timeSource: otherSource(row.timeSource) })
+      store.updateStep(row.id, { timeSource: otherSource(row.timeSource) }),
+      false
     )
   }
 </script>
 
 {#snippet duration(row, field, testid, label, options = {})}
   <DurationInput
-    id="time-{row.id}-{testid}"
+    idPrefix="time-{row.id}-{testid}"
     {testid}
     {label}
     {...options}
@@ -171,7 +200,7 @@
         </li>
       {/each}
     </ol>
-    {#each [...refusals] as [key, message] (key)}
+    {#each [...refusals] as [key, { message }] (key)}
       <p class="mt-4 text-red-700" role="alert" data-testid="time-refusal">
         {message}
       </p>
