@@ -687,6 +687,21 @@ const v1FileWithDev = () =>
     updatedAt: '2024-01-16T10:00:00.000Z',
   })
 
+// The same v1 file with a wait that has to be clamped: lead 30 is below process 60.
+const v1FileWithClampedWait = () =>
+  JSON.stringify({
+    ...JSON.parse(v1FileWithDev()),
+    steps: [
+      createV1Step('Dev', {
+        leadTime: 30,
+        processTime: 60,
+        position: { x: 0, y: 0 },
+      }),
+    ],
+  })
+
+const upgradeNotice = (page) => page.getByTestId('upgrade-notice')
+
 const importError = (page) => page.getByTestId('import-error')
 
 // Opens the file chooser the way the user does, then picks the file in it.
@@ -803,6 +818,73 @@ test.describe('Import and export one value stream (slice 9.3)', () => {
     await openStream(page, 'Checkout delivery')
     await stageButton(page, 'Steps').click()
     await expect.poll(() => stepNames(page)).toEqual(REFERENCE_STEPS)
+  })
+
+  test('Importing a v1 file lists what upgrading it changed', async ({
+    page,
+    seed,
+  }) => {
+    await startOnHome(page, seed)
+    await expect(upgradeNotice(page)).toHaveCount(0)
+
+    await importFromHome(page, 'old-map.json', v1FileWithClampedWait())
+
+    await expect(
+      upgradeNotice(page).getByRole('heading', {
+        name: 'Map upgraded to the new format',
+      })
+    ).toBeVisible()
+    await expect(upgradeNotice(page).getByRole('listitem')).toHaveText([
+      'Intake step added',
+      'Wait time clamped for "Dev"',
+    ])
+  })
+
+  test('Importing a v1 file from the File menu lists what upgrading it changed', async ({
+    page,
+    seed,
+  }) => {
+    await startOnHome(page, seed)
+    await openStream(page, 'Checkout delivery')
+
+    await importFromFileMenu(page, 'old-map.json', v1FileWithClampedWait())
+
+    await expect(upgradeNotice(page).getByRole('listitem')).toHaveText([
+      'Intake step added',
+      'Wait time clamped for "Dev"',
+    ])
+  })
+
+  test('A second v1 import shows its notice again after the first was dismissed', async ({
+    page,
+    seed,
+  }) => {
+    await startOnHome(page, seed)
+    await importFromHome(page, 'old-map.json', v1FileWithClampedWait())
+    await upgradeNotice(page).getByRole('button', { name: 'Dismiss' }).click()
+    await expect(upgradeNotice(page)).toHaveCount(0)
+
+    await importFromHome(page, 'old-map.json', v1FileWithClampedWait())
+
+    await expect(upgradeNotice(page).getByRole('listitem')).toHaveText([
+      'Intake step added',
+      'Wait time clamped for "Dev"',
+    ])
+  })
+
+  test('Importing a v2 file shows no upgrade notice', async ({
+    page,
+    seed,
+  }) => {
+    await startOnHome(page, seed)
+    const { text } = await downloadedFile(page, () =>
+      chooseFromMenu(page, 'Onboarding', 'Export value stream')
+    )
+
+    await importFromHome(page, 'Onboarding.json', text)
+
+    await expect(cardLinks(page)).toHaveCount(3)
+    await expect(upgradeNotice(page)).toHaveCount(0)
   })
 
   test('Importing a value stream that is already in the workspace adds a copy', async ({

@@ -295,10 +295,11 @@ export const createWorkspaceStore = ({
   const remove = whenReady((id) => {
     const index = streamAt(id)
     if (index === -1) return refuse(STREAM_MISSING_MESSAGE)
-    const token = { stream: streams[index], index }
+    const wasActive = id === activeStreamId
+    const token = { stream: streams[index], index, wasActive }
     tokens = [...tokens, token]
     streams = streams.filter((stream) => stream.id !== id)
-    if (id === activeStreamId) {
+    if (wasActive) {
       activeStreamId = null
       showActive()
     }
@@ -313,6 +314,12 @@ export const createWorkspaceStore = ({
     tokens = tokens.filter((t) => t !== token)
     const at = Math.min(token.index, streams.length)
     streams = [...streams.slice(0, at), token.stream, ...streams.slice(at)]
+    // Undo puts back the active stream without leaving the screen it is on, but
+    // never takes the place of a stream opened since.
+    if (token.wasActive && activeStreamId === null) {
+      activeStreamId = token.stream.id
+      buildActiveStore()
+    }
     commit()
     return { ok: true, streamId: token.stream.id }
   })
@@ -327,6 +334,11 @@ export const createWorkspaceStore = ({
     commit()
     return { ok: true, streamId: result.stream.id, changes: result.changes }
   })
+
+  // The upgrade notice shows what an import applied, in place of what was shown.
+  const showChanges = (applied) => {
+    changes = applied
+  }
 
   const exportStream = whenReady((id) => {
     const stream = streams.find((s) => s.id === id)
@@ -408,6 +420,7 @@ export const createWorkspaceStore = ({
     remove,
     restore,
     importStream,
+    showChanges,
     exportStream,
     replaceWorkspace,
   }

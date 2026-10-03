@@ -39,6 +39,26 @@ describe('exportFileName', () => {
     expect(exportFileName(name)).toBe(expected)
   })
 
+  it('keeps a zero-width joiner, so an emoji sequence stays one emoji', () => {
+    const family = '\u{1F468}\u200D\u{1F469}\u200D\u{1F467}'
+
+    expect(exportFileName(`${family} Team`)).toBe(`${family} Team.json`)
+  })
+
+  it('keeps a zero-width non-joiner, which Persian words need', () => {
+    const persian = '\u0645\u06CC\u200C\u062E\u0648\u0627\u0647\u0645'
+
+    expect(exportFileName(persian)).toBe(`${persian}.json`)
+  })
+
+  it('removes a zero-width space', () => {
+    expect(exportFileName('a\u200Bb')).toBe('ab.json')
+  })
+
+  it('removes a right-to-left mark', () => {
+    expect(exportFileName('a\u200Fb')).toBe('ab.json')
+  })
+
   it('removes a right-to-left override so the extension cannot be disguised', () => {
     expect(exportFileName('report\u202Egnp.exe')).toBe('reportgnp.exe.json')
   })

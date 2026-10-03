@@ -6,6 +6,7 @@
   import { controlSelector } from '../../utils/session/focus.js'
   import { indexAfterDelete } from '../../utils/ui/focusAfterDelete.js'
   import { isTextEntry, shortcutFor } from '../../utils/ui/keymap.js'
+  import { showUpgradeNotice } from '../../utils/session/upgradeNotice.js'
   import { streamSummary } from '../../utils/ui/streamSummary.js'
   import {
     exportStreamFile,
@@ -119,6 +120,7 @@
     const result = await importStreamFile(file, workspaceStore)
     importError = result.ok ? '' : result.error
     if (result.ok) {
+      showUpgradeNotice(workspaceStore, result.changes)
       toastStore.add(`${result.name} imported`, TOAST_TYPE.INFO)
       await tick()
       focusCardLink(result.streamId)

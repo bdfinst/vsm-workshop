@@ -13,10 +13,11 @@ export const FILE_TOO_LARGE_MESSAGE =
 /**
  * Add the value stream in a chosen file to the workspace. The workspace is not
  * changed when the file cannot be read or is refused.
- * A file over 10 MB is refused without being read.
+ * A file over 10 MB is refused without being read. `changes` is what upgrading
+ * a v1 file applied, for the upgrade notice.
  * @param {{size: number, text: function(): Promise<string>}} file - The chosen file
  * @param {{importStream: function(string): Object}} store - The workspace store
- * @returns {Promise<{ok: true, streamId: string, name: string} | {ok: false, error: string}>}
+ * @returns {Promise<{ok: true, streamId: string, name: string, changes: string[]} | {ok: false, error: string}>}
  */
 export const importStreamFile = async (file, store) => {
   if (file.size > MAX_FILE_BYTES) {
@@ -31,7 +32,12 @@ export const importStreamFile = async (file, store) => {
   const result = store.importStream(text)
   if (!result.ok) return result
   const stream = store.streams.find((s) => s.id === result.streamId)
-  return { ok: true, streamId: result.streamId, name: displayName(stream) }
+  return {
+    ok: true,
+    streamId: result.streamId,
+    name: displayName(stream),
+    changes: result.changes,
+  }
 }
 
 /**

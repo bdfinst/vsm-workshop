@@ -6,10 +6,12 @@ import { displayName } from '../../models/v2/valueStream.js'
 const INVALID_FILE_NAME_CHARACTERS = /[\\/:*?"<>|]/g
 
 // Control characters, and the marks and overrides that reorder text, which can
-// disguise a file's extension. They are removed, not replaced.
+// disguise a file's extension. They are removed, not replaced. U+200C and
+// U+200D (zero-width non-joiner and joiner) stay: Persian words and emoji
+// sequences need them.
 const HIDDEN_CHARACTERS =
   // eslint-disable-next-line no-control-regex -- the control range is the point
-  /[\u0000-\u001f\u007f-\u009f\u061c\u200b-\u200f\u2028\u2029\u202a-\u202e\u2066-\u2069\ufeff]/g
+  /[\u0000-\u001f\u007f-\u009f\u061c\u200b\u200e\u200f\u2028\u2029\u202a-\u202e\u2066-\u2069\ufeff]/g
 
 // Windows drops dots and spaces at the end of a name.
 const TRAILING_DOTS_AND_SPACES = /[. ]+$/

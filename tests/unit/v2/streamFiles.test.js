@@ -33,7 +33,27 @@ describe('importStreamFile', () => {
     const result = await importStreamFile(fakeFile('{"a":1}'), store)
 
     expect(store.importStream).toHaveBeenCalledWith('{"a":1}')
-    expect(result).toEqual({ ok: true, streamId: 'new-id', name: 'Checkout' })
+    expect(result).toEqual({
+      ok: true,
+      streamId: 'new-id',
+      name: 'Checkout',
+      changes: [],
+    })
+  })
+
+  it('passes on what upgrading a v1 file changed, so the screen can say so', async () => {
+    const store = fakeStore({
+      streams: [{ id: 'new-id', name: 'Old map' }],
+      importResult: {
+        ok: true,
+        streamId: 'new-id',
+        changes: ['Wait time clamped for "Dev"'],
+      },
+    })
+
+    const result = await importStreamFile(fakeFile('{}'), store)
+
+    expect(result.changes).toEqual(['Wait time clamped for "Dev"'])
   })
 
   it('names an unnamed stream by its card name', async () => {

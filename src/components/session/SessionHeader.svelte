@@ -2,6 +2,7 @@
   import { tick } from 'svelte'
   import { workspaceStore } from '../../stores/v2/workspaceStore.svelte.js'
   import { toastStore, TOAST_TYPE } from '../../stores/toastStore.svelte.js'
+  import { showUpgradeNotice } from '../../utils/session/upgradeNotice.js'
   import {
     exportStreamFile,
     importStreamFile,
@@ -83,7 +84,9 @@
     if (!file) return
     const result = await importStreamFile(file, workspaceStore)
     importError = result.ok ? '' : result.error
-    if (result.ok) toastStore.add(`${result.name} imported`, TOAST_TYPE.INFO)
+    if (!result.ok) return
+    showUpgradeNotice(workspaceStore, result.changes)
+    toastStore.add(`${result.name} imported`, TOAST_TYPE.INFO)
   }
 
   function handleExportValueStream() {
