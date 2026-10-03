@@ -1,4 +1,4 @@
-import { STEP_KIND, TIME_SOURCE, isOutside } from './constants.js'
+import { FULL_PCT_CA, STEP_KIND, TIME_SOURCE, isOutside } from './constants.js'
 
 const TEAM_TIME_FIELDS = Object.freeze(['processTime', 'waitTime'])
 const OUTSIDE_TIME_FIELDS = Object.freeze(['elapsedTime'])
@@ -48,3 +48,13 @@ export const createStep = (overrides = {}) => {
     ...(outside && { isHandoff: true }),
   }
 }
+
+/**
+ * Whether a step passes less than all its work on as complete and accurate: its
+ * %C/A is entered and below 100, so some of what it passes on comes back. A
+ * step with no %C/A entered has no known rejects, and a step at 100 has none.
+ * @param {{pctCA: ?number}} step - A v2 step
+ * @returns {boolean}
+ */
+export const hasRejects = (step) =>
+  typeof step.pctCA === 'number' && step.pctCA < FULL_PCT_CA

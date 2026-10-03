@@ -2,8 +2,10 @@ import { describe, it, expect } from 'vitest'
 import {
   TIME_FIELDS,
   createStep,
+  hasRejects,
   timeFieldsOf,
 } from '../../../src/models/v2/step.js'
+import { FULL_PCT_CA } from '../../../src/models/v2/constants.js'
 import {
   createReworkPath,
   pathTouchesStep,
@@ -76,6 +78,23 @@ describe('createStep', () => {
     expect(step.processTime).toEqual({ typ: 60 })
     expect(step.pctCA).toBe(80)
   })
+})
+
+describe('hasRejects', () => {
+  it('names full complete-and-accurate as 100', () => {
+    expect(FULL_PCT_CA).toBe(100)
+  })
+
+  it.each([0, 1, 80, 99, 99.5])('is true for a step at %C/A %s', (pctCA) => {
+    expect(hasRejects({ pctCA })).toBe(true)
+  })
+
+  it.each([100, null, undefined, '80'])(
+    'is false for a step at %C/A %j: nothing is known to be rejected',
+    (pctCA) => {
+      expect(hasRejects({ pctCA })).toBe(false)
+    }
+  )
 })
 
 describe('timeFieldsOf', () => {
@@ -451,6 +470,21 @@ describe('validateReworkPath', () => {
     expect(validateReworkPath(path(), perfect).errors).toHaveProperty(
       'fromStepId'
     )
+  })
+})
+
+describe('validateReworkPath from a step whose %C/A is not entered', () => {
+  const steps = ['Intake', 'Code review'].map((name) =>
+    createStep({ id: name, name, pctCA: null })
+  )
+
+  it('accepts a path, as it does below 100%', () => {
+    const path = createReworkPath({
+      fromStepId: 'Code review',
+      toStepId: 'Intake',
+    })
+
+    expect(validateReworkPath(path, steps).valid).toBe(true)
   })
 })
 

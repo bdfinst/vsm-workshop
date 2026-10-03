@@ -24,6 +24,7 @@ import {
 } from '../../utils/validation/v2/editRules.js'
 import { copyMapVersion } from '../../models/v2/mapVersion.js'
 import {
+  FULL_PCT_CA,
   STEP_KIND,
   VERSION_KIND,
   stageName,
@@ -221,7 +222,7 @@ export const createValueStreamStore = ({ stream, persist }) => {
       const index = indexOfStep(version, stepId)
       if (index === -1) return { error: STEP_MISSING_MESSAGE }
       version.steps[index] = { ...version.steps[index], pctCA }
-      if (pctCA !== 100) return { removedPaths: 0 }
+      if (pctCA !== FULL_PCT_CA) return { removedPaths: 0 }
       const startsHere = (path) => path.fromStepId === stepId
       return { removedPaths: removePathsWhere(version, startsHere) }
     })

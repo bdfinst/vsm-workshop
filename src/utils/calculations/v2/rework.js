@@ -1,9 +1,9 @@
-import { isOutside } from '../../../models/v2/constants.js'
+import { FULL_PCT_CA, isOutside } from '../../../models/v2/constants.js'
 import { incomplete, sumRanges } from './range.js'
 import { leadTimeOf } from './totals.js'
 
 /**
- * Reject rate of a step, as a percentage (0-100): 100 - %C/A.
+ * Reject rate of a step, as a percentage (0-100): full %C/A (100) minus its %C/A.
  * An outside step with no %C/A has none to show (null), since its quality is
  * not part of the team's own figures; a rework loop can still start there once
  * a %C/A is entered.
@@ -11,7 +11,7 @@ import { leadTimeOf } from './totals.js'
  * @returns {number|null|{incomplete: true, stepName: string}} Incomplete when a team step's %C/A is missing
  */
 export const rejectRate = (step) => {
-  if (step.pctCA != null) return 100 - step.pctCA
+  if (step.pctCA != null) return FULL_PCT_CA - step.pctCA
   return isOutside(step) ? null : incomplete(step.name)
 }
 
@@ -25,7 +25,10 @@ export const rolledCA = (steps) => {
   const teamSteps = steps.filter((step) => !isOutside(step))
   const missing = teamSteps.find((step) => step.pctCA == null)
   if (missing) return incomplete(missing.name)
-  return teamSteps.reduce((rolled, step) => (rolled * step.pctCA) / 100, 100)
+  return teamSteps.reduce(
+    (rolled, step) => (rolled * step.pctCA) / 100,
+    FULL_PCT_CA
+  )
 }
 
 const mapRange = (range, fn) => ({

@@ -1,3 +1,5 @@
+import { FULL_PCT_CA } from '../../../models/v2/constants.js'
+import { hasRejects } from '../../../models/v2/step.js'
 import { isWholeMinutes } from './timeRangeValidator.js'
 import { toResult } from './result.js'
 
@@ -17,7 +19,7 @@ export const validateReworkPath = (path, steps) => {
   if (fromIndex !== -1 && toIndex !== -1 && toIndex > fromIndex) {
     errors.toStepId = 'A rework path must go to the same step or an earlier one'
   }
-  if (fromIndex !== -1 && steps[fromIndex]?.pctCA === 100) {
+  if (fromIndex !== -1 && steps[fromIndex]?.pctCA === FULL_PCT_CA) {
     errors.fromStepId = 'A step at 100% %C/A has no rework paths'
   }
 
@@ -47,7 +49,7 @@ export const validateReworkShares = (steps, reworkPaths) => {
   const errors = {}
 
   for (const step of steps) {
-    if (typeof step.pctCA !== 'number' || step.pctCA >= 100) continue
+    if (!hasRejects(step)) continue
     const total = reworkPaths
       .filter((path) => path.fromStepId === step.id)
       .reduce((sum, path) => sum + path.shareOfRejects, 0)

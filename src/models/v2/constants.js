@@ -68,6 +68,9 @@ export const STAGE_NUMBER = Object.freeze({
 /** The locked first step of every version. */
 export const INTAKE_NAME = 'Intake'
 
+/** A step whose work is all complete and accurate: %C/A is 100 (a percentage, 0-100). */
+export const FULL_PCT_CA = 100
+
 /** The label of the current-state version; reserved against future versions. */
 export const CURRENT_LABEL = 'Current state'
 

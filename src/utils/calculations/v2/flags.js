@@ -1,4 +1,5 @@
 import { isOutside } from '../../../models/v2/constants.js'
+import { hasRejects } from '../../../models/v2/step.js'
 
 const TOP_COUNT = 3
 
@@ -33,8 +34,6 @@ export const topPaths = (pathRows) =>
     .sort(byDescending((row) => row.addedTime.typ))
     .slice(0, TOP_COUNT)
 
-const FULL_CA = 100
-
 /**
  * The team step with the lowest %C/A. The first such step wins a tie. A lowest
  * of 100 is nothing to flag, so it gives null.
@@ -42,12 +41,11 @@ const FULL_CA = 100
  * @returns {{stepId: string, name: string, pctCA: number}|null} Null when no step has a %C/A below 100
  */
 export const lowestCA = (steps) => {
-  const lowest = steps
-    .filter((step) => !isOutside(step) && step.pctCA != null)
+  return steps
+    .filter((step) => !isOutside(step) && hasRejects(step))
     .map((step) => ({ stepId: step.id, name: step.name, pctCA: step.pctCA }))
     .reduce(
       (found, row) => (found && found.pctCA <= row.pctCA ? found : row),
       null
     )
-  return lowest && lowest.pctCA < FULL_CA ? lowest : null
 }

@@ -424,6 +424,16 @@ describe('valueStreamStore: %C/A to 100', () => {
     expect(pathsFrom(store, 'Deploy')).toHaveLength(1)
   })
 
+  it('clears the value and keeps the paths', () => {
+    const { store } = openStream()
+
+    const result = store.setPctCA(stepNamed(store, 'Code review').id, null)
+
+    expect(result).toEqual({ ok: true, removedPaths: 0 })
+    expect(stepNamed(store, 'Code review').pctCA).toBeNull()
+    expect(pathsFrom(store, 'Code review')).toHaveLength(1)
+  })
+
   it('sets a value below 100 and keeps the paths', () => {
     const { store } = openStream()
 
