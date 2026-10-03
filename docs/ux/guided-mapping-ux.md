@@ -96,7 +96,7 @@ Mockup: open [mockups/guided-mapping.html](mockups/guided-mapping.html) in a bro
 
 - **Layout:**
   - On wide screens: the prompt card and work area on the left, the live map pane on the right (from stage 2 on), and the summary strip pinned along the bottom.
-  - Under 640 px: the panes stack, the strip collapses to flow efficiency plus a "Show all metrics" expander, and the ladder scrolls horizontally inside its pane without scrolling the page.
+  - Under 640 px: the panes stack, the strip collapses to flow efficiency plus a "Show all metrics" expander, and the ladder scrolls horizontally inside its own scroller without scrolling the page.
 - The prompt card has the question, a one-line explanation, an example, and Back and Next.
 - Under Next, one line states what unlocks it, naming the first missing item. For example: "Add the wait time for "Deploy"."
 - On a stage change, and when moving between the home screen and a stream, focus moves to the heading.
@@ -167,7 +167,7 @@ One row per path, sorted worst first by added time per item. Columns: path, dept
 - **Hero:** flow efficiency, large, with one sentence of context. Example: "14.5h of hands-on work inside an 18.8 working-day lead time." When the stream has an outside step, it shows as a range.
 - **Secondary row:** lead time, process time, rolled %C/A, handoffs.
 - **Rework trio:** first-pass lead time, then time on rework, then rework-adjusted lead time. The stated assumption sits under it: _Assumes no single rework loop is repeated more than once for an individual work item._
-- **Flag callouts:** the largest wait and the lowest %C/A, naming the same step the ladder flags.
+- **Flagged steps:** a list under the figures naming the step with the largest wait and the step with the lowest %C/A. Each of those steps carries the same flag as text on the ladder, so the strip and the ladder always name the same step. A flag with no step (no wait entered, or no %C/A below 100) has no entry.
 
 ### 7. Review (stage 6)
 

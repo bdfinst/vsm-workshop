@@ -19,13 +19,17 @@
 #      {
 #        "hooks": {
 #          "SessionStart": [
-#            { "hooks": [ { "type": "command",
+#            { "matcher": "startup",
+#              "hooks": [ { "type": "command",
 #              "command": "bash \"$CLAUDE_PROJECT_DIR/.claude/install-dev-team.sh\"" } ] }
 #          ]
 #        }
 #      }
 #
-# That's it — no env var needed. It runs by default in every session.
+# The "startup" matcher matters: without one, the hook also re-runs on resume,
+# clear and every auto-compaction, where an install check is never needed.
+#
+# That's it — no env var needed. It runs by default in every new session.
 #
 # ── OPT OUT ─────────────────────────────────────────────────────────────────
 # To disable auto-install in a given environment (e.g. a laptop where you manage

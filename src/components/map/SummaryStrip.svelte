@@ -1,6 +1,7 @@
 <script>
   import { summaryModel } from '../../utils/ui/summaryModel.js'
   import { TONE } from '../../utils/ui/flaggedSteps.js'
+  import SummaryFigure from './SummaryFigure.svelte'
 
   // SummaryStrip props: metrics (`store.metrics`, read as it is, never worked
   // out again) and workdayHours (the stream's working day, for durations).
@@ -17,9 +18,6 @@
     [TONE.WARN]: 'text-warn-text',
     [TONE.CRIT]: 'text-crit-text',
   }
-
-  const valueClass = (figure, size) =>
-    `${size} font-semibold ${figure.incomplete ? 'text-warn-text' : 'text-map-text'}`
 </script>
 
 <section
@@ -29,23 +27,7 @@
 >
   <div class="flex flex-col gap-2 sm:flex-row sm:items-start sm:gap-8">
     <dl class="m-0">
-      <div
-        data-testid="summary-{summary.hero.id}"
-        data-incomplete={summary.hero.incomplete}
-      >
-        <dt class="text-sm font-medium text-muted-text">
-          {summary.hero.label}
-        </dt>
-        <dd class="m-0 {valueClass(summary.hero, 'text-3xl')}">
-          {summary.hero.text}
-        </dd>
-        {#if summary.hero.note}
-          <dd class="m-0 text-sm text-warn-text">{summary.hero.note}</dd>
-        {/if}
-        <dd class="m-0 text-sm text-muted-text max-w-sm">
-          {summary.hero.context}
-        </dd>
-      </div>
+      <SummaryFigure figure={summary.hero} valueSizeClass="text-3xl" />
     </dl>
 
     <button
@@ -66,13 +48,7 @@
     >
       <dl class="m-0 grid grid-cols-2 gap-x-4 gap-y-2 sm:grid-cols-4">
         {#each summary.rows as row (row.id)}
-          <div data-testid="summary-{row.id}" data-incomplete={row.incomplete}>
-            <dt class="text-sm font-medium text-muted-text">{row.label}</dt>
-            <dd class="m-0 {valueClass(row, 'text-xl')}">{row.text}</dd>
-            {#if row.note}
-              <dd class="m-0 text-sm text-warn-text">{row.note}</dd>
-            {/if}
-          </div>
+          <SummaryFigure figure={row} valueSizeClass="text-xl" />
         {/each}
       </dl>
 

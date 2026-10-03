@@ -1,28 +1,27 @@
-import { describe, it, expect } from 'vitest'
+import { describe, it, expect, vi } from 'vitest'
+import { TONE } from '../../../src/utils/ui/flaggedSteps.js'
 import {
-  MAX_EQUAL_WIDTH,
-  MAX_PIXELS_PER_MINUTE,
-  MIN_EQUAL_WIDTH,
-  MIN_PIXELS_PER_MINUTE,
   LABEL_CHAR_WIDTH,
   LABEL_FONT_SIZE,
   LABEL_GAP,
   LABEL_INSET,
-  TONE,
+  MAX_EQUAL_BOX_WIDTH,
+  MIN_EQUAL_BOX_WIDTH,
+  MIN_SCALED_BOX_WIDTH,
+} from '../../../src/utils/ui/ladderGeometry.js'
+import {
+  MAX_PIXELS_PER_MINUTE,
+  MIN_PIXELS_PER_MINUTE,
   annotationsOf,
-  equalWidthFor,
+  equalBoxWidthFor,
   labelLanes,
-  labelLayout,
+  layoutLabels,
   labelOverhangFor,
   pixelsPerMinuteToFit,
   textWidthOf,
 } from '../../../src/utils/ui/ladderView.js'
-import {
-  LADDER_MODE,
-  MIN_SCALED_BOX_WIDTH,
-  ladderModel,
-  sizeLadder,
-} from '../../../src/utils/ui/ladderLayout.js'
+import { LADDER_MODE, sizeLadder } from '../../../src/utils/ui/ladderLayout.js'
+import { ladderModel } from '../../../src/utils/ui/ladderModel.js'
 import { createStep } from '../../../src/models/v2/step.js'
 import { calculateMetrics } from '../../../src/utils/calculations/v2/index.js'
 import {
@@ -36,7 +35,10 @@ import {
   withoutWait,
 } from './fixtures.js'
 
-const CJK_NAME = '価値流れ図の作成と改善のための手順書一覧' // 20 characters, each a full em
+const CJK_NAME = '価値流れ図の作成と改善のための手順書一覧' // 20 characters, each 1.05 em
+const EAST_ASIAN_WIDTH = 1.05 * LABEL_FONT_SIZE
+
+const CAPITAL_WIDTH = 0.76 * LABEL_FONT_SIZE
 
 const REFERENCE_MINUTES = 9030 // every wait and process minute of the reference map
 
@@ -99,7 +101,7 @@ describe('pixelsPerMinuteToFit', () => {
     )
   })
 
-  it('keeps the whole ladder inside the pane when boxes stay readable', () => {
+  it('keeps the whole ladder inside the available width when boxes stay readable', () => {
     const steps = referenceSteps()
     const pixelsPerMinute = pixelsPerMinuteToFit(modelOf(steps), 900)
 
@@ -109,45 +111,48 @@ describe('pixelsPerMinuteToFit', () => {
   })
 })
 
-describe('pixelsPerMinuteToFit before the pane is measured', () => {
-  it('gives the minimum pixels per minute for a pane of width 0', () => {
+describe('pixelsPerMinuteToFit before the scroller is measured', () => {
+  it('gives the minimum pixels per minute for an available width of 0', () => {
     expect(pixelsPerMinuteToFit(modelOf(referenceSteps()), 0)).toBe(
       MIN_PIXELS_PER_MINUTE
     )
   })
 
-  it('gives the maximum for a pane of width 0 when no time is entered', () => {
+  it('gives the maximum for an available width of 0 when no time is entered', () => {
     const steps = [createStep({ name: 'Intake' })]
 
     expect(pixelsPerMinuteToFit(modelOf(steps), 0)).toBe(MAX_PIXELS_PER_MINUTE)
   })
 })
 
-describe('a long stream on a narrow pane', () => {
-  const PANE = 400
+describe('a long stream in a narrow scroller', () => {
+  const AVAILABLE_WIDTH = 400
   const fortyOne = () =>
     Array.from({ length: 41 }, (_, index) => team(`Step ${index}`, 60, 120))
 
-  it('is wider than the pane to scale, so the pane scrolls', () => {
-    const pixelsPerMinute = pixelsPerMinuteToFit(modelOf(fortyOne()), PANE)
+  it('is wider than the available width to scale, so its scroller scrolls', () => {
+    const pixelsPerMinute = pixelsPerMinuteToFit(
+      modelOf(fortyOne()),
+      AVAILABLE_WIDTH
+    )
 
     expect(
       scaledLayout(fortyOne(), pixelsPerMinute).totalWidth
-    ).toBeGreaterThan(PANE)
+    ).toBeGreaterThan(AVAILABLE_WIDTH)
   })
 
-  it('is wider than the pane in equal width, so the pane scrolls', () => {
-    const width = equalWidthFor(41, PANE)
+  it('is wider than the available width in equal width, so its scroller scrolls', () => {
+    const boxWidth = equalBoxWidthFor(41, AVAILABLE_WIDTH)
 
     expect(
-      sizeLadder(modelOf(fortyOne()), { mode: LADDER_MODE.EQUAL, width })
+      sizeLadder(modelOf(fortyOne()), { mode: LADDER_MODE.EQUAL, boxWidth })
         .totalWidth
-    ).toBeGreaterThan(PANE)
+    ).toBeGreaterThan(AVAILABLE_WIDTH)
   })
 })
 
 describe('pixelsPerMinuteToFit with short steps', () => {
-  it('keeps the ladder inside the pane although short steps are drawn at the minimum box width', () => {
+  it('keeps the ladder inside the available width although short steps are drawn at the minimum box width', () => {
     const steps = [
       team('Intake', 1, 1),
       team('Tiny', 1, 1),
@@ -173,25 +178,28 @@ describe('pixelsPerMinuteToFit with short steps', () => {
 
     const { steps } = scaledLayout(intakeAndDevelopment, pixelsPerMinute)
 
-    expect(steps[1].wait.width / steps[1].process.width).toBeCloseTo(2, 5)
+    expect(steps[1].waitBlock.width / steps[1].processBlock.width).toBeCloseTo(
+      2,
+      5
+    )
   })
 })
 
-describe('equalWidthFor', () => {
+describe('equalBoxWidthFor', () => {
   it('splits the available width between the steps', () => {
-    expect(equalWidthFor(5, 700)).toBe(140)
+    expect(equalBoxWidthFor(5, 700)).toBe(140)
   })
 
   it('stays readable for a long stream, which then scrolls', () => {
-    expect(equalWidthFor(41, 900)).toBe(MIN_EQUAL_WIDTH)
+    expect(equalBoxWidthFor(41, 900)).toBe(MIN_EQUAL_BOX_WIDTH)
   })
 
-  it('does not stretch a few steps across the pane', () => {
-    expect(equalWidthFor(2, 900)).toBe(MAX_EQUAL_WIDTH)
+  it('does not stretch a few steps across the available width', () => {
+    expect(equalBoxWidthFor(2, 900)).toBe(MAX_EQUAL_BOX_WIDTH)
   })
 
   it('splits evenly in between', () => {
-    expect(equalWidthFor(6, 720)).toBe(120)
+    expect(equalBoxWidthFor(6, 720)).toBe(120)
   })
 })
 
@@ -279,16 +287,51 @@ describe('textWidthOf', () => {
     expect(textWidthOf('')).toBe(0)
   })
 
-  it('takes an average character at LABEL_CHAR_WIDTH', () => {
-    expect(textWidthOf('Code review')).toBe(
-      'Code review'.length * LABEL_CHAR_WIDTH
-    )
-  })
+  // Scenario Outline: A label character is measured by its class
+  it.each([
+    { kind: 'an ordinary character', text: 'e', ems: 2 / 3 },
+    { kind: 'a capital', text: 'H', ems: 0.76 },
+    { kind: 'a capital with an accent', text: 'É', ems: 0.76 },
+    { kind: 'a lower-case m', text: 'm', ems: 0.92 },
+    { kind: 'a lower-case w', text: 'w', ems: 0.92 },
+    { kind: 'a wide capital W', text: 'W', ems: 1 },
+    { kind: 'a wide capital M', text: 'M', ems: 1 },
+    { kind: 'a wide capital with an accent', text: 'Ŵ', ems: 1 },
+    { kind: 'a lower-case w with an accent', text: 'ẃ', ems: 0.92 },
+    { kind: 'a lower-case m with an accent', text: 'ḿ', ems: 0.92 },
+    { kind: 'wide punctuation: an em dash', text: '—', ems: 1 },
+    { kind: 'wide punctuation: a percent sign', text: '%', ems: 1 },
+    { kind: 'wide punctuation: an at sign', text: '@', ems: 1 },
+    { kind: 'wide punctuation: an ellipsis', text: '…', ems: 1 },
+    { kind: 'an ampersand, as broad as a capital', text: '&', ems: 0.76 },
+    { kind: 'an East Asian wide character', text: '価', ems: 1.05 },
+    { kind: 'an emoji', text: '🚀', ems: 1.3 },
+    { kind: 'an emoji with a skin tone, one glyph', text: '👍🏽', ems: 1.3 },
+    {
+      kind: 'an emoji with a presentation selector, one glyph',
+      text: '❤️',
+      ems: 1.3,
+    },
+    {
+      kind: 'a flag, a glyph for each of its two letters',
+      text: '🇯🇵',
+      ems: 2.6,
+    },
+    {
+      kind: 'a family joined by zero-width joiners, a glyph for each person',
+      text: '👨‍👩‍👧',
+      ems: 3.9,
+    },
+    { kind: 'a letter with a combining accent', text: 'é', ems: 2 / 3 },
+  ])(
+    'A label character is measured by its class: $kind at $ems em',
+    ({ text, ems }) => {
+      expect(textWidthOf(text)).toBeCloseTo(ems * LABEL_FONT_SIZE, 10)
+    }
+  )
 
-  it('takes a CJK character at a full em, wider than an average one', () => {
-    expect([...CJK_NAME]).toHaveLength(20)
-    expect(textWidthOf(CJK_NAME)).toBe(20 * LABEL_FONT_SIZE)
-    expect(textWidthOf(CJK_NAME)).toBeGreaterThan(20 * LABEL_CHAR_WIDTH)
+  it('takes a digit, a space and ordinary punctuation as ordinary characters', () => {
+    expect(textWidthOf('7 ,.')).toBe(4 * LABEL_CHAR_WIDTH)
   })
 
   it.each([
@@ -298,52 +341,88 @@ describe('textWidthOf', () => {
     ['fullwidth Latin', 'Ａ'],
     ['CJK punctuation', '、'],
     ['a CJK character outside the Basic Multilingual Plane', '\u{20BB7}'],
-  ])('takes %s at a full em', (_, character) => {
-    expect(textWidthOf(character)).toBe(LABEL_FONT_SIZE)
+  ])('takes %s at 1.05 em', (_, character) => {
+    expect(textWidthOf(character)).toBeCloseTo(EAST_ASIAN_WIDTH, 10)
   })
 
   it('counts a character outside the Basic Multilingual Plane once, not as two halves', () => {
-    expect(textWidthOf('\u{20BB7}\u{20BB7}')).toBe(2 * LABEL_FONT_SIZE)
-  })
-
-  it.each(['W', 'M'])('takes the wide capital %s at a full em', (capital) => {
-    expect(textWidthOf(capital)).toBe(LABEL_FONT_SIZE)
-  })
-
-  it('takes a narrow capital and a lower-case w at the average', () => {
-    expect(textWidthOf('Iw')).toBe(2 * LABEL_CHAR_WIDTH)
+    expect(textWidthOf('\u{20BB7}\u{20BB7}')).toBeCloseTo(
+      2 * EAST_ASIAN_WIDTH,
+      10
+    )
   })
 
   it('adds the classes up in a mixed name', () => {
-    // Q, A, a space and a space are average; 自, 動, 化, W and M are a full em.
-    expect(textWidthOf('QA 自動化 WM')).toBe(
-      4 * LABEL_CHAR_WIDTH + 5 * LABEL_FONT_SIZE
+    // Q and A are capitals; the three spaces are ordinary; 自, 動 and 化 are East Asian wide; W and M are a full em;
+    // m is a wide lower-case letter; the rocket is an emoji.
+    expect(textWidthOf('QA 自動化 WM m🚀')).toBeCloseTo(
+      2 * CAPITAL_WIDTH +
+        3 * LABEL_CHAR_WIDTH +
+        3 * EAST_ASIAN_WIDTH +
+        2 * LABEL_FONT_SIZE +
+        0.92 * LABEL_FONT_SIZE +
+        1.3 * LABEL_FONT_SIZE,
+      10
     )
   })
 })
 
-describe('labelLayout', () => {
+describe('textWidthOf where Intl.Segmenter is missing', () => {
+  // An engine without it (Firefox before 125) must still load the session and
+  // measure labels, by code point, which can only be wider.
+  const MIXED = ['Ship it', 'Ŵ', 'Ç', 'é', '🚀', '👍🏽', '🇯🇵', '👨‍👩‍👧', '❤️']
+
+  const measuredWithoutSegmenter = async (texts) => {
+    const original = Intl.Segmenter
+    Intl.Segmenter = undefined
+    try {
+      vi.resetModules()
+      const { textWidthOf: measure } =
+        await import('../../../src/utils/ui/ladderView.js')
+      return texts.map(measure)
+    } finally {
+      Intl.Segmenter = original
+      vi.resetModules()
+    }
+  }
+
+  it('loads and measures a label by code point', async () => {
+    const [plain] = await measuredWithoutSegmenter(['Ship it'])
+
+    expect(plain).toBe(textWidthOf('Ship it'))
+  })
+
+  it.each(MIXED)('never measures %s narrower than with it', async (text) => {
+    const [fallback] = await measuredWithoutSegmenter([text])
+
+    expect(fallback).toBeGreaterThanOrEqual(textWidthOf(text))
+  })
+
+  it('measures a combining accent as a character of its own, which is wider', async () => {
+    const [fallback] = await measuredWithoutSegmenter(['é'])
+
+    expect(fallback).toBe(2 * LABEL_CHAR_WIDTH)
+  })
+})
+
+describe('layoutLabels', () => {
   const layoutOf = (steps, pixelsPerMinute = 0.1) =>
     scaledLayout(steps, pixelsPerMinute).steps
 
-  it('is tied to the font size: a character is at least two thirds of an em wide', () => {
-    expect(LABEL_CHAR_WIDTH).toBeGreaterThanOrEqual((LABEL_FONT_SIZE * 2) / 3)
-  })
-
   it('has nothing for no steps', () => {
-    expect(labelLayout([])).toEqual({ labels: [], lanes: [], rightEdge: 0 })
+    expect(layoutLabels([])).toEqual({ labels: [], lanes: [], rightEdge: 0 })
   })
 
   it('measures a label by its widest line, from the inset, at the conservative width', () => {
-    const name = 'Customer intake and triage'
+    const name = 'plain intake and triage'
     const [step] = layoutOf([team(name, 60, 60)])
 
-    const { labels } = labelLayout([step])
+    const { labels } = layoutLabels([step])
 
     expect(labels[0]).toMatchObject({
       step,
       left: step.x + LABEL_INSET,
-      width: name.length * LABEL_CHAR_WIDTH,
+      labelWidth: name.length * LABEL_CHAR_WIDTH,
     })
     expect(labels[0].lines[0]).toEqual({ text: name, tone: null })
   })
@@ -351,16 +430,16 @@ describe('labelLayout', () => {
   it('measures a CJK name by the em, so its label is wider than the same count of average characters', () => {
     const steps = layoutOf([team(CJK_NAME, 60, 60)])
 
-    const { labels } = labelLayout(steps)
+    const { labels } = layoutLabels(steps)
 
-    expect(labels[0].width).toBe(20 * LABEL_FONT_SIZE)
+    expect(labels[0].labelWidth).toBeCloseTo(20 * EAST_ASIAN_WIDTH, 10)
   })
 
   it('lists the name first and then the annotations', () => {
     const steps = layoutOf(reworkSteps())
     const codeReview = steps.find((s) => s.name === 'Code review')
 
-    const { labels } = labelLayout([codeReview])
+    const { labels } = layoutLabels([codeReview])
 
     expect(labels[0].lines.map(({ text }) => text)).toEqual([
       'Code review',
@@ -373,10 +452,10 @@ describe('labelLayout', () => {
     const steps = layoutOf([createStep({ name: 'Intake' })])
     const [intake] = steps
 
-    const { rightEdge } = labelLayout(steps)
+    const { rightEdge } = layoutLabels(steps)
 
-    const label = 'needs process time'.length * LABEL_CHAR_WIDTH
-    expect(intake.width).toBeLessThan(label)
+    const label = textWidthOf('needs process time')
+    expect(intake.boxWidth).toBeLessThan(label)
     expect(rightEdge).toBe(intake.x + LABEL_INSET + label)
   })
 
@@ -384,7 +463,7 @@ describe('labelLayout', () => {
     const steps = layoutOf(referenceSteps())
     const last = steps.at(-1)
 
-    expect(labelLayout(steps).rightEdge).toBe(last.x + last.width)
+    expect(layoutLabels(steps).rightEdge).toBe(last.x + last.boxWidth)
   })
 
   it('gives a long name on an earlier step the right edge', () => {
@@ -393,39 +472,58 @@ describe('labelLayout', () => {
       team('Deploy', 600, 600),
     ])
 
-    const { rightEdge, labels } = labelLayout(steps)
+    const { rightEdge, labels } = layoutLabels(steps)
 
     expect(rightEdge).toBe(
-      Math.max(labels[0].right, steps[1].x + steps[1].width)
+      Math.max(labels[0].right, steps[1].x + steps[1].boxWidth)
     )
   })
 
-  it('never lets two labels on one lane overlap, even for bold capitals', () => {
-    const steps = layoutOf(
-      Array.from({ length: 12 }, (_, index) =>
-        team(`WWWW ${'M'.repeat(index + 1)}`, 5, 5)
+  it.each([
+    ['capitals', (index) => `HNOGQ ${'H'.repeat(index + 1)}`],
+    [
+      'lower-case m and w',
+      (index) => `${'m'.repeat(index + 1)}${'w'.repeat(3)}`,
+    ],
+    ['emoji', (index) => `Ship ${'🚀'.repeat(index + 1)}`],
+    ['the wide capitals', (index) => `WWWW ${'M'.repeat(index + 1)}`],
+  ])(
+    'lane assignment keeps LABEL_GAP between the estimated widths of names heavy in %s',
+    (_, nameFor) => {
+      const steps = layoutOf(
+        Array.from({ length: 12 }, (_, index) => team(nameFor(index), 5, 5))
       )
-    )
 
-    const { labels, lanes } = labelLayout(steps)
+      const { labels, lanes } = layoutLabels(steps)
 
-    const byLane = Object.groupBy(
-      labels.map((label, index) => ({ ...label, lane: lanes[index] })),
-      ({ lane }) => lane
-    )
-    for (const inLane of Object.values(byLane)) {
-      inLane.slice(1).forEach((label, index) => {
-        expect(label.left).toBeGreaterThanOrEqual(
-          inLane[index].right + LABEL_GAP
-        )
-      })
+      const byLane = Object.groupBy(
+        labels.map((label, index) => ({ ...label, lane: lanes[index] })),
+        ({ lane }) => lane
+      )
+      for (const inLane of Object.values(byLane)) {
+        inLane.slice(1).forEach((label, index) => {
+          expect(label.left).toBeGreaterThanOrEqual(
+            inLane[index].right + LABEL_GAP
+          )
+        })
+      }
     }
+  )
+
+  it('ends the ladder at the estimated width of an emoji name on the last step', () => {
+    const name = 'Ship it 🚀🎉'
+    const steps = layoutOf([team('Intake', 5, 5), team(name, 5, 5)])
+
+    const { rightEdge, labels } = layoutLabels(steps)
+
+    expect(labels[1].labelWidth).toBe(textWidthOf(name))
+    expect(rightEdge).toBe(labels[1].right)
   })
 
   it('draws no more lanes than it needs', () => {
     const steps = layoutOf(referenceSteps(), 0.1)
 
-    expect(Math.max(...labelLayout(steps).lanes)).toBeLessThanOrEqual(1)
+    expect(Math.max(...layoutLabels(steps).lanes)).toBeLessThanOrEqual(1)
   })
 })
 
@@ -440,17 +538,16 @@ describe('labelOverhangFor', () => {
     const model = modelOf([createStep({ name: 'Intake' })])
 
     expect(labelOverhangFor(model.steps, MIN_SCALED_BOX_WIDTH)).toBe(
-      LABEL_INSET +
-        'needs process time'.length * LABEL_CHAR_WIDTH -
-        MIN_SCALED_BOX_WIDTH
+      LABEL_INSET + textWidthOf('needs process time') - MIN_SCALED_BOX_WIDTH
     )
   })
 
   it('counts a CJK name by the em', () => {
     const model = modelOf([team(CJK_NAME, 60, 60)])
 
-    expect(labelOverhangFor(model.steps, MIN_SCALED_BOX_WIDTH)).toBe(
-      LABEL_INSET + 20 * LABEL_FONT_SIZE - MIN_SCALED_BOX_WIDTH
+    expect(labelOverhangFor(model.steps, MIN_SCALED_BOX_WIDTH)).toBeCloseTo(
+      LABEL_INSET + 20 * EAST_ASIAN_WIDTH - MIN_SCALED_BOX_WIDTH,
+      10
     )
   })
 
@@ -458,9 +555,7 @@ describe('labelOverhangFor', () => {
     const model = modelOf([createStep({ name: 'Intake' }), team('Next', 1, 1)])
 
     expect(labelOverhangFor(model.steps, MIN_SCALED_BOX_WIDTH)).toBeLessThan(
-      LABEL_INSET +
-        'needs process time'.length * LABEL_CHAR_WIDTH -
-        MIN_SCALED_BOX_WIDTH
+      LABEL_INSET + textWidthOf('needs process time') - MIN_SCALED_BOX_WIDTH
     )
   })
 
@@ -472,7 +567,7 @@ describe('labelOverhangFor', () => {
     ]
     const layout = scaledLayout(steps, 0.5)
 
-    const { rightEdge } = labelLayout(layout.steps)
+    const { rightEdge } = layoutLabels(layout.steps)
 
     expect(rightEdge - layout.totalWidth).toBeLessThanOrEqual(
       labelOverhangFor(modelOf(steps).steps, MIN_SCALED_BOX_WIDTH)

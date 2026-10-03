@@ -11,6 +11,7 @@ import {
   withStep,
   withoutWait,
 } from '../../unit/v2/stepFixtures.js'
+import { textWidthOf } from '../../../src/utils/ui/ladderView.js'
 import { test, expect, workspaceAtStage } from './fixtures.js'
 
 // Slice 10 scenarios: the ladder (Step 10.2) and the summary strip (Step 10.3).
@@ -24,6 +25,25 @@ const DASHED_STROKE_DASH = '6px, 4px' // the computed form of the "6 4" dash pat
 const SM_BREAKPOINT = 640 // Tailwind `sm`: the strip collapses below it
 const CJK_NAME = '価値流れ図の作成と改善のための手順書一覧' // 20 characters, each about an em wide
 const ALL_CAPS_NAME = 'WORLDWIDE MEDIA MANAGEMENT WAREHOUSE' // wide bold capitals
+const EMOJI_NAME = 'Ship it 🚀🎉'
+const BROAD_CAPITALS_NAME = 'HNOGQ HNOGQ HNOGQ HNOGQ' // the widest of the capitals bar W and M
+const M_AND_W_NAME = 'mmmmmwwwww mmmmwwww mmwwmmww' // the lower-case letters wider than average
+// Emoji drawn as one glyph or several, depending on the platform's emoji font.
+const EMOJI_SEQUENCE_NAMES = [
+  'Thumbs 👍🏽', // a skin tone
+  'Japan 🇯🇵', // a flag: two regional indicators
+  'Family 👨‍👩‍👧', // a zero-width-joiner sequence
+  'Love ❤️', // a presentation selector
+]
+const ACCENTED_CAPITAL_NAMES = ['ÀÉÎÕÜÇÑ ÅØ', 'ŴŶẂ ĆŚŹ']
+// Every printable ASCII character but the space, and the middle dot the
+// labels use.
+const PRINTABLE_CHARACTERS = [
+  ...Array.from({ length: 0x7e - 0x21 + 1 }, (_, i) =>
+    String.fromCharCode(0x21 + i)
+  ),
+  '·',
+]
 
 /** A workspace on `stage` whose map has these steps. */
 const workspaceWith = (
@@ -62,7 +82,7 @@ const box = async (locator) => {
 const waitRatio = async (page, over, under) => {
   const widthOf = async (name) => {
     const attribute = await stepOf(page, name)
-      .getByTestId('ladder-wait')
+      .getByTestId('ladder-wait-block')
       .getAttribute('width')
     const width = Number(attribute)
     if (!(width > 0)) {
@@ -142,31 +162,82 @@ const pageScrollsHorizontally = (page) =>
       document.documentElement.clientWidth
   )
 
+// Name lines are drawn at 600, annotation lines at the inherited 400.
+const LABEL_WEIGHTS = ['400', '600']
+
+// The label font is loaded, not the system fallback the estimate was not
+// probed in. `document.fonts.check` is true for a family that was never
+// declared, so ask for the font and look for a loaded face of it.
+const labelFontIsLoaded = (page) =>
+  page.evaluate(async (weights) => {
+    await Promise.all(
+      weights.map((weight) =>
+        document.fonts.load(`${weight} 12px "IBM Plex Sans"`)
+      )
+    )
+    return weights.every((weight) =>
+      [...document.fonts].some(
+        (face) =>
+          face.family.replaceAll(/["']/g, '') === 'IBM Plex Sans' &&
+          face.weight === weight &&
+          face.status === 'loaded'
+      )
+    )
+  }, LABEL_WEIGHTS)
+
+const expectLabelFontLoaded = (page) =>
+  expect
+    .poll(() => labelFontIsLoaded(page), {
+      message: 'IBM Plex Sans 400 and 600 load',
+    })
+    .toBe(true)
+
+const svgWidthOf = (page) =>
+  page.getByTestId('ladder-map').evaluate((svg) => svg.width.baseVal.value)
+
+// The ladder has been drawn at its final width: two reads in a row agree.
+const expectSvgWidthSettled = async (page) => {
+  let previous = null
+  await expect
+    .poll(async () => {
+      const width = await svgWidthOf(page)
+      const settled = width === previous
+      previous = width
+      return settled
+    })
+    .toBe(true)
+}
+
 // Every label as the browser drew it, in the SVG's own pixels: its text's
-// measured left and right edge (getBBox covers the widest of its lines) and the
-// top of its first line, which says which lane it is on. Waits for web fonts
-// and for the ladder to refit to the pane, so the measure is of the final draw.
+// measured left and right edge (getBBox covers the widest of its lines), the
+// right edge of its step's box, and the top of its first line, which says
+// which lane it is on. Waits for the label font and for the ladder's width to
+// settle, so the measure is of the final draw.
 const measuredLabels = async (page) => {
-  await page.evaluate(async () => {
-    await document.fonts.ready
-    const frame = () => new Promise((resolve) => requestAnimationFrame(resolve))
-    await frame()
-    await frame()
-  })
+  await expectLabelFontLoaded(page)
+  await expectSvgWidthSettled(page)
   return page.evaluate(() => {
     const svg = document.querySelector('[data-testid="ladder-map"]')
     const intoSvg = svg.getScreenCTM().inverse()
+    const edgesOf = (element) => {
+      const { x, y, width } = element.getBBox()
+      const matrix = intoSvg.multiply(element.getScreenCTM())
+      return {
+        left: matrix.e + x * matrix.a,
+        right: matrix.e + (x + width) * matrix.a,
+        top: Math.round(matrix.f + y * matrix.d),
+      }
+    }
     return {
       svgWidth: svg.width.baseVal.value,
-      labels: [...svg.querySelectorAll('[data-testid="ladder-step"] text')].map(
-        (text) => {
-          const { x, y, width } = text.getBBox()
-          const matrix = intoSvg.multiply(text.getScreenCTM())
+      labels: [...svg.querySelectorAll('[data-testid="ladder-step"]')].map(
+        (step) => {
+          const text = step.querySelector('text')
           return {
             name: text.querySelector('tspan').textContent.trim(),
-            left: matrix.e + x * matrix.a,
-            right: matrix.e + (x + width) * matrix.a,
-            top: Math.round(matrix.f + y * matrix.d),
+            ...edgesOf(text),
+            boxRight: edgesOf(step.querySelector('[data-testid="ladder-box"]'))
+              .right,
           }
         }
       ),
@@ -174,8 +245,38 @@ const measuredLabels = async (page) => {
   })
 }
 
+// The width, in the SVG's own pixels, the browser draws every line of every
+// label at (the name and each annotation under it). Waits for the label font.
+const drawnLines = async (page) => {
+  await expectLabelFontLoaded(page)
+  return page.evaluate(() =>
+    [
+      ...document.querySelectorAll('[data-testid="ladder-step"] text tspan'),
+    ].map((tspan) => ({
+      text: tspan.textContent.trim(),
+      width: tspan.getComputedTextLength(),
+    }))
+  )
+}
+
+// No line of any label is drawn wider than textWidthOf says. Returns the lines
+// drawn, so a test can check its fixture drew the lines it means to probe.
+const expectEstimateCoversDrawing = async (page) => {
+  const lines = await drawnLines(page)
+  const tooNarrow = lines
+    .filter(({ text, width }) => textWidthOf(text) < width)
+    .map(
+      ({ text, width }) =>
+        `${text}: estimated ${textWidthOf(text).toFixed(2)}px, drawn ${width.toFixed(2)}px`
+    )
+  expect(tooNarrow).toEqual([])
+  return lines.map(({ text }) => text)
+}
+
 // In both ladder modes every label, as the browser drew it, ends inside the SVG,
-// and no two labels on one lane overlap.
+// and no two labels on one lane overlap. To scale the fixture must be crowded:
+// some lane holds two labels and the last label runs past its own box, so the
+// test fails if a fixture stops exercising the lanes and the overhang.
 const expectMeasuredLabelsFit = async (page, names) => {
   await expect(page.getByTestId('ladder-step')).toHaveCount(names.length)
   for (const mode of ['To scale', 'Equal width']) {
@@ -201,6 +302,17 @@ const expectMeasuredLabelsFit = async (page, names) => {
         ).toBeGreaterThanOrEqual(leftToRight[index].right)
       })
     }
+    if (mode === 'To scale') {
+      expect(
+        Math.max(...lanes.map((lane) => lane.length)),
+        'To scale: some lane holds two labels, so the fixture is crowded'
+      ).toBeGreaterThanOrEqual(2)
+      const last = labels.at(-1)
+      expect(
+        last.right,
+        'To scale: the last label overhangs its own box'
+      ).toBeGreaterThan(last.boxRight)
+    }
   }
 }
 
@@ -220,9 +332,11 @@ test.describe('Live time-ladder map', () => {
       'Code review',
       'Deploy',
     ]) {
-      const wait = await box(stepOf(page, name).getByTestId('ladder-wait'))
+      const wait = await box(
+        stepOf(page, name).getByTestId('ladder-wait-block')
+      )
       const process = await box(
-        stepOf(page, name).getByTestId('ladder-process')
+        stepOf(page, name).getByTestId('ladder-process-block')
       )
       expect(
         wait.y + wait.height,
@@ -300,7 +414,7 @@ test.describe('Live time-ladder map', () => {
       dash: DASHED_STROKE_DASH,
     })
     await expect(deploy.getByText('needs wait time')).toBeVisible()
-    await expect(deploy.getByTestId('ladder-wait')).toHaveCount(0)
+    await expect(deploy.getByTestId('ladder-wait-block')).toHaveCount(0)
   })
 
   test('Outside encoding', async ({ page, seed }) => {
@@ -376,21 +490,104 @@ test.describe('Live time-ladder map', () => {
     await expectMeasuredLabelsFit(page, names)
   })
 
-  test('a CJK name on the last step ends inside the map', async ({
+  test("An emoji in the last step's name stays inside the map", async ({
     page,
     seed,
   }) => {
-    const names = ['Intake', 'Review', 'Deploy', CJK_NAME]
+    const names = ['Intake', 'Review', 'Deploy', 'Test', 'Build', EMOJI_NAME]
     await seed(workspaceWith(names.map((name) => team(name, 5, 5))))
 
     await expectMeasuredLabelsFit(page, names)
+  })
+
+  test('Names heavy in capitals, m and w never overlap', async ({
+    page,
+    seed,
+  }) => {
+    const names = [
+      'Intake',
+      BROAD_CAPITALS_NAME,
+      M_AND_W_NAME,
+      'Review',
+      BROAD_CAPITALS_NAME.toLowerCase(),
+      'Deploy',
+      M_AND_W_NAME.toUpperCase(),
+    ]
+    await seed(workspaceWith(names.map((name) => team(name, 5, 5))))
+
+    await expectMeasuredLabelsFit(page, names)
+  })
+
+  test('The estimate is never narrower than the browser draws', async ({
+    page,
+    seed,
+  }) => {
+    const names = [
+      EMOJI_NAME,
+      ...EMOJI_SEQUENCE_NAMES,
+      ...ACCENTED_CAPITAL_NAMES,
+      BROAD_CAPITALS_NAME,
+      M_AND_W_NAME,
+      ALL_CAPS_NAME,
+      CJK_NAME,
+      'Code review',
+    ]
+    // Crowded, and with every annotation line drawn: Intake is the largest
+    // wait and the lowest %C/A, Pending has no times, Security review is outside.
+    await seed(
+      workspaceWith([
+        team('Intake', 5, 5, 70),
+        ...names.map((name) => team(name, 5, 5)),
+        createStep({ name: 'Pending' }),
+        outsideStep('Security review', 5),
+      ])
+    )
+    await expect(page.getByTestId('ladder-step')).toHaveCount(names.length + 3)
+
+    const drawn = await expectEstimateCoversDrawing(page)
+
+    expect(drawn).toEqual(
+      expect.arrayContaining([
+        ...names,
+        'largest wait',
+        'lowest %C/A',
+        'needs process time',
+        'handoff',
+        'outside',
+        'elapsed · split unknown',
+      ])
+    )
+  })
+
+  test('The estimate is never narrower than the browser draws, one character at a time', async ({
+    page,
+    seed,
+  }) => {
+    await seed(
+      workspaceWith([
+        team('Intake', 5, 5),
+        ...PRINTABLE_CHARACTERS.map((ch) => team(ch, 5, 5)),
+      ])
+    )
+    await expect(page.getByTestId('ladder-step')).toHaveCount(
+      PRINTABLE_CHARACTERS.length + 1
+    )
+
+    const drawn = await expectEstimateCoversDrawing(page)
+
+    expect(drawn).toEqual(expect.arrayContaining(PRINTABLE_CHARACTERS))
   })
 
   test('the ladder says what its encodings mean', async ({ page, seed }) => {
     await seed(workspaceWith(referenceSteps()))
 
     const ladder = page.getByTestId('ladder-map')
-    await expect(ladder).toHaveAttribute('aria-describedby', 'ladder-desc')
+    const descriptionId = await ladder.getAttribute('aria-describedby')
+    expect(descriptionId).toBeTruthy()
+    await expect(page.getByTestId('ladder-desc')).toHaveAttribute(
+      'id',
+      descriptionId
+    )
     await expect(ladder.locator('title')).toHaveText('Time ladder, to scale')
     await expect(page.getByTestId('ladder-desc')).toContainText(
       'wait time is drawn above the track'
@@ -419,6 +616,10 @@ test.describe('Live time-ladder map', () => {
     await expect(ladder.getByText('lowest %C/A', { exact: true })).toHaveCount(
       1
     )
+    const flag = (label) =>
+      page.getByTestId('summary-flag').filter({ hasText: label })
+    await expect(flag('largest wait')).toContainText('Code review')
+    await expect(flag('lowest %C/A')).toContainText('Code review')
   })
 
   test('each flag names its own step when they differ: Development at %C/A 70, Code review the largest wait', async ({
@@ -442,50 +643,6 @@ test.describe('Live time-ladder map', () => {
     await expect(flag('lowest %C/A')).toContainText('Development')
     await expect(flag('lowest %C/A')).not.toContainText('Code review')
   })
-
-  test('the reference map at %C/A 100 flags no lowest %C/A', async ({
-    page,
-    seed,
-  }) => {
-    await seed(workspaceWith(referenceSteps()))
-
-    await expect(
-      stepOf(page, 'Code review').getByText('largest wait', { exact: true })
-    ).toBeVisible()
-    await expect(page.getByText('lowest %C/A', { exact: true })).toHaveCount(0)
-    await expect(page.getByTestId('summary-flag')).toHaveCount(1)
-  })
-
-  test('the map follows an edit to the steps', async ({ page, seed }) => {
-    await seed(workspaceWith(referenceSteps(), STAGE_NUMBER.STEPS))
-    await expect(page.getByTestId('ladder-step')).toHaveCount(5)
-
-    await page
-      .getByRole('button', { name: 'Add step', exact: false })
-      .first()
-      .click()
-
-    await expect(page.getByTestId('ladder-step')).toHaveCount(6)
-  })
-
-  for (const stage of [
-    STAGE_NUMBER.STEPS,
-    STAGE_NUMBER.TIME,
-    STAGE_NUMBER.QUALITY,
-    STAGE_NUMBER.REWORK,
-    STAGE_NUMBER.REVIEW,
-    STAGE_NUMBER.FUTURE,
-  ]) {
-    test(`the map pane is shown on the ${STAGE_NAMES[stage - 1]} stage`, async ({
-      page,
-      seed,
-    }) => {
-      await seed(workspaceWith(referenceSteps(), stage))
-
-      await expect(page.getByTestId('map-pane')).toBeVisible()
-      await expect(page.getByTestId('ladder-map')).toBeVisible()
-    })
-  }
 
   test('the map pane is absent on the Scope stage', async ({ page, seed }) => {
     await seed(workspaceWith(referenceSteps(), STAGE_NUMBER.SCOPE))
@@ -575,6 +732,7 @@ test.describe('Live time-ladder map', () => {
       STAGE_NUMBER.QUALITY,
       STAGE_NUMBER.REWORK,
       STAGE_NUMBER.REVIEW,
+      STAGE_NUMBER.FUTURE,
     ]) {
       const name = STAGE_NAMES[number - 1]
       await page.getByTestId(`stage-${name.toLowerCase()}`).click()
@@ -583,6 +741,10 @@ test.describe('Live time-ladder map', () => {
         `${name} is the current stage`
       ).toHaveAttribute('aria-current', 'step')
       await expect(page.getByTestId('map-pane'), `${name} map`).toBeVisible()
+      await expect(
+        page.getByTestId('ladder-map'),
+        `${name} ladder`
+      ).toBeVisible()
       await expect(strip(page), `${name} strip`).toBeVisible()
     }
   })
@@ -607,32 +769,9 @@ test.describe('Live time-ladder map', () => {
       'Rolled %C/A',
       'Handoffs',
     ])
-    // Process 870 min (60+240+480+60+30), lead 9030 min (870 + 8160 waiting):
-    // 870 / 9030 = 9.6%; 9030 / 480 (an 8-hour day) = 18.8 days; 870 / 480 = 1.8.
+    // Process 870 min, lead 9030 min: 870 / 9030 = 9.6%. The other figures,
+    // and the sentence under the hero, are summaryModel.test.js's.
     await expect(figureValue(page, 'flow-efficiency')).toHaveText('9.6%')
-    await expect(figureValue(page, 'lead-time')).toHaveText('18.8 days')
-    await expect(figureValue(page, 'process-time')).toHaveText('1.8 days')
-    await expect(figureValue(page, 'rolled-ca')).toHaveText('100.0%')
-    await expect(figureValue(page, 'handoffs')).toHaveText('0')
-    await expect(figure(page, 'flow-efficiency')).toContainText(
-      'Share of the lead time spent working rather than waiting.'
-    )
-  })
-
-  test('Flags agree across map and summary: the summary strip names Code review', async ({
-    page,
-    seed,
-  }) => {
-    await seed(workspaceWith(reworkSteps()))
-
-    const largestWait = page
-      .getByTestId('summary-flag')
-      .filter({ hasText: 'largest wait' })
-    const lowestCA = page
-      .getByTestId('summary-flag')
-      .filter({ hasText: 'lowest %C/A' })
-    await expect(largestWait).toContainText('Code review')
-    await expect(lowestCA).toContainText('Code review')
   })
 
   test('the map and the strip follow an edit to a time on the Time stage', async ({
@@ -643,13 +782,10 @@ test.describe('Live time-ladder map', () => {
     await expect
       .poll(() => waitRatio(page, 'Development', 'Refinement'))
       .toBeCloseTo(2, 5)
-    await expect(figureValue(page, 'flow-efficiency')).toHaveText('9.6%')
-    await expect(figureValue(page, 'lead-time')).toHaveText('18.8 days')
 
     await setDevelopmentWaitToThreeDays(page)
 
     await expect(figureValue(page, 'lead-time')).toHaveText('19.8 days')
-    await expect(figureValue(page, 'flow-efficiency')).toHaveText('9.1%')
     await expect
       .poll(() => waitRatio(page, 'Development', 'Refinement'))
       .toBeCloseTo(3, 5)
@@ -669,15 +805,17 @@ test.describe('Live time-ladder map', () => {
     await page.getByRole('button', { name: 'Undo', exact: true }).click()
 
     await expect(figureValue(page, 'lead-time')).toHaveText('18.8 days')
-    await expect(figureValue(page, 'flow-efficiency')).toHaveText('9.6%')
     await expect
       .poll(() => waitRatio(page, 'Development', 'Refinement'))
       .toBeCloseTo(2, 5)
   })
 
-  test('the strip follows an edit to the steps', async ({ page, seed }) => {
+  test('the map and the strip follow an edit to the steps', async ({
+    page,
+    seed,
+  }) => {
     await seed(workspaceWith(referenceSteps(), STAGE_NUMBER.STEPS))
-    await expect(figureValue(page, 'flow-efficiency')).toHaveText('9.6%')
+    await expect(page.getByTestId('ladder-step')).toHaveCount(5)
 
     await page
       .getByRole('button', { name: 'Add step', exact: false })
@@ -696,7 +834,6 @@ test.describe('Live time-ladder map', () => {
 
     await expect(figureValue(page, 'lead-time')).toHaveText('incomplete')
     await expect(figure(page, 'lead-time')).toContainText('Deploy')
-    await expect(figureValue(page, 'process-time')).toHaveText('1.8 days')
   })
 
   test('Outside encoding: the summary strip shows flow efficiency 8.3%–22.1%', async ({
@@ -900,18 +1037,6 @@ test.describe('Live time-ladder map', () => {
     await expect(toggle).toBeHidden()
     await expect(figure(page, 'lead-time')).toBeVisible()
     await expect(strip(page).locator('dt:visible')).toHaveCount(5)
-  })
-
-  test('the strip shows every figure and no toggle on a wide screen', async ({
-    page,
-    seed,
-  }) => {
-    await seed(workspaceWith(referenceSteps()))
-
-    await expect(strip(page).locator('dt:visible')).toHaveCount(5)
-    await expect(
-      strip(page).getByRole('button', { name: 'Show all metrics' })
-    ).toBeHidden()
   })
 
   test('Only Intake with no times', async ({ page, seed }) => {

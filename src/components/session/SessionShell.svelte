@@ -17,8 +17,7 @@
   import TimeStage from './stages/TimeStage.svelte'
   import SessionHeader from './SessionHeader.svelte'
   import StageRail from './StageRail.svelte'
-  import LadderMap from '../map/LadderMap.svelte'
-  import ViewSwitch from '../map/ViewSwitch.svelte'
+  import MapPane from '../map/MapPane.svelte'
   import SummaryStrip from '../map/SummaryStrip.svelte'
 
   // Each stage's own component, by stage number; the rest are still placeholders.
@@ -137,19 +136,7 @@
     </main>
   </div>
   {#if showMap}
-    <section class="px-4 pb-4" aria-label="Map" data-testid="map-pane">
-      <div class="bg-map-bg rounded-lg shadow-md p-4">
-        <ViewSwitch panelId="map-view-panel" />
-        <div
-          id="map-view-panel"
-          role="tabpanel"
-          aria-labelledby="view-tab-map"
-          class="mt-3"
-        >
-          <LadderMap ladder={store.ladder} />
-        </div>
-      </div>
-    </section>
+    <MapPane ladderModel={store.ladderModel} />
   {/if}
   <!-- Pinned to the bottom of the viewport, so it stays in view however far
        the page or the ladder is scrolled. -->

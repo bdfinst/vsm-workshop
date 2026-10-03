@@ -4,7 +4,8 @@
       "source": {
         "source": "git",
         "url": "https://github.com/bdfinst/agentic-dev-team.git"
-      }
+      },
+      "autoUpdate": true
     }
   },
   "enabledPlugins": {
@@ -13,6 +14,7 @@
   "hooks": {
     "SessionStart": [
       {
+        "matcher": "startup",
         "hooks": [
           {
             "type": "command",

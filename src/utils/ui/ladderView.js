@@ -1,15 +1,18 @@
 import { TONE } from './flaggedSteps.js'
-import { MIN_SCALED_BOX_WIDTH } from './ladderLayout.js'
-
-export { TONE }
+import {
+  LABEL_CHAR_WIDTH,
+  LABEL_FONT_SIZE,
+  LABEL_GAP,
+  LABEL_INSET,
+  MAX_EQUAL_BOX_WIDTH,
+  MIN_EQUAL_BOX_WIDTH,
+  MIN_SCALED_BOX_WIDTH,
+} from './ladderGeometry.js'
 
 /** Pixels per minute: 480 minutes are at least a minimum-width box. */
 export const MIN_PIXELS_PER_MINUTE = 0.05
 /** Pixels per minute: an hour is 30 pixels at most, so a short map is not blown up. */
 export const MAX_PIXELS_PER_MINUTE = 0.5
-/** The narrowest and widest a box is drawn in equal mode, in pixels. */
-export const MIN_EQUAL_WIDTH = 96
-export const MAX_EQUAL_WIDTH = 160
 
 const clamp = (value, min, max) => Math.min(Math.max(value, min), max)
 
@@ -18,12 +21,12 @@ const sum = (numbers) => numbers.reduce((total, n) => total + n, 0)
 const minutesInStep = ({ minutes }) =>
   sum(Object.values(minutes).map((n) => n ?? 0))
 
-// The pixels per minute at which the boxes fill `width`, where a box too short
+// The pixels per minute at which the boxes fill `availableWidth`, where a box too short
 // for its minutes is drawn at MIN_SCALED_BOX_WIDTH instead. Setting those boxes
 // aside leaves less width for the rest, which can make more of them too short,
 // so it repeats until none more are.
-const fillingPixelsPerMinute = (minutes, width) => {
-  const pixelsPerMinute = width / sum(minutes)
+const fillingPixelsPerMinute = (minutes, availableWidth) => {
+  const pixelsPerMinute = availableWidth / sum(minutes)
   const long = minutes.filter(
     (m) => m * pixelsPerMinute >= MIN_SCALED_BOX_WIDTH
   )
@@ -32,7 +35,7 @@ const fillingPixelsPerMinute = (minutes, width) => {
   }
   return fillingPixelsPerMinute(
     long,
-    width - (minutes.length - long.length) * MIN_SCALED_BOX_WIDTH
+    availableWidth - (minutes.length - long.length) * MIN_SCALED_BOX_WIDTH
   )
 }
 
@@ -40,8 +43,8 @@ const fillingPixelsPerMinute = (minutes, width) => {
  * The pixels per minute that fit the whole ladder into `availableWidth`, kept
  * between MIN_PIXELS_PER_MINUTE and MAX_PIXELS_PER_MINUTE. Boxes too short for
  * their minutes are drawn at the minimum box width and counted in the fit.
- * Below the minimum the ladder is wider than the pane and the pane scrolls.
- * @param {{steps: Object[]}} model - The ladder model (`store.ladder`)
+ * Below the minimum the ladder is wider than the available width and its scroller scrolls.
+ * @param {{steps: Object[]}} model - The ladder model (`store.ladderModel`)
  * @param {number} availableWidth - Pixels the ladder may use
  * @returns {number} Pixels per minute
  */
@@ -56,17 +59,17 @@ export const pixelsPerMinuteToFit = (model, availableWidth) => {
 }
 
 /**
- * The width of every box in equal mode: the pane split between the steps,
+ * The width of every box in equal mode: the available width split between the steps,
  * kept between a readable minimum and a maximum.
  * @param {number} stepCount
  * @param {number} availableWidth - Pixels the ladder may use
  * @returns {number} Pixels
  */
-export const equalWidthFor = (stepCount, availableWidth) =>
+export const equalBoxWidthFor = (stepCount, availableWidth) =>
   clamp(
     availableWidth / Math.max(stepCount, 1),
-    MIN_EQUAL_WIDTH,
-    MAX_EQUAL_WIDTH
+    MIN_EQUAL_BOX_WIDTH,
+    MAX_EQUAL_BOX_WIDTH
   )
 
 const MISSING_PREFIX = 'needs'
@@ -95,28 +98,19 @@ export const annotationsOf = (step) => [
 /**
  * Give each label the first lane where it does not run into the label before
  * it, so names never overlap however narrow their boxes are.
- * @param {{x: number, width: number}[]} blocks - Labels in left-to-right order
+ * @param {{x: number, width: number}[]} extents - Where each label starts and how wide it is, in left-to-right order
  * @param {number} [gap] - Pixels to keep between labels on one lane
- * @returns {number[]} A lane number (0 is the top lane) for each block
+ * @returns {number[]} A lane number (0 is the top lane) for each label
  */
-export const labelLanes = (blocks, gap = 0) => {
+export const labelLanes = (extents, gap = 0) => {
   const laneEnds = []
-  return blocks.map(({ x, width }) => {
+  return extents.map(({ x, width }) => {
     const free = laneEnds.findIndex((end) => end + gap <= x)
     const lane = free === -1 ? laneEnds.length : free
     laneEnds[lane] = x + width
     return lane
   })
 }
-
-/** Pixels. The size labels are drawn at; the width estimate below follows from it. */
-export const LABEL_FONT_SIZE = 12
-/**
- * Pixels one ordinary character of a label is assumed to take: two thirds of
- * an em, a little wider than the average Latin glyph in the semibold label
- * font, so the estimate leans wide rather than letting labels overlap.
- */
-export const LABEL_CHAR_WIDTH = (LABEL_FONT_SIZE * 2) / 3
 
 // Code points drawn about one em wide: East Asian wide and fullwidth forms
 // (Hangul, CJK punctuation, kana, ideographs, compatibility and fullwidth
@@ -135,36 +129,99 @@ const WIDE_RANGES = [
 ]
 // The capitals a bold sans draws about as wide as an em.
 const WIDE_CAPITALS = new Set(['W', 'M'])
+// The lower-case letters that run well past the average.
+const WIDE_LOWERCASE = new Set(['m', 'w'])
+// Punctuation drawn nearly an em wide: the em dash, percent sign, at sign and
+// ellipsis.
+const WIDE_PUNCTUATION = new Set(['—', '%', '@', '…'])
+// Symbols as broad as a capital.
+const CAPITAL_WIDTH_SYMBOLS = new Set(['&'])
+const CAPITAL = /^\p{Lu}/u
+// A glyph from the emoji fonts: pictographs, flags (regional indicators), and
+// anything made emoji by a presentation selector or a keycap.
+const EMOJI = /\p{Extended_Pictographic}|\p{Regional_Indicator}|️|⃣/u
+// What is drawn as a glyph of its own in an emoji sequence: a pictograph or a
+// regional indicator. A skin-tone modifier and a presentation selector are not:
+// they change the glyph before them.
+const EMOJI_GLYPH = /\p{Extended_Pictographic}|\p{Regional_Indicator}/gu
 
-const isWide = (character) => {
-  const code = character.codePointAt(0)
-  return (
-    WIDE_CAPITALS.has(character) ||
-    WIDE_RANGES.some(([from, to]) => code >= from && code <= to)
-  )
+// Widths of the classes, in ems of LABEL_FONT_SIZE, probed in the label font
+// (IBM Plex Sans semibold) and rounded up so the estimate stays on the wide
+// side: the widest capitals (H and N) are 0.719 em, drawn at 8.640625 px at
+// 12 px, because the browser rounds an advance up to a 64th of a pixel, so a
+// capital is 0.73; & is 0.71, m 0.89, w 0.82, the wide punctuation (%, @, the
+// ellipsis, the em dash) up to 0.96 and an emoji 1.25 in the system emoji
+// fonts. Everything else is the ordinary LABEL_CHAR_WIDTH.
+// The Linux CI image rounds each advance to a whole pixel: capitals and & draw
+// at 9 px and m at 11 px there, against 8.64 and 10.7 on macOS.
+const CAPITAL_EMS = 0.76
+const WIDE_LOWERCASE_EMS = 0.92
+const FULL_EM = 1
+// East Asian wide characters are one em in the label font's own CJK glyphs, but
+// the fallback font on the Linux CI image draws a run of them 0.7% wider.
+const EAST_ASIAN_EMS = 1.05
+const EMOJI_EMS = 1.3
+
+// Splits text into what a reader sees as one character: a skin-toned emoji or
+// a letter with its accent is one. Made on first use, and by code point where
+// the engine has no Intl.Segmenter (Firefox before 125): that can only count
+// more characters, so the estimate stays wide.
+let segmenter
+const graphemesOf = (text) => {
+  if (typeof Intl.Segmenter !== 'function') return [...text]
+  segmenter = segmenter ?? new Intl.Segmenter()
+  return Array.from(segmenter.segment(text), ({ segment }) => segment)
+}
+
+const isFullEm = (base) => WIDE_CAPITALS.has(base) || WIDE_PUNCTUATION.has(base)
+
+const isEastAsianWide = (grapheme) =>
+  WIDE_RANGES.some(([from, to]) => {
+    const code = grapheme.codePointAt(0)
+    return code >= from && code <= to
+  })
+
+// A flag or a family can be drawn as several glyphs on a platform without the
+// sequence, so each pictograph and regional indicator is charged on its own;
+// the estimate errs wide so a label never clips on any platform. A skin-tone
+// sequence and a presentation-selector emoji are one glyph everywhere.
+const emojiWidthOf = (grapheme) =>
+  Math.max(grapheme.match(EMOJI_GLYPH)?.length ?? 0, 1) *
+  EMOJI_EMS *
+  LABEL_FONT_SIZE
+
+const widthOfGrapheme = (grapheme) => {
+  if (EMOJI.test(grapheme)) return emojiWidthOf(grapheme)
+  // The letter under any accent: Ŵ is a W, ḿ an m.
+  const base = grapheme.normalize('NFD')[0]
+  if (isEastAsianWide(grapheme)) return EAST_ASIAN_EMS * LABEL_FONT_SIZE
+  if (isFullEm(base)) return FULL_EM * LABEL_FONT_SIZE
+  if (CAPITAL.test(grapheme) || CAPITAL_WIDTH_SYMBOLS.has(base)) {
+    return CAPITAL_EMS * LABEL_FONT_SIZE
+  }
+  if (WIDE_LOWERCASE.has(base)) return WIDE_LOWERCASE_EMS * LABEL_FONT_SIZE
+  return LABEL_CHAR_WIDTH
 }
 
 /**
  * An estimate, in pixels, of how wide a label line is drawn. It weights each
- * character by class: East Asian wide and fullwidth characters and the capitals
- * W and M at a full em, every other character at LABEL_CHAR_WIDTH. It is
- * pure, so it cannot read font metrics: it covers Latin, kana, hangul and
- * ideograph text, and glyphs it does not know (emoji, say) are taken as
- * ordinary characters.
+ * character (a grapheme, so an accented letter or a skin-toned emoji counts
+ * once) by class: an emoji at 1.3 em for each glyph it can be drawn as (a flag
+ * is two, a family one per person), East Asian wide and fullwidth characters
+ * at 1.05 em, the capitals W and M, and the em dash, percent sign, at sign and
+ * ellipsis at a full em, the other capitals and the ampersand at 0.76 em, the
+ * lower-case m
+ * and w at 0.92 em, and every other character at LABEL_CHAR_WIDTH. An accent
+ * does not change the class: Ŵ is a W. It is pure, so it cannot read font
+ * metrics: it measures by class, from widths probed in the label font, and
+ * errs on the wide side so labels never overlap or clip in the scripts that
+ * were probed (Latin, CJK, emoji). Not covered: Æ, æ, ß, wide Cyrillic and
+ * Greek letters, flag tag sequences and a lone skin-tone modifier. Without
+ * Intl.Segmenter it counts code points, which is wider still.
  * @param {string} text
  * @returns {number} Pixels
  */
-export const textWidthOf = (text) =>
-  sum(
-    [...text].map((character) =>
-      isWide(character) ? LABEL_FONT_SIZE : LABEL_CHAR_WIDTH
-    )
-  )
-
-/** Pixels from a step's left edge to where its label text starts. */
-export const LABEL_INSET = 4
-/** Pixels kept between two labels on one lane. */
-export const LABEL_GAP = 8
+export const textWidthOf = (text) => sum(graphemesOf(text).map(widthOfGrapheme))
 
 const nameLine = ({ name }) => ({ text: name, tone: null })
 
@@ -175,37 +232,37 @@ const labelWidthOf = (lines) =>
 
 /**
  * Where each step's label goes and how far right the labels reach: the label
- * lines (the name, then its annotations), the left edge and estimated width,
+ * lines (the name, then its annotations), the left edge and estimated `labelWidth`,
  * the lane each takes so none overlaps, and the right-most pixel of the
  * ladder, boxes and labels together. A label can run past the last box (a
  * narrow box with a long name), so an SVG must be at least `rightEdge` wide.
  * Widths are estimated by textWidthOf, which errs wide.
  * @param {Object[]} steps - Laid-out steps, from sizeLadder
  * @param {number} [gap] - Pixels to keep between labels on one lane
- * @returns {{labels: {step: Object, lines: {text: string, tone: ?string}[], left: number, width: number, right: number}[], lanes: number[], rightEdge: number}}
+ * @returns {{labels: {step: Object, lines: {text: string, tone: ?string}[], left: number, labelWidth: number, right: number}[], lanes: number[], rightEdge: number}}
  */
-export const labelLayout = (steps, gap = LABEL_GAP) => {
+export const layoutLabels = (steps, gap = LABEL_GAP) => {
   const labels = steps.map((step) => {
     const lines = linesOf(step)
     const left = step.x + LABEL_INSET
-    const width = labelWidthOf(lines)
-    return { step, lines, left, width, right: left + width }
+    const labelWidth = labelWidthOf(lines)
+    return { step, lines, left, labelWidth, right: left + labelWidth }
   })
   const lanes = labelLanes(
-    labels.map(({ left, width }) => ({ x: left, width })),
+    labels.map(({ left, labelWidth }) => ({ x: left, width: labelWidth })),
     gap
   )
   const rightEdge = Math.max(
     0,
     ...labels.map(({ right }) => right),
-    ...steps.map(({ x, width }) => x + width)
+    ...steps.map(({ x, boxWidth }) => x + boxWidth)
   )
   return { labels, lanes, rightEdge }
 }
 
 /**
  * An upper bound, in pixels, on how far a label can reach past the end of the
- * ladder, whatever the pane: it only assumes every box is at least
+ * ladder, whatever the available width: it only assumes every box is at least
  * `minBoxWidth`, so the boxes from a step to the end cover at least that much
  * of its label. Used to leave room before fitting, so labels do not push a
  * fitted ladder into a scrollbar.
