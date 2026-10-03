@@ -22,7 +22,8 @@ const isWorkdayHours = (hours) =>
  * Validate a change to the Scope fields of a value stream. Only the fields
  * given are checked, so a draft of one field can be checked on its own.
  * Text may be empty: a new stream starts without any, and the Next gate says so.
- * Refusing an edit of the name to blank is the store's rule (`isBlankName`).
+ * Refusing an edit of the name to blank is the name rule `nameEdit`
+ * (models/v2/valueStream.js), which the store applies.
  * @param {Object} patch - Any of name, trigger, endPoint, unitOfWork, workdayHours
  * @returns {{valid: boolean, errors: Object<string, string>}}
  */

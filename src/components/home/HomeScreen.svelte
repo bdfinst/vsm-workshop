@@ -1,5 +1,6 @@
 <script>
   import { onMount, tick } from 'svelte'
+  import { displayName } from '../../models/v2/valueStream.js'
   import { workspaceStore } from '../../stores/v2/workspaceStore.svelte.js'
   import { toastStore, TOAST_TYPE } from '../../stores/toastStore.svelte.js'
   import { createDeleteUndo } from '../../utils/session/deleteUndo.js'
@@ -89,7 +90,8 @@
     const result = workspaceStore.duplicate(summary.id)
     if (!result.ok) return
     const copy = workspaceStore.streams.find((s) => s.id === result.streamId)
-    announce(`${copy?.name ?? 'A copy'} added after ${summary.name}`)
+    const copyName = copy ? displayName(copy) : 'A copy'
+    announce(`${copyName} added after ${summary.name}`)
   }
 
   // Focus goes to the card now in the deleted one's position, else the one

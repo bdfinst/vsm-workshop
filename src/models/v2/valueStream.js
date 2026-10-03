@@ -2,8 +2,9 @@ import { createMapVersion } from './mapVersion.js'
 import { refuse } from './result.js'
 
 /**
- * Create a v2 value stream at stage 1 with one active current version. The name
- * is kept normalized, as everywhere else.
+ * Create a v2 value stream at stage 1 with one active current version. A name
+ * is trimmed when a stream is created, imported, migrated or edited; a saved
+ * workspace is taken as stored.
  * @param {Object} [overrides] - Fields to override
  * @returns {Object} A new value stream
  */
