@@ -130,10 +130,7 @@
           aria-labelledby="view-tab-map"
           class="mt-3"
         >
-          <LadderMap
-            version={store.activeVersion}
-            flags={store.metrics.flags}
-          />
+          <LadderMap ladder={store.ladder} />
         </div>
       </div>
     </section>

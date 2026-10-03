@@ -1,5 +1,5 @@
 <script>
-  import { ladderLayout } from '../../utils/ui/ladderLayout.js'
+  import { sizeLadder } from '../../utils/ui/ladderLayout.js'
   import {
     annotationsOf,
     equalWidthFor,
@@ -7,9 +7,10 @@
     scaleToFit,
   } from '../../utils/ui/ladderView.js'
 
-  // LadderMap props: version (the map version to draw) and flags
-  // (`metrics.flags` for it). The ladder reads both and works out neither.
-  let { version, flags } = $props()
+  // LadderMap props: ladder (`store.ladder`, the pane-independent model of the
+  // version being drawn). The ladder sizes it for the pane and works out
+  // neither metrics nor flags.
+  let { ladder } = $props()
 
   const MODES = [
     { value: 'scaled', label: 'To scale' },
@@ -47,15 +48,11 @@
 
   let available = $derived(Math.max(paneWidth - 2 * PAD_X - FIT_SLACK, 0))
   let layout = $derived(
-    ladderLayout(
-      version,
+    sizeLadder(
+      ladder,
       mode === 'scaled'
-        ? { mode, scale: scaleToFit(version, available), flags }
-        : {
-            mode,
-            width: equalWidthFor(version.steps.length, available),
-            flags,
-          }
+        ? { mode, scale: scaleToFit(ladder, available) }
+        : { mode, width: equalWidthFor(ladder.steps.length, available) }
     )
   )
 

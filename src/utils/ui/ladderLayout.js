@@ -77,9 +77,8 @@ const sizerFor = ({ mode, scale, width }) => {
   return SIZERS[mode]({ scale, width })
 }
 
-const layoutStep = (step, x, size, flags) => {
-  const minutes = minutesOf(step)
-  const widths = size(minutes)
+// What a step looks like whatever the pane: its minutes, encodings and flags.
+const modelStep = (step, flags) => {
   const missing = missingTimes(step)
   const outside = isOutside(step) ? OUTSIDE_ENCODING : null
   const handoff = step.isHandoff && !outside ? 'handoff' : null
@@ -87,10 +86,7 @@ const layoutStep = (step, x, size, flags) => {
   return {
     stepId: step.id,
     name: step.name,
-    x,
-    width: widths.box,
-    wait: segment(minutes.wait, x, widths.wait),
-    process: segment(minutes.process, x + widths.processOffset, widths.process),
+    minutes: minutesOf(step),
     outline: outlineOf(missing, outside, handoff),
     handoff,
     missing,
@@ -99,12 +95,65 @@ const layoutStep = (step, x, size, flags) => {
   }
 }
 
+const layoutStep = ({ minutes, ...encodings }, x, size) => {
+  const widths = size(minutes)
+  return {
+    ...encodings,
+    x,
+    width: widths.box,
+    wait: segment(minutes.wait, x, widths.wait),
+    process: segment(minutes.process, x + widths.processOffset, widths.process),
+  }
+}
+
+/**
+ * The part of a time ladder that does not depend on the pane: per step its
+ * `minutes` (`{wait, process}` or `{elapsed}`, null when not entered),
+ * `outline`, `handoff`, `missing`, `outside` and `flags` (see ladderLayout).
+ * The value stream store derives this once per change, so a pane or a mode
+ * switch only has to size it with `sizeLadder`. Pure.
+ * @param {Object} version - A v2 map version ({ steps, reworkPaths })
+ * @param {Object} [flags] - `metrics.flags` for this version; worked out with calculateMetrics when not given
+ * @returns {{steps: Object[]}}
+ */
+export const ladderModel = (
+  version,
+  flags = calculateMetrics(version).flags
+) => ({ steps: version.steps.map((step) => modelStep(step, flags)) })
+
+/**
+ * Size a ladder model for a pane: the boxes and segments an SVG draws. Cheap
+ * (one pass over the steps) and pure. See ladderLayout for the result.
+ * @param {{steps: Object[]}} model - From ladderModel
+ * @param {Object} options
+ * @param {string} options.mode - 'scaled' (widths proportional to minutes) or 'equal' (every box `width` wide)
+ * @param {number} [options.scale] - Pixels per minute; required for scaled mode
+ * @param {number} [options.width] - Width of every box in pixels; required for equal mode
+ * @returns {{totalWidth: number, steps: Object[]}}
+ * @throws {RangeError} For an unknown mode, or a missing or non-positive scale or width
+ */
+export const sizeLadder = (model, { mode, scale, width }) => {
+  const size = sizerFor({ mode, scale, width })
+  const { steps, totalWidth } = model.steps.reduce(
+    (acc, step) => {
+      const laid = layoutStep(step, acc.totalWidth, size)
+      return {
+        steps: [...acc.steps, laid],
+        totalWidth: acc.totalWidth + laid.width,
+      }
+    },
+    { steps: [], totalWidth: 0 }
+  )
+  return { totalWidth, steps }
+}
+
 /**
  * Lay out a map version as a time ladder: the boxes, segments, encodings and
  * flags an SVG can draw directly, with nothing left to work out. Pure; no
  * store or DOM. Step order is the version's, boxes sit side by side from x 0,
  * and the layout never shrinks to fit: `totalWidth` grows with the steps and
- * fitting or zooming is the caller's job.
+ * fitting or zooming is the caller's job. It is `sizeLadder` over
+ * `ladderModel`; code that already has the model should size that instead.
  *
  * Per step: `stepId`, `name`, `x`, `width` (the box); `wait` (drawn above the
  * track) and `process` (below it) as `{x, width, minutes}` or null when that
@@ -121,20 +170,5 @@ const layoutStep = (step, x, size, flags) => {
  * @returns {{totalWidth: number, steps: Object[]}}
  * @throws {RangeError} For an unknown mode, or a missing or non-positive scale or width
  */
-export const ladderLayout = (
-  version,
-  { mode, scale, width, flags = calculateMetrics(version).flags }
-) => {
-  const size = sizerFor({ mode, scale, width })
-  const { steps, totalWidth } = version.steps.reduce(
-    (acc, step) => {
-      const laid = layoutStep(step, acc.totalWidth, size, flags)
-      return {
-        steps: [...acc.steps, laid],
-        totalWidth: acc.totalWidth + laid.width,
-      }
-    },
-    { steps: [], totalWidth: 0 }
-  )
-  return { totalWidth, steps }
-}
+export const ladderLayout = (version, { flags, ...view }) =>
+  sizeLadder(ladderModel(version, flags), view)

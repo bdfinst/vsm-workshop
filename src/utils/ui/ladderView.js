@@ -1,5 +1,5 @@
 import { FLAG_LABEL } from './flaggedSteps.js'
-import { MIN_BOX_WIDTH, minutesOf } from './ladderLayout.js'
+import { MIN_BOX_WIDTH } from './ladderLayout.js'
 
 /** Pixels per minute: a working day (480 min) is at least a minimum-width box. */
 export const MIN_SCALE = 0.05
@@ -13,8 +13,8 @@ const clamp = (value, min, max) => Math.min(Math.max(value, min), max)
 
 const sum = (numbers) => numbers.reduce((total, n) => total + n, 0)
 
-const minutesInStep = (step) =>
-  sum(Object.values(minutesOf(step)).map((n) => n ?? 0))
+const minutesInStep = ({ minutes }) =>
+  sum(Object.values(minutes).map((n) => n ?? 0))
 
 // The scale at which the boxes fill `width`, where a box too short for its
 // minutes is drawn at MIN_BOX_WIDTH instead. Setting those boxes aside leaves
@@ -35,12 +35,12 @@ const fillingScale = (minutes, width) => {
  * between a minimum readable scale and a maximum. Boxes too short for their
  * minutes are drawn at the minimum box width and counted in the fit. Below the
  * minimum scale the ladder is wider than the pane and the pane scrolls.
- * @param {Object} version - A v2 map version
+ * @param {{steps: Object[]}} model - The ladder model (`store.ladder`)
  * @param {number} availableWidth - Pixels the ladder may use
  * @returns {number} Pixels per minute
  */
-export const scaleToFit = (version, availableWidth) => {
-  const minutes = version.steps.map(minutesInStep)
+export const scaleToFit = (model, availableWidth) => {
+  const minutes = model.steps.map(minutesInStep)
   if (sum(minutes) === 0) return MAX_SCALE
   return clamp(fillingScale(minutes, availableWidth), MIN_SCALE, MAX_SCALE)
 }

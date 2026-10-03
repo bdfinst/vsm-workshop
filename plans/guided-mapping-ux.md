@@ -2921,10 +2921,10 @@ See each step's **Complexity** line. The `complex` steps are 3.1 (migration), 4.
 #### Wave 7
 
 - [ ] Slice 10: Time ladder, map pane, summary strip
-  - [ ] Step 10.1: Pure ladder layout
-  - [ ] Step 10.2: LadderMap and the map pane in the shell
-  - [ ] Step 10.3: SummaryStrip
-  - [ ] Step 10.4: Recalculation budget
+  - [x] Step 10.1: Pure ladder layout
+  - [x] Step 10.2: LadderMap and the map pane in the shell
+  - [x] Step 10.3: SummaryStrip
+  - [x] Step 10.4: Recalculation budget (built; ladder model derived in the store, 1775 unit tests, 227 guided e2e)
   - [ ] Early dry run on the standalone file (non-gating, findings in `docs/ux/pilot-results.md`)
 
 #### Wave 8

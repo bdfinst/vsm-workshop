@@ -1,8 +1,11 @@
 import { describe, it, expect } from 'vitest'
 import {
   ladderLayout,
+  ladderModel,
+  sizeLadder,
   MIN_BOX_WIDTH,
 } from '../../../src/utils/ui/ladderLayout.js'
+import { calculateMetrics } from '../../../src/utils/calculations/v2/index.js'
 import { createStep } from '../../../src/models/v2/step.js'
 import {
   referenceSteps,
@@ -271,5 +274,43 @@ describe('ladderLayout', () => {
       expect(wait).toMatchObject({ x, width: EQUAL_WIDTH, minutes: 1440 })
       expect(process).toMatchObject({ x, width: EQUAL_WIDTH, minutes: 30 })
     })
+  })
+})
+
+describe('ladderModel and sizeLadder', () => {
+  it('the model holds what does not depend on the view: minutes, encodings, flags', () => {
+    const model = ladderModel(versionOf(reworkSteps()))
+
+    const codeReview = model.steps.find((s) => s.name === 'Code review')
+    expect(codeReview).toMatchObject({
+      minutes: { wait: 2880, process: 60 },
+      outline: 'solid',
+      flags: ['largest wait', 'lowest %C/A'],
+    })
+    expect(codeReview).not.toHaveProperty('x')
+    expect(codeReview).not.toHaveProperty('width')
+  })
+
+  it('uses the flags it is given instead of working them out again', () => {
+    const version = versionOf(reworkSteps())
+    const { flags } = calculateMetrics(version)
+
+    const model = ladderModel(version, { ...flags, lowestCA: null })
+
+    expect(model.steps.find((s) => s.name === 'Code review').flags).toEqual([
+      'largest wait',
+    ])
+  })
+
+  it('sizing a model gives the same layout as laying out the version', () => {
+    const version = versionOf(reworkSteps())
+    const { flags } = calculateMetrics(version)
+
+    expect(
+      sizeLadder(ladderModel(version, flags), { mode: 'scaled', scale: 0.1 })
+    ).toEqual(ladderLayout(version, { mode: 'scaled', scale: 0.1 }))
+    expect(
+      sizeLadder(ladderModel(version, flags), { mode: 'equal', width: 100 })
+    ).toEqual(ladderLayout(version, { mode: 'equal', width: 100 }))
   })
 })

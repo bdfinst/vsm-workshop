@@ -9,7 +9,10 @@ import {
   labelLanes,
   scaleToFit,
 } from '../../../src/utils/ui/ladderView.js'
-import { ladderLayout } from '../../../src/utils/ui/ladderLayout.js'
+import {
+  ladderLayout,
+  ladderModel,
+} from '../../../src/utils/ui/ladderLayout.js'
 import {
   insertAfter,
   outsideStep,
@@ -27,7 +30,10 @@ describe('scaleToFit', () => {
   it('fits the whole lead time into the available width', () => {
     const version = versionOf(referenceSteps())
 
-    expect(scaleToFit(version, 900)).toBeCloseTo(900 / REFERENCE_MINUTES, 10)
+    expect(scaleToFit(ladderModel(version), 900)).toBeCloseTo(
+      900 / REFERENCE_MINUTES,
+      10
+    )
   })
 
   it('counts an outside step by its elapsed time', () => {
@@ -37,7 +43,7 @@ describe('scaleToFit', () => {
       outsideStep('Security review', 1440)
     )
 
-    expect(scaleToFit(versionOf(steps), 900)).toBeCloseTo(
+    expect(scaleToFit(ladderModel(versionOf(steps)), 900)).toBeCloseTo(
       900 / (REFERENCE_MINUTES + 1440),
       10
     )
@@ -46,13 +52,13 @@ describe('scaleToFit', () => {
   it('never goes below the minimum readable scale, so a long stream scrolls', () => {
     const steps = [team('Slow', 60, 1000000)]
 
-    expect(scaleToFit(versionOf(steps), 900)).toBe(MIN_SCALE)
+    expect(scaleToFit(ladderModel(versionOf(steps)), 900)).toBe(MIN_SCALE)
   })
 
   it('never goes above the maximum scale, so a short stream is not blown up', () => {
     const steps = [team('Quick', 5, 5)]
 
-    expect(scaleToFit(versionOf(steps), 900)).toBe(MAX_SCALE)
+    expect(scaleToFit(ladderModel(versionOf(steps)), 900)).toBe(MAX_SCALE)
   })
 
   it('gives a usable scale when no time is entered', () => {
@@ -64,12 +70,12 @@ describe('scaleToFit', () => {
       },
     ]
 
-    expect(scaleToFit(versionOf(steps), 900)).toBe(MAX_SCALE)
+    expect(scaleToFit(ladderModel(versionOf(steps)), 900)).toBe(MAX_SCALE)
   })
 
   it('keeps the whole ladder inside the pane when boxes stay readable', () => {
     const version = versionOf(referenceSteps())
-    const scale = scaleToFit(version, 900)
+    const scale = scaleToFit(ladderModel(version), 900)
 
     const { totalWidth } = ladderLayout(version, { mode: 'scaled', scale })
 
@@ -86,7 +92,7 @@ describe('scaleToFit with short steps', () => {
       team('Code review', 60, 2880),
     ]
     const version = versionOf(steps)
-    const scale = scaleToFit(version, 900)
+    const scale = scaleToFit(ladderModel(version), 900)
 
     const { totalWidth } = ladderLayout(version, { mode: 'scaled', scale })
 
@@ -98,7 +104,7 @@ describe('scaleToFit with short steps', () => {
       team('Intake', 1, 1),
       team('Development', 480, 960),
     ])
-    const scale = scaleToFit(version, 900)
+    const scale = scaleToFit(ladderModel(version), 900)
 
     const { steps } = ladderLayout(version, { mode: 'scaled', scale })
 

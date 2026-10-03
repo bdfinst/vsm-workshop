@@ -413,6 +413,36 @@ test.describe('Live time-ladder map', () => {
     await expect(lowestCA).toContainText('Code review')
   })
 
+  test('the map and the strip follow an edit to a time on the Time stage', async ({
+    page,
+    seed,
+  }) => {
+    await seed(workspaceWith(referenceSteps(), STAGE_NUMBER.TIME))
+    const waitWidthOf = async (name) =>
+      Number(
+        await stepOf(page, name)
+          .getByTestId('ladder-wait')
+          .getAttribute('width')
+      )
+    // The ladder refits the pane after an edit, so compare widths as a ratio.
+    const developmentOverRefinement = async () =>
+      (await waitWidthOf('Development')) / (await waitWidthOf('Refinement'))
+    expect(await developmentOverRefinement()).toBeCloseTo(2, 5)
+    await expect(figureValue(page, 'flow-efficiency')).toHaveText('9.6%')
+    await expect(figureValue(page, 'lead-time')).toHaveText('18.8 days')
+
+    const development = page
+      .getByTestId('time-row')
+      .filter({ has: page.getByRole('heading', { name: 'Development' }) })
+    await development.getByTestId('wait-time-unit-select').selectOption('days')
+    await development.getByTestId('wait-time-input').fill('3')
+    await development.getByTestId('wait-time-input').press('Tab')
+
+    await expect(figureValue(page, 'lead-time')).toHaveText('19.8 days')
+    await expect(figureValue(page, 'flow-efficiency')).toHaveText('9.1%')
+    await expect.poll(developmentOverRefinement).toBeCloseTo(3, 5)
+  })
+
   test('the strip follows an edit to the steps', async ({ page, seed }) => {
     await seed(workspaceWith(referenceSteps(), STAGE_NUMBER.STEPS))
     await expect(figureValue(page, 'flow-efficiency')).toHaveText('9.6%')
