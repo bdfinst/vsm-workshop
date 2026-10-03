@@ -43,7 +43,7 @@ const fillingPixelsPerMinute = (minutes, availableWidth) => {
  * The pixels per minute that fit the whole ladder into `availableWidth`, kept
  * between MIN_PIXELS_PER_MINUTE and MAX_PIXELS_PER_MINUTE. Boxes too short for
  * their minutes are drawn at the minimum box width and counted in the fit.
- * Below the minimum the ladder is wider than the pane and the pane scrolls.
+ * Below the minimum the ladder is wider than the available width and its scroller scrolls.
  * @param {{steps: Object[]}} model - The ladder model (`store.ladderModel`)
  * @param {number} availableWidth - Pixels the ladder may use
  * @returns {number} Pixels per minute
@@ -59,7 +59,7 @@ export const pixelsPerMinuteToFit = (model, availableWidth) => {
 }
 
 /**
- * The width of every box in equal mode: the pane split between the steps,
+ * The width of every box in equal mode: the available width split between the steps,
  * kept between a readable minimum and a maximum.
  * @param {number} stepCount
  * @param {number} availableWidth - Pixels the ladder may use
@@ -98,13 +98,13 @@ export const annotationsOf = (step) => [
 /**
  * Give each label the first lane where it does not run into the label before
  * it, so names never overlap however narrow their boxes are.
- * @param {{x: number, width: number}[]} blocks - Labels in left-to-right order
+ * @param {{x: number, width: number}[]} extents - Where each label starts and how wide it is, in left-to-right order
  * @param {number} [gap] - Pixels to keep between labels on one lane
- * @returns {number[]} A lane number (0 is the top lane) for each block
+ * @returns {number[]} A lane number (0 is the top lane) for each label
  */
-export const labelLanes = (blocks, gap = 0) => {
+export const labelLanes = (extents, gap = 0) => {
   const laneEnds = []
-  return blocks.map(({ x, width }) => {
+  return extents.map(({ x, width }) => {
     const free = laneEnds.findIndex((end) => end + gap <= x)
     const lane = free === -1 ? laneEnds.length : free
     laneEnds[lane] = x + width
@@ -221,7 +221,7 @@ export const layoutLabels = (steps, gap = LABEL_GAP) => {
 
 /**
  * An upper bound, in pixels, on how far a label can reach past the end of the
- * ladder, whatever the pane: it only assumes every box is at least
+ * ladder, whatever the available width: it only assumes every box is at least
  * `minBoxWidth`, so the boxes from a step to the end cover at least that much
  * of its label. Used to leave room before fitting, so labels do not push a
  * fitted ladder into a scrollbar.

@@ -116,9 +116,10 @@ export const createValueStreamStore = ({ stream, persist }) => {
 
   const activeVersion = $derived(activeVersionOf(current))
   const metrics = $derived(calculateMetrics(activeVersion))
-  // What the time ladder draws that does not depend on the pane: minutes,
-  // encodings and the flags already in `metrics`. Components size it for their
-  // pane (`sizeLadder`) and never work out metrics or flags themselves.
+  // What the time ladder draws that does not depend on the width it is drawn
+  // at: minutes, encodings and the flags already in `metrics`. Components size
+  // it for their own scroller (`sizeLadder`) and never work out metrics or
+  // flags themselves.
   const activeLadderModel = $derived(ladderModel(activeVersion, metrics.flags))
 
   const save = (options) => persist($state.snapshot(current), options)

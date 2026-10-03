@@ -27,7 +27,7 @@
 >
   <div class="flex flex-col gap-2 sm:flex-row sm:items-start sm:gap-8">
     <dl class="m-0">
-      <SummaryFigure figure={summary.hero} size="text-3xl" />
+      <SummaryFigure figure={summary.hero} valueSizeClass="text-3xl" />
     </dl>
 
     <button
@@ -48,7 +48,7 @@
     >
       <dl class="m-0 grid grid-cols-2 gap-x-4 gap-y-2 sm:grid-cols-4">
         {#each summary.rows as row (row.id)}
-          <SummaryFigure figure={row} size="text-xl" />
+          <SummaryFigure figure={row} valueSizeClass="text-xl" />
         {/each}
       </dl>
 

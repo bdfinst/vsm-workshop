@@ -100,7 +100,7 @@ describe('pixelsPerMinuteToFit', () => {
     )
   })
 
-  it('keeps the whole ladder inside the pane when boxes stay readable', () => {
+  it('keeps the whole ladder inside the available width when boxes stay readable', () => {
     const steps = referenceSteps()
     const pixelsPerMinute = pixelsPerMinuteToFit(modelOf(steps), 900)
 
@@ -110,45 +110,48 @@ describe('pixelsPerMinuteToFit', () => {
   })
 })
 
-describe('pixelsPerMinuteToFit before the pane is measured', () => {
-  it('gives the minimum pixels per minute for a pane of width 0', () => {
+describe('pixelsPerMinuteToFit before the scroller is measured', () => {
+  it('gives the minimum pixels per minute for an available width of 0', () => {
     expect(pixelsPerMinuteToFit(modelOf(referenceSteps()), 0)).toBe(
       MIN_PIXELS_PER_MINUTE
     )
   })
 
-  it('gives the maximum for a pane of width 0 when no time is entered', () => {
+  it('gives the maximum for an available width of 0 when no time is entered', () => {
     const steps = [createStep({ name: 'Intake' })]
 
     expect(pixelsPerMinuteToFit(modelOf(steps), 0)).toBe(MAX_PIXELS_PER_MINUTE)
   })
 })
 
-describe('a long stream on a narrow pane', () => {
-  const PANE = 400
+describe('a long stream in a narrow scroller', () => {
+  const AVAILABLE_WIDTH = 400
   const fortyOne = () =>
     Array.from({ length: 41 }, (_, index) => team(`Step ${index}`, 60, 120))
 
-  it('is wider than the pane to scale, so the pane scrolls', () => {
-    const pixelsPerMinute = pixelsPerMinuteToFit(modelOf(fortyOne()), PANE)
+  it('is wider than the available width to scale, so its scroller scrolls', () => {
+    const pixelsPerMinute = pixelsPerMinuteToFit(
+      modelOf(fortyOne()),
+      AVAILABLE_WIDTH
+    )
 
     expect(
       scaledLayout(fortyOne(), pixelsPerMinute).totalWidth
-    ).toBeGreaterThan(PANE)
+    ).toBeGreaterThan(AVAILABLE_WIDTH)
   })
 
-  it('is wider than the pane in equal width, so the pane scrolls', () => {
-    const boxWidth = equalBoxWidthFor(41, PANE)
+  it('is wider than the available width in equal width, so its scroller scrolls', () => {
+    const boxWidth = equalBoxWidthFor(41, AVAILABLE_WIDTH)
 
     expect(
       sizeLadder(modelOf(fortyOne()), { mode: LADDER_MODE.EQUAL, boxWidth })
         .totalWidth
-    ).toBeGreaterThan(PANE)
+    ).toBeGreaterThan(AVAILABLE_WIDTH)
   })
 })
 
 describe('pixelsPerMinuteToFit with short steps', () => {
-  it('keeps the ladder inside the pane although short steps are drawn at the minimum box width', () => {
+  it('keeps the ladder inside the available width although short steps are drawn at the minimum box width', () => {
     const steps = [
       team('Intake', 1, 1),
       team('Tiny', 1, 1),
@@ -190,7 +193,7 @@ describe('equalBoxWidthFor', () => {
     expect(equalBoxWidthFor(41, 900)).toBe(MIN_EQUAL_BOX_WIDTH)
   })
 
-  it('does not stretch a few steps across the pane', () => {
+  it('does not stretch a few steps across the available width', () => {
     expect(equalBoxWidthFor(2, 900)).toBe(MAX_EQUAL_BOX_WIDTH)
   })
 

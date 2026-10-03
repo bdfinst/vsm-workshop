@@ -9,9 +9,9 @@ import {
   stubResizeObserver,
 } from './ladderRender.js'
 
-// A ladder map in jsdom: it has no layout, so the scroll region's width is
-// given (or is 0, which fits the ladder at its smallest scale).
-const SCALE = 0.1 // pixels per minute
+// A ladder map in jsdom: it has no layout, so the scroller's width is given
+// (or is 0, which fits the ladder at its smallest scale).
+const PIXELS_PER_MINUTE = 0.1
 const CODE_REVIEW_WAIT_MINUTES = 2880
 
 let mounted = []
@@ -71,9 +71,9 @@ afterEach(() => {
 
 describe('LadderMap pixelsPerMinute', () => {
   it('A ladder map pinned to a scale ignores the pane width', () => {
-    const widthsAt = (paneWidth) => {
-      restoreWidth = giveElementsClientWidth(paneWidth)
-      const target = render({ pixelsPerMinute: SCALE })
+    const widthsAt = (scrollerWidth) => {
+      restoreWidth = giveElementsClientWidth(scrollerWidth)
+      const target = render({ pixelsPerMinute: PIXELS_PER_MINUTE })
       const width = waitWidthOf(target, 'Code review')
       mounted.forEach((component) => unmount(component))
       mounted = []
@@ -82,11 +82,11 @@ describe('LadderMap pixelsPerMinute', () => {
       return width
     }
 
-    expect(widthsAt(200)).toBe(CODE_REVIEW_WAIT_MINUTES * SCALE)
-    expect(widthsAt(1600)).toBe(CODE_REVIEW_WAIT_MINUTES * SCALE)
+    expect(widthsAt(200)).toBe(CODE_REVIEW_WAIT_MINUTES * PIXELS_PER_MINUTE)
+    expect(widthsAt(1600)).toBe(CODE_REVIEW_WAIT_MINUTES * PIXELS_PER_MINUTE)
   })
 
-  it('A single map with no options fits the pane To scale and offers the mode choice', () => {
+  it('A single map with no options draws as before: it fits the pane To scale and offers the mode choice', () => {
     restoreWidth = giveElementsClientWidth(600)
 
     const target = render()
@@ -105,7 +105,7 @@ describe('LadderMap mode', () => {
   it('A ladder map given a mode starts in it', () => {
     restoreWidth = giveElementsClientWidth(900)
 
-    const target = render({ mode: LADDER_MODE.EQUAL })
+    const target = render({ ladderMode: LADDER_MODE.EQUAL })
 
     expect(radio(target, LADDER_MODE.EQUAL).checked).toBe(true)
     expect(new Set(boxWidths(target)).size).toBe(1)
@@ -115,10 +115,10 @@ describe('LadderMap mode', () => {
     let chosen = LADDER_MODE.SCALED
     const target = renderWith({
       ladderModel: model(),
-      get mode() {
+      get ladderMode() {
         return chosen
       },
-      set mode(value) {
+      set ladderMode(value) {
         chosen = value
       },
     })
@@ -130,11 +130,11 @@ describe('LadderMap mode', () => {
   })
 
   it('A ladder map refuses a mode it does not know', () => {
-    expect(() => render({ mode: 'fit' })).toThrow(RangeError)
+    expect(() => render({ ladderMode: 'fit' })).toThrow(RangeError)
   })
 
   it('The mode choice can be hidden', () => {
-    const target = render({ showModeToggle: false })
+    const target = render({ showLadderModeToggle: false })
 
     expect(target.querySelectorAll('input[type="radio"]')).toHaveLength(0)
     expect(inMap(target, 'ladder-mode')).toHaveLength(0)

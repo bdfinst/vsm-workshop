@@ -22,17 +22,18 @@
   import LadderStep from './LadderStep.svelte'
 
   // LadderMap props: ladderModel (`store.ladderModel`, or one built with
-  // `ladderModel(version, flags)`: the pane-independent model of the version
-  // being drawn; the map works out neither metrics nor flags). Optional:
-  // pixelsPerMinute (a scale to draw To scale at, so maps can share one; absent,
-  // the map fits its scroll region), mode (bindable; a LADDER_MODE, To scale
-  // unless given) and showModeToggle (false hides the mode choice). The ids the
-  // drawing needs are per map, so any number of maps can share a page.
+  // `ladderModel(version, flags)`: the model of the version being drawn, which
+  // does not depend on the width it is drawn at; the map works out neither
+  // metrics nor flags). Optional: pixelsPerMinute (a scale to draw To scale at,
+  // so maps can share one; absent, the map fits its scroller), ladderMode
+  // (bindable; a LADDER_MODE, To scale unless given) and showLadderModeToggle
+  // (false hides the mode choice). The ids the drawing needs are per map, so any
+  // number of maps can share a page.
   let {
     ladderModel,
     pixelsPerMinute = undefined,
-    mode = $bindable(LADDER_MODE.SCALED),
-    showModeToggle = true,
+    ladderMode = $bindable(LADDER_MODE.SCALED),
+    showLadderModeToggle = true,
   } = $props()
 
   const uid = $props.id()
@@ -42,7 +43,7 @@
     { value: LADDER_MODE.EQUAL, label: 'Equal width' },
   ]
 
-  // Keeps a fitted ladder a pixel inside the pane, so rounding never adds a scrollbar.
+  // Keeps a fitted ladder a pixel inside the scroller, so rounding never adds a scrollbar.
   const FIT_SLACK = 1
 
   // What the drawing means, for anyone who cannot see it. Every encoding is
@@ -57,31 +58,39 @@
     'Handoffs, outside steps, missing times and the largest wait and lowest percent complete and accurate are also written as text under each step.'
 
   let scrollerWidth = $state(0)
-  let modeLabel = $derived(MODES.find(({ value }) => value === mode).label)
+  let modeLabel = $derived(
+    MODES.find(({ value }) => value === ladderMode).label
+  )
 
   // A label can run past the last box, so the fit leaves room for the furthest
   // it can reach (see labelOverhangFor) and nothing is clipped or scrolls for it.
   let labelOverhang = $derived(
     labelOverhangFor(
       ladderModel.steps,
-      mode === LADDER_MODE.SCALED ? MIN_SCALED_BOX_WIDTH : MIN_EQUAL_BOX_WIDTH
+      ladderMode === LADDER_MODE.SCALED
+        ? MIN_SCALED_BOX_WIDTH
+        : MIN_EQUAL_BOX_WIDTH
     )
   )
-  let available = $derived(
+  let availableWidth = $derived(
     Math.max(scrollerWidth - 2 * PAD_X - FIT_SLACK - labelOverhang, 0)
   )
   let ladderLayout = $derived(
     sizeLadder(
       ladderModel,
-      mode === LADDER_MODE.SCALED
+      ladderMode === LADDER_MODE.SCALED
         ? {
-            mode,
+            mode: ladderMode,
             pixelsPerMinute:
-              pixelsPerMinute ?? pixelsPerMinuteToFit(ladderModel, available),
+              pixelsPerMinute ??
+              pixelsPerMinuteToFit(ladderModel, availableWidth),
           }
         : {
-            mode,
-            boxWidth: equalBoxWidthFor(ladderModel.steps.length, available),
+            mode: ladderMode,
+            boxWidth: equalBoxWidthFor(
+              ladderModel.steps.length,
+              availableWidth
+            ),
           }
     )
   )
@@ -98,7 +107,7 @@
 </script>
 
 <div data-testid="ladder-pane">
-  {#if showModeToggle}
+  {#if showLadderModeToggle}
     <fieldset
       class="flex flex-wrap items-center gap-2 mb-2 border-0 p-0 m-0"
       data-testid="ladder-mode"
@@ -113,7 +122,7 @@
               type="radio"
               name={MODE_GROUP}
               value={option.value}
-              bind:group={mode}
+              bind:group={ladderMode}
               class="peer absolute inset-0 h-full w-full cursor-pointer opacity-0"
               data-testid="ladder-mode-{option.value}"
             />

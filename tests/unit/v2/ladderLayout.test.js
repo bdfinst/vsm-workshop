@@ -18,7 +18,7 @@ import {
 const stepBox = (layout, name) => layout.steps.find((s) => s.name === name)
 
 const PX_PER_MINUTE = 0.5
-const EQUAL_WIDTH = 120
+const EQUAL_BOX_WIDTH = 120
 
 const modelOf = (steps, flags) => {
   const version = versionOf(steps)
@@ -28,7 +28,7 @@ const modelOf = (steps, flags) => {
 const scaled = (steps, pixelsPerMinute = PX_PER_MINUTE) =>
   sizeLadder(modelOf(steps), { mode: LADDER_MODE.SCALED, pixelsPerMinute })
 
-const equal = (steps, boxWidth = EQUAL_WIDTH) =>
+const equal = (steps, boxWidth = EQUAL_BOX_WIDTH) =>
   sizeLadder(modelOf(steps), { mode: LADDER_MODE.EQUAL, boxWidth })
 
 const flagLabels = (layout, name) =>
@@ -158,7 +158,7 @@ describe('sizeLadder', () => {
 
       const layout = equal(steps)
 
-      expect(stepBox(layout, 'Security review').boxWidth).toBe(EQUAL_WIDTH)
+      expect(stepBox(layout, 'Security review').boxWidth).toBe(EQUAL_BOX_WIDTH)
       expect(stepBox(layout, 'Security review').outsideText).toMatchObject({
         text: 'outside',
       })
@@ -271,7 +271,7 @@ describe('sizeLadder', () => {
 
       const layout = sizeLadder(modelOf(steps, flags), {
         mode: LADDER_MODE.EQUAL,
-        boxWidth: EQUAL_WIDTH,
+        boxWidth: EQUAL_BOX_WIDTH,
       })
 
       expect(flagLabels(layout, 'Deploy')).toEqual(['largest wait'])
@@ -291,7 +291,7 @@ describe('sizeLadder', () => {
     })
 
     it('grows the equal total width with the steps', () => {
-      expect(equal(fortyOneSteps()).totalWidth).toBe(41 * EQUAL_WIDTH)
+      expect(equal(fortyOneSteps()).totalWidth).toBe(41 * EQUAL_BOX_WIDTH)
     })
   })
 
@@ -332,7 +332,7 @@ describe('sizeLadder', () => {
       const layout = equal(referenceSteps())
 
       expect(layout.steps.map((s) => s.boxWidth)).toEqual(
-        Array(5).fill(EQUAL_WIDTH)
+        Array(5).fill(EQUAL_BOX_WIDTH)
       )
     })
 
@@ -340,7 +340,7 @@ describe('sizeLadder', () => {
       const layout = equal(referenceSteps())
 
       expect(layout.steps.map((s) => s.x)).toEqual([0, 120, 240, 360, 480])
-      expect(layout.totalWidth).toBe(5 * EQUAL_WIDTH)
+      expect(layout.totalWidth).toBe(5 * EQUAL_BOX_WIDTH)
     })
 
     it('draws a known wait and process across the whole column', () => {
@@ -349,8 +349,16 @@ describe('sizeLadder', () => {
         'Deploy'
       )
 
-      expect(waitBlock).toMatchObject({ x, width: EQUAL_WIDTH, minutes: 1440 })
-      expect(processBlock).toMatchObject({ x, width: EQUAL_WIDTH, minutes: 30 })
+      expect(waitBlock).toMatchObject({
+        x,
+        width: EQUAL_BOX_WIDTH,
+        minutes: 1440,
+      })
+      expect(processBlock).toMatchObject({
+        x,
+        width: EQUAL_BOX_WIDTH,
+        minutes: 30,
+      })
     })
   })
 })

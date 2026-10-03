@@ -77,7 +77,7 @@ const layoutStep = ({ minutes, ...encodings }, x, size) => {
 }
 
 /**
- * Size a ladder model for a pane: the boxes and blocks an SVG draws, with
+ * Size a ladder model into a layout: the boxes and blocks an SVG draws, with
  * nothing left to work out. Pure; no store or DOM. Step order is the
  * version's, boxes sit side by side from x 0, and the layout never shrinks to
  * fit: `totalWidth` grows with the steps and fitting or zooming is the

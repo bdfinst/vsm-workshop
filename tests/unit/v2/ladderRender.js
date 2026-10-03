@@ -15,7 +15,7 @@ export const stubResizeObserver = () =>
 
 /**
  * jsdom does no layout, so every element is 0 px wide. Gives every element the
- * client width a pane would have; undo it with the returned function.
+ * client width a scroller would have; undo it with the returned function.
  * @param {number} width - Pixels
  * @returns {function(): void} Puts the jsdom behaviour back
  */

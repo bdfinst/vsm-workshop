@@ -96,7 +96,7 @@ Mockup: open [mockups/guided-mapping.html](mockups/guided-mapping.html) in a bro
 
 - **Layout:**
   - On wide screens: the prompt card and work area on the left, the live map pane on the right (from stage 2 on), and the summary strip pinned along the bottom.
-  - Under 640 px: the panes stack, the strip collapses to flow efficiency plus a "Show all metrics" expander, and the ladder scrolls horizontally inside its pane without scrolling the page.
+  - Under 640 px: the panes stack, the strip collapses to flow efficiency plus a "Show all metrics" expander, and the ladder scrolls horizontally inside its own scroller without scrolling the page.
 - The prompt card has the question, a one-line explanation, an example, and Back and Next.
 - Under Next, one line states what unlocks it, naming the first missing item. For example: "Add the wait time for "Deploy"."
 - On a stage change, and when moving between the home screen and a stream, focus moves to the heading.

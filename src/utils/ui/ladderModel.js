@@ -34,7 +34,7 @@ const outlineOf = (missingTimeLabels, outsideText, handoffText) => {
   return handoffText ? OUTLINE.HANDOFF : OUTLINE.SOLID
 }
 
-// What a step looks like whatever the pane: its minutes, encodings and flags.
+// What a step looks like however wide it is drawn: its minutes, encodings and flags.
 const modelStep = (step, flags) => {
   const missingTimeLabels = missingTimeLabelsOf(step)
   const outsideText = isOutside(step) ? OUTSIDE_TEXT : null
@@ -53,14 +53,14 @@ const modelStep = (step, flags) => {
 }
 
 /**
- * The part of a time ladder that does not depend on the pane: per step its
+ * The part of a time ladder that does not depend on the width it is drawn at: per step its
  * `stepId`, `name` ("an unnamed step" when blank), `minutes` (`{wait, process}` or `{elapsed}`, null when not
  * entered), `outline` (an OUTLINE), `handoffText` ('handoff' or null, outside
  * steps included), `missingTimeLabels` (the names of the times not entered,
  * e.g. 'wait time'), `outsideText` (`{label, text}` for a hatched outside
  * block, or null) and `flags` (`{kind, label, tone}` for 'largest wait'
  * and/or 'lowest %C/A'). The value stream store derives this once per change,
- * so a pane or a mode switch only has to size it with `sizeLadder`. Works out
+ * so a new width or a mode switch only has to size it with `sizeLadder`. Works out
  * no metrics: the flags are the ones already worked out for this version, so a
  * comparison can build one model per version from each version's own metrics.
  * Pure.

@@ -28,8 +28,10 @@ const VIEW_MODES = Object.values(VIEW_MODE)
 export const createSessionUIStore = ({ search, defaultUi }) => {
   const uiMode = resolveUiMode(search, defaultUi)
   let viewMode = $state(VIEW_MODE.MAP)
-  // null lets the ladder fit its width; a number is a fixed scale.
-  let ladderScale = $state(null)
+  // null lets the ladder fit its scroller; a number is a pixels-per-minute
+  // scale to pin it at. Slice 13/14 wires it to LadderMap's `pixelsPerMinute`;
+  // nothing reads it yet.
+  let ladderPixelsPerMinute = $state(null)
   let showLoopShading = $state(false)
 
   return {
@@ -39,8 +41,8 @@ export const createSessionUIStore = ({ search, defaultUi }) => {
     get viewMode() {
       return viewMode
     },
-    get ladderScale() {
-      return ladderScale
+    get ladderPixelsPerMinute() {
+      return ladderPixelsPerMinute
     },
     get showLoopShading() {
       return showLoopShading
@@ -48,8 +50,8 @@ export const createSessionUIStore = ({ search, defaultUi }) => {
     setViewMode(mode) {
       if (VIEW_MODES.includes(mode)) viewMode = mode
     },
-    setLadderScale(scale) {
-      ladderScale = scale
+    setLadderPixelsPerMinute(pixelsPerMinute) {
+      ladderPixelsPerMinute = pixelsPerMinute
     },
     setShowLoopShading(show) {
       showLoopShading = show

@@ -23,7 +23,7 @@ describe('sessionUIStore', () => {
 
     expect(store.viewMode).toBe(VIEW_MODE.MAP)
     expect(VIEW_MODE.MAP).toBe('map')
-    expect(store.ladderScale).toBeNull()
+    expect(store.ladderPixelsPerMinute).toBeNull()
     expect(store.showLoopShading).toBe(false)
   })
 
@@ -31,11 +31,11 @@ describe('sessionUIStore', () => {
     const store = createSessionUIStore({ search: '', defaultUi: undefined })
 
     store.setViewMode('canvas')
-    store.setLadderScale(0.5)
+    store.setLadderPixelsPerMinute(0.5)
     store.setShowLoopShading(true)
 
     expect(store.viewMode).toBe('canvas')
-    expect(store.ladderScale).toBe(0.5)
+    expect(store.ladderPixelsPerMinute).toBe(0.5)
     expect(store.showLoopShading).toBe(true)
   })
 
