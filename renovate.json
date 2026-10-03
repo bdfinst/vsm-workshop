@@ -1,0 +1,51 @@
+{
+  "$schema": "https://docs.renovatebot.com/renovate-schema.json",
+  "extends": [
+    "config:recommended",
+    "helpers:pinGitHubActionDigests",
+    "docker:pinDigests"
+  ],
+  "schedule": [
+    "before 6am on monday"
+  ],
+  "prConcurrentLimit": 5,
+  "labels": [
+    "dependencies"
+  ],
+  "packageRules": [
+    {
+      "description": "Group minor and patch npm updates into one PR.",
+      "matchManagers": [
+        "npm"
+      ],
+      "matchUpdateTypes": [
+        "minor",
+        "patch"
+      ],
+      "groupName": "non-major dependencies"
+    },
+    {
+      "description": "The Playwright image in the e2e job and in scripts/e2e-baseline.sh must have the same version as @playwright/test, because the visual baselines depend on the browser build and fonts in that image. Move them in one PR. This rule comes last so it wins over the grouping above.",
+      "matchPackageNames": [
+        "mcr.microsoft.com/playwright",
+        "@playwright/test",
+        "playwright",
+        "playwright-core"
+      ],
+      "groupName": "playwright"
+    }
+  ],
+  "customManagers": [
+    {
+      "customType": "regex",
+      "description": "Keep the Playwright image in scripts/e2e-baseline.sh in step with the one in the workflow.",
+      "managerFilePatterns": [
+        "/^scripts/e2e-baseline\\.sh$/"
+      ],
+      "matchStrings": [
+        "IMAGE='(?<depName>[^:']+):(?<currentValue>[^@']+)@(?<currentDigest>sha256:[a-f0-9]+)'"
+      ],
+      "datasourceTemplate": "docker"
+    }
+  ]
+}

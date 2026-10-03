@@ -133,10 +133,9 @@ jobs:
     # Run inside the pinned Playwright image so browsers are preinstalled and,
     # crucially, font/rendering matches the committed visual baselines. Keep
     # this version in sync with the @playwright/test version in package.json.
-    # The digest pins the exact image (the tag alone can be re-pushed). Dependabot
-    # does not read `container:` lines, so bump the tag and the digest by hand,
-    # together with @playwright/test, and use the same reference in
-    # scripts/e2e-baseline.sh.
+    # The digest pins the exact image (the tag alone can be re-pushed). Renovate
+    # bumps the tag and the digest together with @playwright/test in one PR, and
+    # updates the same reference in scripts/e2e-baseline.sh (see renovate.json).
     container:
       image: mcr.microsoft.com/playwright:v1.58.2-noble@sha256:6446946a1d9fd62d9ae501312a2d76a43ee688542b21622056a372959b65d63d
     steps:
