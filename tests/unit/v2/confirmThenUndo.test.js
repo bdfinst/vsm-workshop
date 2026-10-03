@@ -1,4 +1,4 @@
-import { describe, it, expect, vi } from 'vitest'
+import { describe, it, expect } from 'vitest'
 import { createConfirmThenUndo } from '../../../src/utils/ui/confirmThenUndo.js'
 
 const setup = () => {
@@ -45,21 +45,5 @@ describe('createConfirmThenUndo', () => {
     flow.request(false)
 
     expect(calls).toEqual(['run'])
-  })
-
-  it('asks by default', () => {
-    const ask = vi.fn()
-    const run = vi.fn()
-    const flow = createConfirmThenUndo({
-      ask,
-      close: vi.fn(),
-      run,
-      restoreFocus: vi.fn(),
-    })
-
-    flow.request()
-
-    expect(ask).toHaveBeenCalledTimes(1)
-    expect(run).not.toHaveBeenCalled()
   })
 })

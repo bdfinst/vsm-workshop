@@ -21,7 +21,7 @@ describe('exportFileName', () => {
     expect(exportFileName('Checkout delivery')).toBe('Checkout delivery.json')
   })
 
-  it.each(['', '   ', undefined])(
+  it.each(['', '   ', undefined, null])(
     'falls back to the card name for %j',
     (name) => {
       expect(exportFileName(name)).toBe('Untitled value stream.json')
@@ -80,6 +80,10 @@ describe('exportFileName', () => {
     'NUL .x',
   ])('does not name the file after the Windows device %s', (name) => {
     expect(exportFileName(name)).toBe(`_${name}.json`)
+  })
+
+  it('treats a device name with a trailing dot as the device, once the dot is dropped', () => {
+    expect(exportFileName('CON.')).toBe('_CON.json')
   })
 
   it.each(['CONSOLE', 'COM10', 'Communication', 'LPT', 'my CON'])(

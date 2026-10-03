@@ -168,9 +168,14 @@ describe('importValueStream', () => {
     it.each([undefined, null, 20260310, ''])(
       'replaces a createdAt of %j that is not a time',
       (value) => {
+        const before = Date.now()
+
         const stream = importWith({ createdAt: value })
 
-        expect(Number.isNaN(Date.parse(stream.createdAt))).toBe(false)
+        expect(typeof stream.createdAt).toBe('string')
+        const stamped = Date.parse(stream.createdAt)
+        expect(stamped).toBeGreaterThanOrEqual(before)
+        expect(stamped).toBeLessThanOrEqual(Date.now())
       }
     )
 

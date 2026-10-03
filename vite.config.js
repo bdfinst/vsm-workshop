@@ -27,6 +27,8 @@ export const createBaseConfig = ({ splitVendorChunks }) => ({
   test: {
     environment: 'jsdom',
     globals: true,
+    // A zone far from UTC, so a day read in local time instead of UTC shows up.
+    env: { TZ: 'Pacific/Kiritimati' },
     setupFiles: ['./tests/setup.js'],
     exclude: ['**/node_modules/**', '**/tests/e2e/**'],
     coverage: {

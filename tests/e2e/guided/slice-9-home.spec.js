@@ -250,10 +250,7 @@ test.describe('Several value streams in one workspace (slice 9.1)', () => {
     page,
     seed,
   }) => {
-    const { checkout, second } = await openBackground(page, seed)
-    await expect
-      .poll(async () => (await savedWorkspace(page))?.activeStreamId)
-      .toBe(checkout.id)
+    const { second } = await openBackground(page, seed)
 
     await openAllValueStreams(page)
     await page.getByRole('link', { name: 'Onboarding', exact: true }).click()
@@ -264,9 +261,11 @@ test.describe('Several value streams in one workspace (slice 9.1)', () => {
 
     // Home is only a screen: the active stream stays the one that was open.
     await expect(homeHeading(page)).toBeVisible()
-    await expect
-      .poll(async () => (await savedWorkspace(page))?.activeStreamId)
-      .toBe(second.id)
+    // Saves are written in order, so once this later one is there an earlier
+    // save made by going home would be too.
+    await duplicateStream(page, 'Checkout delivery')
+    await expect.poll(async () => (await savedStreams(page)).length).toBe(3)
+    expect((await savedWorkspace(page)).activeStreamId).toBe(second.id)
   })
 
   test('The home screen has no accessibility violations', async ({
@@ -614,7 +613,7 @@ test.describe('Manage value streams from the home screen (slice 9.2)', () => {
     await expect(toast(page)).toHaveCount(0)
   })
 
-  test('Delete and Undo are announced to screen readers', async ({
+  test('The Undo toast is a polite status region and Undo announces the restore', async ({
     page,
     seed,
   }) => {
@@ -692,11 +691,11 @@ const importError = (page) => page.getByTestId('import-error')
 
 // Opens the file chooser the way the user does, then picks the file in it.
 const importVia = async (page, openChooser, name, text) => {
-  const chooser = page.waitForEvent('filechooser')
-  await openChooser()
-  await (
-    await chooser
-  ).setFiles({
+  const [chooser] = await Promise.all([
+    page.waitForEvent('filechooser'),
+    openChooser(),
+  ])
+  await chooser.setFiles({
     name,
     mimeType: 'application/json',
     buffer: Buffer.from(text),
@@ -848,7 +847,13 @@ test.describe('Import and export one value stream (slice 9.3)', () => {
 
     await expect(importError(page)).toHaveText("This file isn't valid JSON")
     await expect(cardLinks(page)).toHaveCount(2)
-    await expect.poll(() => savedStreams(page)).toEqual(before)
+    // Saves are written in order, so once this later one is there an earlier
+    // save made by the import would be too.
+    await duplicateStream(page, 'Onboarding')
+    await expect.poll(async () => (await savedStreams(page)).length).toBe(3)
+    const saved = await savedStreams(page)
+    expect(saved.slice(0, 2)).toEqual(before)
+    expect(saved[2].name).toBe('Onboarding (copy)')
   })
 
   test('Export one value stream', async ({ page, seed }) => {

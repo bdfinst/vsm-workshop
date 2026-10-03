@@ -29,6 +29,12 @@ describe('shortcutFor', () => {
       event: press('z', { metaKey: true, shiftKey: true }),
       action: 'redo',
     },
+    // Caps Lock makes browsers report the capital letter without Shift.
+    {
+      name: 'Ctrl+Z as a capital',
+      event: press('Z', { ctrlKey: true }),
+      action: 'undo',
+    },
     // Shift makes browsers report the capital letter.
     {
       name: 'Ctrl+Shift+Z as a capital',
@@ -87,14 +93,15 @@ describe('isTextEntry', () => {
 
 describe('menuActionFor', () => {
   it.each([
-    ['ArrowDown', 'next'],
-    ['ArrowUp', 'previous'],
-    ['Home', 'first'],
-    ['End', 'last'],
-    ['Escape', 'close'],
-    ['Tab', 'leave'],
-  ])('%s is %s', (key, action) => {
-    expect(menuActionFor(press(key))).toBe(action)
+    ['ArrowDown', press('ArrowDown'), 'next'],
+    ['ArrowUp', press('ArrowUp'), 'previous'],
+    ['Home', press('Home'), 'first'],
+    ['End', press('End'), 'last'],
+    ['Escape', press('Escape'), 'close'],
+    ['Tab', press('Tab'), 'leave'],
+    ['Shift+Tab', press('Tab', { shiftKey: true }), 'leave'],
+  ])('%s is %s', (_name, event, action) => {
+    expect(menuActionFor(event)).toBe(action)
   })
 
   it.each([
@@ -104,12 +111,6 @@ describe('menuActionFor', () => {
     ['Alt+ArrowUp', press('ArrowUp', { altKey: true })],
   ])('%s is not for the menu', (_name, event) => {
     expect(menuActionFor(event)).toBeNull()
-  })
-})
-
-describe('menuActionFor leaving', () => {
-  it('Shift+Tab leaves the menu too', () => {
-    expect(menuActionFor(press('Tab', { shiftKey: true }))).toBe('leave')
   })
 })
 

@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeAll, afterAll } from 'vitest'
+import { describe, it, expect } from 'vitest'
 import { streamSummary } from '../../../src/utils/ui/streamSummary.js'
 import { createMapVersion } from '../../../src/models/v2/mapVersion.js'
 import { createStep } from '../../../src/models/v2/step.js'
@@ -17,13 +17,9 @@ const reviewStream = (overrides) =>
 
 describe('streamSummary', () => {
   // `created` is the day in UTC; a machine zone far from UTC must not move it.
-  const originalZone = process.env.TZ
-  beforeAll(() => {
-    process.env.TZ = 'Pacific/Kiritimati'
-  })
-  afterAll(() => {
-    if (originalZone === undefined) delete process.env.TZ
-    else process.env.TZ = originalZone
+  // vite.config.js pins TZ for the unit run; this proves the zone is live.
+  it('runs in a zone where local time is a day ahead of UTC', () => {
+    expect(new Date('2026-03-03T10:00:00.000Z').getDate()).toBe(4)
   })
 
   it('summarises a named stream by name, steps, furthest stage and last update', () => {
@@ -142,8 +138,11 @@ describe('streamSummary', () => {
 
   it('accepts now as a number of milliseconds or an ISO string', () => {
     const stream = reviewStream()
-    const expected = streamSummary(stream, NOW).updated
-    expect(streamSummary(stream, NOW.getTime()).updated).toBe(expected)
-    expect(streamSummary(stream, NOW.toISOString()).updated).toBe(expected)
+    expect(streamSummary(stream, NOW.getTime()).updated).toBe(
+      'Updated 2 days ago'
+    )
+    expect(streamSummary(stream, NOW.toISOString()).updated).toBe(
+      'Updated 2 days ago'
+    )
   })
 })

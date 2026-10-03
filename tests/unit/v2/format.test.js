@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeAll, afterAll } from 'vitest'
+import { describe, it, expect } from 'vitest'
 import {
   formatDuration,
   formatDurationRange,
@@ -80,12 +80,15 @@ describe('formatDuration of a missing figure', () => {
 describe('formatPercent of a missing figure', () => {
   const incomplete = { incomplete: true, stepName: 'Deploy' }
 
-  it.each([null, undefined, NaN, Infinity, incomplete])(
-    'throws a TypeError for %j',
-    (value) => {
-      expect(() => formatPercent(value)).toThrow(TypeError)
-    }
-  )
+  it.each([
+    ['null', null],
+    ['undefined', undefined],
+    ['NaN', NaN],
+    ['Infinity', Infinity],
+    ['an incomplete result', incomplete],
+  ])('throws a TypeError for %s', (_, value) => {
+    expect(() => formatPercent(value)).toThrow(TypeError)
+  })
 
   it.each([
     ['a null end', { low: null, high: 0.2 }],
@@ -565,13 +568,9 @@ describe('formatRelativeTime', () => {
 
 describe('formatDayMonth', () => {
   // The day is read in UTC, so a machine zone far from UTC must not move it.
-  const originalZone = process.env.TZ
-  beforeAll(() => {
-    process.env.TZ = 'Pacific/Kiritimati'
-  })
-  afterAll(() => {
-    if (originalZone === undefined) delete process.env.TZ
-    else process.env.TZ = originalZone
+  // vite.config.js pins TZ for the unit run; this proves the zone is live.
+  it('runs in a zone where local time is a day ahead of UTC', () => {
+    expect(new Date('2026-03-03T10:00:00.000Z').getDate()).toBe(4)
   })
 
   it.each([
